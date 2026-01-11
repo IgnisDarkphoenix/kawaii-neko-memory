@@ -52,21 +52,23 @@ dependencies {
     // Project Core
     implementation project(':core')
     
-    // libGDX Android
+    // libGDX Android Backend
     implementation "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
-    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
-    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-arm64-v8a"
-    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"
-    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
     
-    // libGDX FreeType Android
+    // libGDX Platform Natives (forma correcta para Gradle moderno)
+    implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
+    implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-arm64-v8a"
+    implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"
+    implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
+    
+    // libGDX FreeType (para fuentes multi-idioma)
     implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
-    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-armeabi-v7a"
-    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-arm64-v8a"
-    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86"
-    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86_64"
+    implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-armeabi-v7a"
+    implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-arm64-v8a"
+    implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86"
+    implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86_64"
     
-    // === ADS (Mediación) - Preparado para Fase 3 ===
+    // === ADS (Mediación) - Descomentar en Fase 3 ===
     // Google AdMob
     // implementation 'com.google.android.gms:play-services-ads:23.0.0'
     
@@ -78,37 +80,4 @@ dependencies {
     
     // AdMob Adapter para MAX
     // implementation 'com.applovin.mediation:google-adapter:23.0.0.0'
-}
-
-// Copia natives a las carpetas correctas
-configurations {
-    natives
-}
-
-tasks.register('copyAndroidNatives') {
-    doFirst {
-        configurations.natives.files.each { jar ->
-            def outputDir = null
-            if (jar.name.contains("natives-armeabi-v7a")) {
-                outputDir = file("libs/armeabi-v7a")
-            } else if (jar.name.contains("natives-arm64-v8a")) {
-                outputDir = file("libs/arm64-v8a")
-            } else if (jar.name.contains("natives-x86_64")) {
-                outputDir = file("libs/x86_64")
-            } else if (jar.name.contains("natives-x86")) {
-                outputDir = file("libs/x86")
-            }
-            if (outputDir != null) {
-                copy {
-                    from zipTree(jar)
-                    into outputDir
-                    include "*.so"
-                }
-            }
-        }
-    }
-}
-
-tasks.matching { it.name.contains('merge') && it.name.contains('JniLibFolders') }.configureEach {
-    dependsOn 'copyAndroidNatives'
 }

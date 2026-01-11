@@ -56,22 +56,29 @@ android {
     }
 }
 
+// Configuración para extraer natives
+configurations {
+    natives
+}
+
 dependencies {
     implementation project(':core')
     
     // LibGDX Android Backend
-    implementation "com.badlogicgames.gdx:gdx-backend-android:${rootProject.properties['gdxVersion']}"
-    natives "com.badlogicgames.gdx:gdx-platform:${rootProject.properties['gdxVersion']}:natives-armeabi-v7a"
-    natives "com.badlogicgames.gdx:gdx-platform:${rootProject.properties['gdxVersion']}:natives-arm64-v8a"
-    natives "com.badlogicgames.gdx:gdx-platform:${rootProject.properties['gdxVersion']}:natives-x86"
-    natives "com.badlogicgames.gdx:gdx-platform:${rootProject.properties['gdxVersion']}:natives-x86_64"
+    def gdxVersion = rootProject.properties['gdxVersion']
     
-    // FreeType para fuentes
-    implementation "com.badlogicgames.gdx:gdx-freetype:${rootProject.properties['gdxVersion']}"
-    natives "com.badlogicgames.gdx:gdx-freetype-platform:${rootProject.properties['gdxVersion']}:natives-armeabi-v7a"
-    natives "com.badlogicgames.gdx:gdx-freetype-platform:${rootProject.properties['gdxVersion']}:natives-arm64-v8a"
-    natives "com.badlogicgames.gdx:gdx-freetype-platform:${rootProject.properties['gdxVersion']}:natives-x86"
-    natives "com.badlogicgames.gdx:gdx-freetype-platform:${rootProject.properties['gdxVersion']}:natives-x86_64"
+    implementation "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
+    implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+    
+    // Natives - se definen aquí pero se procesan abajo
+    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
+    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-arm64-v8a"
+    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"
+    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
+    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-armeabi-v7a"
+    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-arm64-v8a"
+    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86"
+    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86_64"
     
     // === MEDIACIÓN DE ADS ===
     // AppLovin MAX (Mediación principal)
@@ -87,29 +94,31 @@ dependencies {
     
     // AndroidX (requerido)
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'androidx.core:core-ktx:1.12.0'
 }
 
-// Copiar natives al directorio correcto
-configurations {
-    natives
-}
-
+// Tarea para copiar natives a las carpetas correctas
 tasks.register('copyNatives') {
-    doLast {
+    doFirst {
         file("libs/armeabi-v7a/").mkdirs()
         file("libs/arm64-v8a/").mkdirs()
         file("libs/x86/").mkdirs()
         file("libs/x86_64/").mkdirs()
-        
+    }
+    
+    doLast {
         configurations.natives.copy().files.each { jar ->
             def outputDir = null
-            if(jar.name.contains("armeabi-v7a")) outputDir = file("libs/armeabi-v7a")
-            if(jar.name.contains("arm64-v8a")) outputDir = file("libs/arm64-v8a")
-            if(jar.name.contains("x86_64")) outputDir = file("libs/x86_64")
-            else if(jar.name.contains("x86")) outputDir = file("libs/x86")
+            if (jar.name.contains("natives-armeabi-v7a")) {
+                outputDir = file("libs/armeabi-v7a")
+            } else if (jar.name.contains("natives-arm64-v8a")) {
+                outputDir = file("libs/arm64-v8a")
+            } else if (jar.name.contains("natives-x86_64")) {
+                outputDir = file("libs/x86_64")
+            } else if (jar.name.contains("natives-x86")) {
+                outputDir = file("libs/x86")
+            }
             
-            if(outputDir != null) {
+            if (outputDir != null) {
                 copy {
                     from zipTree(jar)
                     into outputDir
@@ -120,6 +129,7 @@ tasks.register('copyNatives') {
     }
 }
 
+// Asegurar que los natives se copien antes de compilar
 tasks.matching { it.name.contains('merge') && it.name.contains('JniLibFolders') }.configureEach {
     dependsOn 'copyNatives'
 }

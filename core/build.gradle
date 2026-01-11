@@ -1,0 +1,24 @@
+plugins {
+    id 'java-library'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java']
+        }
+    }
+}
+
+dependencies {
+    // LibGDX Core
+    api "com.badlogicgames.gdx:gdx:${rootProject.properties['gdxVersion']}"
+    
+    // LibGDX FreeType para fuentes (multi-idioma)
+    api "com.badlogicgames.gdx:gdx-freetype:${rootProject.properties['gdxVersion']}"
+}

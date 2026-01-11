@@ -11,14 +11,24 @@ public class KawaiiNekoMemory extends Game {
     
     @Override
     public void create() {
-        Gdx.app.log("KawaiiNeko", "Game starting...");
-        batch = new SpriteBatch();
-        setScreen(new SplashScreen(this));
+        try {
+            Gdx.app.log("KawaiiNeko", "Game starting...");
+            batch = new SpriteBatch();
+            Gdx.app.log("KawaiiNeko", "SpriteBatch created");
+            setScreen(new SplashScreen(this));
+            Gdx.app.log("KawaiiNeko", "SplashScreen set");
+        } catch (Exception e) {
+            Gdx.app.error("KawaiiNeko", "Error in create(): " + e.getMessage());
+        }
     }
     
     @Override
     public void render() {
-        super.render();
+        try {
+            super.render();
+        } catch (Exception e) {
+            Gdx.app.error("KawaiiNeko", "Error in render(): " + e.getMessage());
+        }
     }
     
     @Override

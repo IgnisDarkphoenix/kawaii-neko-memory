@@ -1,0 +1,118 @@
+# ============================================
+# Kawaii Neko Memory - .gitignore
+# libGDX + Android + Java
+# ============================================
+
+# === Gradle ===
+.gradle/
+build/
+out/
+*/build/
+*/out/
+
+# Gradle Wrapper (mantener properties, ignorar jar)
+gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# === Android ===
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Android signing
+*.jks
+*.keystore
+signing.properties
+
+# Native libs (se generan automáticamente)
+android/libs/
+**/libs/*.so
+
+# === Java ===
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+
+# === libGDX ===
+# Atlas generados (opcional, si prefieres regenerar)
+# *.atlas
+# *.pack
+
+# === OS Generated ===
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+
+# === IDE ===
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# NetBeans
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# === Logs ===
+*.log
+logs/
+
+# === Temporal ===
+tmp/
+temp/
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+
+# === Secrets (IMPORTANTE) ===
+# API Keys de Ads
+secrets.properties
+google-services.json
+admob-keys.txt
+applovin-keys.txt
+
+# === Assets en desarrollo (opcional) ===
+# Descomenta si no quieres subir PSDs o fuentes originales
+# *.psd
+# *.ai
+# *.sketch

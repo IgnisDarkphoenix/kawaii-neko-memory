@@ -1,0 +1,33 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.0'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+        // AppLovin
+        maven { url 'https://artifacts.applovin.com/android' }
+    }
+    
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+}
+
+subprojects {
+    version = rootProject.properties['appVersionName']
+}
+
+// Tarea de limpieza
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
+}

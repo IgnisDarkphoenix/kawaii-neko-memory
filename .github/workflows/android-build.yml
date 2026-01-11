@@ -1,0 +1,54 @@
+name: Android Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:  # Permite ejecución manual
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+      
+    - name: Build Debug APK
+      run: |
+        echo "Building debug APK..."
+        ./gradlew android:assembleDebug --stacktrace
+        
+    - name: Upload debug APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: kawaii-neko-memory-debug
+        path: android/build/outputs/apk/debug/android-debug.apk
+        retention-days: 30
+        
+    - name: Upload mapping file (debug)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: mapping-debug
+        path: android/build/outputs/mapping/debug/
+        retention-days: 30
+        
+    - name: Clean up build cache
+      if: always()
+      run: |
+        ./gradlew clean
+        rm -rf ~/.gradle/caches/

@@ -3,6 +3,7 @@ package com.darkphoenixteam.kawaiinekomemory;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.darkphoenixteam.kawaiinekomemory.screens.SplashScreen;
 import com.darkphoenixteam.kawaiinekomemory.systems.AdController;
 
 /**
@@ -45,14 +46,15 @@ public class KawaiiNekoMemory extends Game {
         Gdx.app.log(TAG, "=== Kawaii Neko Memory Iniciando ===");
         Gdx.app.log(TAG, "Versión: 1.0.0");
         Gdx.app.log(TAG, "DarkphoenixTeam");
+        Gdx.app.log(TAG, "Pantalla: " + Gdx.graphics.getWidth() + "x" + Gdx.graphics.getHeight());
         
         // Crear SpriteBatch compartido
         batch = new SpriteBatch();
         
-        // TODO: Iniciar con SplashScreen cuando esté listo
-        // Por ahora, log de confirmación
+        // Iniciar con SplashScreen
+        setScreen(new SplashScreen(this));
+        
         Gdx.app.log(TAG, "Juego iniciado correctamente");
-        Gdx.app.log(TAG, "Pantalla: " + Gdx.graphics.getWidth() + "x" + Gdx.graphics.getHeight());
     }
     
     @Override

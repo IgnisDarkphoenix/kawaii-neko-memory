@@ -65,3 +65,8 @@ Damacus (Eduardo) - Game Designer & Developer
 Copyright © 2025 DarkphoenixTeam. Todos los derechos reservados.
 
 Este proyecto es software propietario. No se permite la distribución, modificación o uso comercial sin autorización explícita.
+
+📞 Contacto
+Para consultas sobre el proyecto: [Pendiente sitio web DarkphoenixTeam]
+
+Made with ❤️ and ☕ by DarkphoenixTeam

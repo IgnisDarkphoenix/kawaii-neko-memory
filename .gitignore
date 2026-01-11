@@ -1,0 +1,79 @@
+# ============================================
+# Kawaii Neko Memory - GitIgnore
+# DarkphoenixTeam
+# ============================================
+
+# === GRADLE ===
+.gradle/
+build/
+*/build/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# === ANDROID ===
+*.apk
+*.aab
+*.ap_
+*.dex
+local.properties
+captures/
+.externalNativeBuild
+.cxx
+
+# === INTELLIJ / ANDROID STUDIO ===
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# === ECLIPSE ===
+.classpath
+.project
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+.settings/
+.loadpath
+
+# === LIBGDX ===
+## Core
+/core/bin/
+
+## Android
+/android/bin/
+/android/gen/
+/android/out/
+/android/libs/armeabi/
+/android/libs/armeabi-v7a/
+/android/libs/arm64-v8a/
+/android/libs/x86/
+/android/libs/x86_64/
+
+# === MacOS ===
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# === Windows ===
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# === Linux ===
+*~
+.directory
+
+# === LOGS ===
+*.log
+
+# === TEMP FILES ===
+*.class
+hs_err_pid*

@@ -7,18 +7,6 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
-sourceSets {
-    main {
-        java {
-            srcDirs = ['src/main/java']
-        }
-    }
-}
-
 dependencies {
-    // LibGDX Core
-    api "com.badlogicgames.gdx:gdx:${rootProject.properties['gdxVersion']}"
-    
-    // LibGDX FreeType para fuentes (multi-idioma)
-    api "com.badlogicgames.gdx:gdx-freetype:${rootProject.properties['gdxVersion']}"
+    api "com.badlogicgames.gdx:gdx:1.12.1"
 }

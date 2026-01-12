@@ -1,56 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Permisos para Ads -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    
-    <!-- Permiso opcional para mejor targeting de ads -->
-    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
 
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.KawaiiNekoMemory"
-        android:usesCleartextTraffic="true"
-        tools:targetApi="31">
+        android:theme="@style/Theme.KawaiiNekoMemory">
 
-        <!-- AppLovin SDK Key (reemplazar con tu key real después) -->
-        <meta-data
-            android:name="applovin.sdk.key"
-            android:value="YOUR_APPLOVIN_SDK_KEY_HERE" />
-
-        <!-- AdMob App ID (reemplazar con tu ID real después) -->
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY" />
-
-        <!-- Actividad Principal del Juego -->
         <activity
             android:name="com.darkphoenixteam.kawaiinekomemory.AndroidLauncher"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode"
             android:exported="true"
-            android:screenOrientation="portrait"
-            tools:ignore="LockedOrientationActivity">
+            android:screenOrientation="portrait">
             
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- Actividad de AppLovin Debugger (opcional, útil para testing) -->
-        <activity
-            android:name="com.applovin.mediation.MaxDebuggerActivity"
-            android:exported="false" />
-
-        <activity
-            android:name="com.applovin.creative.MaxCreativeDebuggerActivity"
-            android:exported="false" />
 
     </application>
 

@@ -4,28 +4,22 @@ plugins {
 
 android {
     namespace 'com.darkphoenixteam.kawaiinekomemory'
-    compileSdk Integer.parseInt(rootProject.properties['androidTargetSdk'])
+    compileSdk 34
 
     defaultConfig {
         applicationId 'com.darkphoenixteam.kawaiinekomemory'
-        minSdk Integer.parseInt(rootProject.properties['androidMinSdk'])
-        targetSdk Integer.parseInt(rootProject.properties['androidTargetSdk'])
-        versionCode Integer.parseInt(rootProject.properties['appVersionCode'])
-        versionName rootProject.properties['appVersionName']
-        
-        // Mantener recursos de idiomas
-        resConfigs "en", "es", "ru", "pt", "zh", "ja", "ko", "fr", "de", "it"
+        minSdk 23
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
     }
 
     buildTypes {
         debug {
-            applicationIdSuffix '.debug'
             debuggable true
         }
         release {
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            minifyEnabled false
         }
     }
     
@@ -43,20 +37,14 @@ android {
             jniLibs.srcDirs = ['libs']
         }
     }
-
+    
     packaging {
         resources {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
-            excludes += 'META-INF/robovm/ios/robovm.xml'
         }
-    }
-    
-    lint {
-        abortOnError false
     }
 }
 
-// Configuración para extraer natives
 configurations {
     natives
 }
@@ -64,39 +52,17 @@ configurations {
 dependencies {
     implementation project(':core')
     
-    // LibGDX Android Backend
-    def gdxVersion = rootProject.properties['gdxVersion']
+    def gdxVersion = '1.12.1'
     
+    // Solo LibGDX - Sin ads por ahora
     implementation "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
-    implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
     
-    // Natives - se definen aquí pero se procesan abajo
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-arm64-v8a"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
-    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-armeabi-v7a"
-    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-arm64-v8a"
-    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86"
-    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86_64"
-    
-    // === MEDIACIÓN DE ADS ===
-    // AppLovin MAX (Mediación principal)
-    implementation "com.applovin:applovin-sdk:${rootProject.properties['appLovinVersion']}"
-    
-    // Google AdMob (Adaptador para MAX)
-    implementation "com.google.android.gms:play-services-ads:${rootProject.properties['admobVersion']}"
-    implementation 'com.applovin.mediation:google-adapter:+'
-    
-    // Unity Ads (Adaptador para MAX)
-    implementation "com.unity3d.ads:unity-ads:${rootProject.properties['unityAdsVersion']}"
-    implementation 'com.applovin.mediation:unityads-adapter:+'
-    
-    // AndroidX (requerido)
-    implementation 'androidx.appcompat:appcompat:1.6.1'
 }
 
-// Tarea para copiar natives a las carpetas correctas
 tasks.register('copyNatives') {
     doFirst {
         file("libs/armeabi-v7a/").mkdirs()
@@ -129,7 +95,6 @@ tasks.register('copyNatives') {
     }
 }
 
-// Asegurar que los natives se copien antes de compilar
 tasks.matching { it.name.contains('merge') && it.name.contains('JniLibFolders') }.configureEach {
     dependsOn 'copyNatives'
 }

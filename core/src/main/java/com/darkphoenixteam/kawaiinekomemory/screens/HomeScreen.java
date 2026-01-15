@@ -34,17 +34,11 @@ public class HomeScreen extends BaseScreen {
     private AudioManager audioManager;
     
     // === LAYOUT CONFIG ===
-    // Zona de título: 35% superior de la pantalla
     private static final float TITLE_ZONE_PERCENT = 0.35f;
-    // Margen inferior
     private static final float BOTTOM_MARGIN = 40f;
-    // Espaciado entre botones
     private static final float BUTTON_SPACING = 10f;
-    // Número de botones
     private static final int BUTTON_COUNT = 5;
-    // Aspect ratio de los botones (1024x512 = 2:1, o sea height = width * 0.5)
     private static final float BUTTON_ASPECT_RATIO = 0.5f;
-    // Ancho máximo del botón (porcentaje del viewport)
     private static final float MAX_BUTTON_WIDTH_PERCENT = 0.60f;
     
     // Calculados
@@ -58,7 +52,6 @@ public class HomeScreen extends BaseScreen {
         
         setBackgroundColor(1f, 0.92f, 0.95f);
         
-        // Obtener fuentes del FontManager
         titleFont = game.getFontManager().getTitleFont();
         buttonFont = game.getFontManager().getButtonFont();
         smallFont = game.getFontManager().getSmallFont();
@@ -66,51 +59,33 @@ public class HomeScreen extends BaseScreen {
         layout = new GlyphLayout();
         buttons = new Array<>();
         
-        // Obtener AudioManager (singleton)
         audioManager = AudioManager.getInstance();
         
-        // Calcular dimensiones de botones
         calculateButtonDimensions();
-        
         loadAssets();
         createButtons();
         
         Gdx.app.log("HomeScreen", "Inicializado - Botones: " + buttonWidth + "x" + buttonHeight);
     }
     
-    /**
-     * Calcula las dimensiones de los botones para que quepan en el espacio disponible
-     */
     private void calculateButtonDimensions() {
         float viewportWidth = Constants.VIRTUAL_WIDTH;
         float viewportHeight = Constants.VIRTUAL_HEIGHT;
         
-        // Espacio vertical disponible para botones
         float titleZoneHeight = viewportHeight * TITLE_ZONE_PERCENT;
         float availableHeight = viewportHeight - titleZoneHeight - BOTTOM_MARGIN;
-        
-        // Espacio ocupado por los espaciados entre botones
         float totalSpacing = BUTTON_SPACING * (BUTTON_COUNT - 1);
-        
-        // Altura disponible para los botones en sí
         float heightForButtons = availableHeight - totalSpacing;
-        
-        // Altura máxima por botón basada en espacio disponible
         float maxButtonHeight = heightForButtons / BUTTON_COUNT;
-        
-        // Ancho correspondiente a esa altura (respetando aspect ratio)
         float widthFromHeight = maxButtonHeight / BUTTON_ASPECT_RATIO;
-        
-        // Ancho máximo permitido (60% del viewport)
         float maxWidth = viewportWidth * MAX_BUTTON_WIDTH_PERCENT;
         
-        // Usar el menor de los dos para no desbordar
         buttonWidth = Math.min(widthFromHeight, maxWidth);
         buttonHeight = buttonWidth * BUTTON_ASPECT_RATIO;
         
         Gdx.app.log("HomeScreen", String.format(
-            "Layout calculado: disponible=%.0f, maxHeight=%.0f, final=%.0fx%.0f",
-            availableHeight, maxButtonHeight, buttonWidth, buttonHeight
+            "Layout: disponible=%.0f, final=%.0fx%.0f",
+            availableHeight, buttonWidth, buttonHeight
         ));
     }
     
@@ -118,7 +93,6 @@ public class HomeScreen extends BaseScreen {
         try {
             patternTexture = new Texture(Gdx.files.internal(AssetPaths.PATTERN_HOME));
             patternTexture.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-            Gdx.app.log("HomeScreen", "Pattern cargado");
         } catch (Exception e) {
             Gdx.app.log("HomeScreen", "Pattern no encontrado");
         }
@@ -128,16 +102,12 @@ public class HomeScreen extends BaseScreen {
         float viewportWidth = Constants.VIRTUAL_WIDTH;
         float viewportHeight = Constants.VIRTUAL_HEIGHT;
         
-        // Centrar horizontalmente
         float buttonX = (viewportWidth - buttonWidth) / 2f;
-        
-        // Calcular Y inicial (debajo de la zona del título)
         float titleZoneHeight = viewportHeight * TITLE_ZONE_PERCENT;
         float startY = viewportHeight - titleZoneHeight - buttonHeight;
         
         float currentY = startY;
         
-        // Array de datos de botones para crear en loop
         String[][] buttonData = {
             {AssetPaths.BTN_PLAY, "JUGAR"},
             {AssetPaths.BTN_DECK, "MAZO"},
@@ -169,7 +139,6 @@ public class HomeScreen extends BaseScreen {
     private SimpleButton createButton(String texturePath, String text, float x, float y) {
         try {
             Texture texture = new Texture(Gdx.files.internal(texturePath));
-            // Usar constructor con width Y height explícitos para control total
             return new SimpleButton(texture, text, x, y, buttonWidth, buttonHeight);
         } catch (Exception e) {
             Gdx.app.log("HomeScreen", "Error cargando: " + texturePath);
@@ -177,11 +146,7 @@ public class HomeScreen extends BaseScreen {
         }
     }
     
-    /**
-     * Maneja los clicks de los botones
-     */
     private void handleButtonClick(String buttonName) {
-        // Reproducir sonido de click
         audioManager.playSound(AssetPaths.SFX_BUTTON);
         
         switch (buttonName) {
@@ -216,8 +181,12 @@ public class HomeScreen extends BaseScreen {
     protected void update(float delta) {
         animTimer += delta;
         
-        for (SimpleButton button : buttons) {
-            button.update(viewport);
+        // === VERIFICAR INPUT DELAY ===
+        // Solo procesar input de botones si el delay ya pasó
+        if (isInputEnabled()) {
+            for (SimpleButton button : buttons) {
+                button.update(viewport);
+            }
         }
     }
     
@@ -237,8 +206,7 @@ public class HomeScreen extends BaseScreen {
             game.getBatch().setColor(1f, 1f, 1f, 1f);
         }
         
-        // === TÍTULO ===
-        // Centrado en la zona superior (35% de la pantalla)
+        // Título
         String title = "Kawaii Neko Memory";
         layout.setText(titleFont, title);
         float titleX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
@@ -246,12 +214,12 @@ public class HomeScreen extends BaseScreen {
         float titleY = titleZoneCenter + (layout.height / 2f);
         titleFont.draw(game.getBatch(), title, titleX, titleY);
         
-        // === BOTONES ===
+        // Botones
         for (SimpleButton button : buttons) {
             button.draw(game.getBatch(), buttonFont);
         }
         
-        // === VERSIÓN ===
+        // Versión
         String version = "v1.0.0 - DarkphoenixTeam";
         layout.setText(smallFont, version);
         float verX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;

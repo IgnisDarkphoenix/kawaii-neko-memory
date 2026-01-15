@@ -54,7 +54,7 @@ dependencies {
     
     def gdxVersion = '1.12.1'
     
-    // LibGDX Android Backend
+    // LibGDX Backend
     implementation "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
     
     // LibGDX Natives
@@ -103,4 +103,6 @@ tasks.register('copyNatives') {
     }
 }
 
-tasks.matching { it.name.contains('merge') && 
+tasks.matching { it.name.contains('merge') && it.name.contains('JniLibFolders') }.configureEach {
+    dependsOn 'copyNatives'
+}

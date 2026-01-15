@@ -3,7 +3,9 @@ package com.darkphoenixteam.kawaiinekomemory;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
 import com.darkphoenixteam.kawaiinekomemory.screens.SplashScreen;
+import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
 import com.darkphoenixteam.kawaiinekomemory.systems.FontManager;
 
 /**
@@ -29,8 +31,13 @@ public class KawaiiNekoMemory extends Game {
         
         batch = new SpriteBatch();
         
-        // Inicializar FontManager (por ahora sin fuente custom)
+        // Inicializar FontManager
         fontManager = new FontManager();
+        
+        // Inicializar AudioManager y reproducir música del menú
+        AudioManager audioManager = AudioManager.getInstance();
+        audioManager.playMusic(AssetPaths.MUSIC_MENU, true);
+        Gdx.app.log(TAG, "AudioManager inicializado - Música del menú iniciada");
         
         // Iniciar con SplashScreen
         setScreen(new SplashScreen(this));
@@ -52,6 +59,9 @@ public class KawaiiNekoMemory extends Game {
         if (fontManager != null) {
             fontManager.dispose();
         }
+        
+        // Liberar recursos de audio
+        AudioManager.getInstance().dispose();
         
         if (getScreen() != null) {
             getScreen().dispose();

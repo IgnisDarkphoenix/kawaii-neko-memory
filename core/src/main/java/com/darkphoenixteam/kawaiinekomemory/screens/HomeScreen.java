@@ -28,11 +28,10 @@ public class HomeScreen extends BaseScreen {
     // Botones
     private Array<SimpleButton> buttons;
     
-    // Layout de botones - Ajustado para mejor visualización
-    private static final float BUTTON_WIDTH = 280f;
-    private static final float BUTTON_HEIGHT = 70f;
-    private static final float BUTTON_SPACING = 15f;
-    private static final float BUTTONS_START_Y = 480f;
+    // Layout de botones - Solo definimos WIDTH, height se calcula automáticamente
+    private static final float BUTTON_WIDTH = 320f;
+    // BUTTON_HEIGHT se calcula automáticamente según aspect ratio (320 * 0.5 = 160)
+    private static final float BUTTON_SPACING = 12f;
     
     private float animTimer = 0f;
     
@@ -66,6 +65,7 @@ public class HomeScreen extends BaseScreen {
         try {
             patternTexture = new Texture(Gdx.files.internal(AssetPaths.PATTERN_HOME));
             patternTexture.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
+            Gdx.app.log("HomeScreen", "Pattern cargado");
         } catch (Exception e) {
             Gdx.app.log("HomeScreen", "Pattern no encontrado");
         }
@@ -74,72 +74,86 @@ public class HomeScreen extends BaseScreen {
     private void createButtons() {
         float centerX = Constants.VIRTUAL_WIDTH / 2f;
         float buttonX = centerX - (BUTTON_WIDTH / 2f);
-        float currentY = BUTTONS_START_Y;
         
-        // Botón JUGAR
-        SimpleButton btnPlay = createButton(AssetPaths.BTN_PLAY, "", buttonX, currentY);
-        btnPlay.setOnClick(() -> {
-            Gdx.app.log("HomeScreen", ">>> JUGAR presionado <<<");
-            // TODO: game.setScreen(new LevelSelectScreen(game));
-        });
-        buttons.add(btnPlay);
-        currentY -= (BUTTON_HEIGHT + BUTTON_SPACING);
+        // Crear primer botón para calcular height real
+        SimpleButton firstBtn = createButton(AssetPaths.BTN_PLAY, buttonX, 0);
+        float buttonHeight = firstBtn != null ? firstBtn.getHeight() : 160f;
+        
+        // Calcular posición inicial (centrado verticalmente)
+        float totalHeight = (buttonHeight * 5) + (BUTTON_SPACING * 4);
+        float currentY = (Constants.VIRTUAL_HEIGHT / 2f) + (totalHeight / 2f) - buttonHeight;
+        
+        Gdx.app.log("HomeScreen", "Button dimensions: " + BUTTON_WIDTH + "x" + buttonHeight);
+        Gdx.app.log("HomeScreen", "Starting Y: " + currentY);
+        
+        // Reposicionar primer botón
+        if (firstBtn != null) {
+            firstBtn.getBounds().y = currentY;
+            firstBtn.setOnClick(() -> {
+                Gdx.app.log("HomeScreen", ">>> JUGAR presionado <<<");
+            });
+            buttons.add(firstBtn);
+        }
+        currentY -= (buttonHeight + BUTTON_SPACING);
         
         // Botón MAZO
-        SimpleButton btnDeck = createButton(AssetPaths.BTN_DECK, "", buttonX, currentY);
-        btnDeck.setOnClick(() -> {
-            Gdx.app.log("HomeScreen", ">>> MAZO presionado <<<");
-            // TODO: game.setScreen(new DeckEditorScreen(game));
-        });
-        buttons.add(btnDeck);
-        currentY -= (BUTTON_HEIGHT + BUTTON_SPACING);
+        SimpleButton btnDeck = createButton(AssetPaths.BTN_DECK, buttonX, currentY);
+        if (btnDeck != null) {
+            btnDeck.setOnClick(() -> {
+                Gdx.app.log("HomeScreen", ">>> MAZO presionado <<<");
+            });
+            buttons.add(btnDeck);
+        }
+        currentY -= (buttonHeight + BUTTON_SPACING);
         
         // Botón BAZAAR
-        SimpleButton btnBazaar = createButton(AssetPaths.BTN_BAZAAR, "", buttonX, currentY);
-        btnBazaar.setOnClick(() -> {
-            Gdx.app.log("HomeScreen", ">>> BAZAAR presionado <<<");
-            // TODO: game.setScreen(new BazaarScreen(game));
-        });
-        buttons.add(btnBazaar);
-        currentY -= (BUTTON_HEIGHT + BUTTON_SPACING);
+        SimpleButton btnBazaar = createButton(AssetPaths.BTN_BAZAAR, buttonX, currentY);
+        if (btnBazaar != null) {
+            btnBazaar.setOnClick(() -> {
+                Gdx.app.log("HomeScreen", ">>> BAZAAR presionado <<<");
+            });
+            buttons.add(btnBazaar);
+        }
+        currentY -= (buttonHeight + BUTTON_SPACING);
         
         // Botón LOGROS
-        SimpleButton btnAchievements = createButton(AssetPaths.BTN_ACHIEVEMENTS, "", buttonX, currentY);
-        btnAchievements.setOnClick(() -> {
-            Gdx.app.log("HomeScreen", ">>> LOGROS presionado <<<");
-            // TODO: game.setScreen(new AchievementsScreen(game));
-        });
-        buttons.add(btnAchievements);
-        currentY -= (BUTTON_HEIGHT + BUTTON_SPACING);
+        SimpleButton btnAchievements = createButton(AssetPaths.BTN_ACHIEVEMENTS, buttonX, currentY);
+        if (btnAchievements != null) {
+            btnAchievements.setOnClick(() -> {
+                Gdx.app.log("HomeScreen", ">>> LOGROS presionado <<<");
+            });
+            buttons.add(btnAchievements);
+        }
+        currentY -= (buttonHeight + BUTTON_SPACING);
         
         // Botón AJUSTES
-        SimpleButton btnSettings = createButton(AssetPaths.BTN_SETTINGS, "", buttonX, currentY);
-        btnSettings.setOnClick(() -> {
-            Gdx.app.log("HomeScreen", ">>> AJUSTES presionado <<<");
-            // TODO: game.setScreen(new SettingsScreen(game));
-        });
-        buttons.add(btnSettings);
+        SimpleButton btnSettings = createButton(AssetPaths.BTN_SETTINGS, buttonX, currentY);
+        if (btnSettings != null) {
+            btnSettings.setOnClick(() -> {
+                Gdx.app.log("HomeScreen", ">>> AJUSTES presionado <<<");
+            });
+            buttons.add(btnSettings);
+        }
         
         Gdx.app.log("HomeScreen", "Botones creados: " + buttons.size);
     }
     
-    private SimpleButton createButton(String texturePath, String text, float x, float y) {
-        Texture texture = null;
+    private SimpleButton createButton(String texturePath, float x, float y) {
         try {
-            texture = new Texture(Gdx.files.internal(texturePath));
-            Gdx.app.log("HomeScreen", "Botón cargado: " + texturePath);
+            Texture texture = new Texture(Gdx.files.internal(texturePath));
+            // Usar constructor con aspect ratio automático (solo width)
+            return new SimpleButton(texture, "", x, y, BUTTON_WIDTH);
         } catch (Exception e) {
-            Gdx.app.log("HomeScreen", "No se pudo cargar: " + texturePath);
+            Gdx.app.log("HomeScreen", "Error cargando: " + texturePath);
+            return null;
         }
-        
-        return new SimpleButton(texture, text, x, y, BUTTON_WIDTH, BUTTON_HEIGHT);
     }
     
     @Override
     protected void update(float delta) {
         animTimer += delta;
         
-        // Actualizar botones con VIEWPORT (no camera)
+        // Actualizar botones
         for (SimpleButton button : buttons) {
             button.update(viewport);
         }
@@ -149,34 +163,35 @@ public class HomeScreen extends BaseScreen {
     protected void draw() {
         game.getBatch().begin();
         
-        // Dibujar background pattern
+        // Dibujar background pattern semi-transparente
         if (patternTexture != null) {
-            game.getBatch().setColor(1f, 1f, 1f, 0.3f);
-            for (int x = 0; x < Constants.VIRTUAL_WIDTH; x += 128) {
-                for (int y = 0; y < Constants.VIRTUAL_HEIGHT; y += 128) {
-                    game.getBatch().draw(patternTexture, x, y, 128, 128);
+            game.getBatch().setColor(1f, 1f, 1f, 0.2f);
+            int patternSize = 256;
+            for (int x = 0; x < Constants.VIRTUAL_WIDTH; x += patternSize) {
+                for (int y = 0; y < Constants.VIRTUAL_HEIGHT; y += patternSize) {
+                    game.getBatch().draw(patternTexture, x, y, patternSize, patternSize);
                 }
             }
             game.getBatch().setColor(1f, 1f, 1f, 1f);
         }
         
         // Título con efecto de respiración
-        float scale = 3f + (float) Math.sin(animTimer * 2) * 0.1f;
+        float scale = 3f + (float) Math.sin(animTimer * 2) * 0.12f;
         titleFont.getData().setScale(scale);
         
         String title = "Kawaii Neko";
         layout.setText(titleFont, title);
         float titleX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
-        titleFont.draw(game.getBatch(), title, titleX, Constants.VIRTUAL_HEIGHT - 80f);
+        titleFont.draw(game.getBatch(), title, titleX, Constants.VIRTUAL_HEIGHT - 60f);
         
         String title2 = "Memory";
         layout.setText(titleFont, title2);
         float title2X = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
-        titleFont.draw(game.getBatch(), title2, title2X, Constants.VIRTUAL_HEIGHT - 130f);
+        titleFont.draw(game.getBatch(), title2, title2X, Constants.VIRTUAL_HEIGHT - 110f);
         
         titleFont.getData().setScale(3f);
         
-        // Dibujar botones (sin texto porque las imágenes ya lo tienen)
+        // Dibujar botones
         for (SimpleButton button : buttons) {
             button.drawNoText(game.getBatch());
         }
@@ -187,7 +202,7 @@ public class HomeScreen extends BaseScreen {
         String version = "v1.0.0 - DarkphoenixTeam";
         layout.setText(buttonFont, version);
         float verX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
-        buttonFont.draw(game.getBatch(), version, verX, 30f);
+        buttonFont.draw(game.getBatch(), version, verX, 25f);
         buttonFont.getData().setScale(1.8f);
         buttonFont.setColor(1f, 1f, 1f, 1f);
         

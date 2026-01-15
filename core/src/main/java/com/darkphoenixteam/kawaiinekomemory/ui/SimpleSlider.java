@@ -19,6 +19,10 @@ public class SimpleSlider {
     
     private static final String TAG = "SimpleSlider";
     
+    // === KNOB SIZE CONFIG ===
+    // Multiplicador del tamaño del knob respecto a la altura del slider
+    private static final float KNOB_SIZE_MULTIPLIER = 0.9f;  // Era 1.8f, ahora la mitad
+    
     // Texturas
     private Texture backgroundTexture;
     private Texture fillTexture;
@@ -29,10 +33,10 @@ public class SimpleSlider {
     private Rectangle bounds;
     
     // Dimensiones del knob
-    private float knobSize;  // Cuadrado (mismo ancho y alto)
+    private float knobSize;
     
     // Estado
-    private float value;  // 0.0 a 1.0
+    private float value;
     private boolean isDragging;
     
     // Callback
@@ -53,7 +57,7 @@ public class SimpleSlider {
      * @param x Posición X de la barra
      * @param y Posición Y de la barra
      * @param width Ancho deseado de la barra
-     * @param maxHeight Altura máxima permitida (para limitar sliders muy altos)
+     * @param maxHeight Altura máxima permitida
      */
     public SimpleSlider(Texture background, Texture fill, Texture knob,
                         float x, float y, float width, float maxHeight) {
@@ -66,25 +70,19 @@ public class SimpleSlider {
         if (background != null) {
             float textureRatio = (float) background.getHeight() / (float) background.getWidth();
             float idealHeight = width * textureRatio;
-            // Usar la menor entre la ideal y la máxima permitida
             height = Math.min(idealHeight, maxHeight);
             
             Gdx.app.log(TAG, String.format(
-                "Textura: %dx%d, ratio=%.3f, ideal=%.1f, max=%.1f, final=%.1f",
+                "Slider: textura %dx%d, ratio=%.3f, altura=%.1f",
                 background.getWidth(), background.getHeight(), 
-                textureRatio, idealHeight, maxHeight, height
+                textureRatio, height
             ));
         }
         
         this.bounds = new Rectangle(x, y, width, height);
         
-        // Knob cuadrado, tamaño basado en la altura del slider
-        if (knob != null) {
-            // El knob será 1.8x la altura del slider para ser fácil de tocar
-            this.knobSize = height * 1.8f;
-        } else {
-            this.knobSize = height * 1.5f;
-        }
+        // Knob cuadrado, proporcional a la altura del slider
+        this.knobSize = height * KNOB_SIZE_MULTIPLIER;
         
         // TextureRegion para poder recortar el fill
         if (fill != null) {
@@ -96,39 +94,37 @@ public class SimpleSlider {
         this.isDragging = false;
         
         Gdx.app.log(TAG, String.format(
-            "Slider creado: pos=(%.0f,%.0f) size=%.0fx%.0f knob=%.0f",
+            "Creado: pos=(%.0f,%.0f) size=%.0fx%.0f knob=%.0f",
             x, y, bounds.width, bounds.height, knobSize
         ));
     }
     
     /**
-     * Actualiza el estado del slider (detecta arrastre)
+     * Actualiza el estado del slider
      * @param touchPoint Coordenadas del mundo (ya convertidas con unproject)
      * @param isTouched Si el usuario está tocando la pantalla
      */
     public void update(Vector2 touchPoint, boolean isTouched) {
         if (isTouched) {
-            // Área de detección expandida para incluir el knob
-            float knobOverhang = (knobSize - bounds.height) / 2f;
+            // Área de detección (incluye margen para el knob)
+            float touchPadding = knobSize * 0.5f;
             Rectangle touchArea = new Rectangle(
-                bounds.x - knobSize / 2f,
-                bounds.y - knobOverhang,
-                bounds.width + knobSize,
-                knobSize
+                bounds.x - touchPadding,
+                bounds.y - touchPadding,
+                bounds.width + (touchPadding * 2f),
+                bounds.height + (touchPadding * 2f)
             );
             
-            // Verificar si está tocando el área o ya estaba arrastrando
             if (touchArea.contains(touchPoint.x, touchPoint.y) || isDragging) {
                 if (!isDragging) {
                     Gdx.app.log(TAG, "Iniciando arrastre");
                 }
                 isDragging = true;
                 
-                // Calcular nuevo valor basado en posición X relativa
+                // Calcular nuevo valor
                 float relativeX = touchPoint.x - bounds.x;
                 float newValue = MathUtils.clamp(relativeX / bounds.width, 0f, 1f);
                 
-                // Solo notificar si cambió significativamente
                 if (Math.abs(newValue - value) > 0.005f) {
                     value = newValue;
                     
@@ -138,7 +134,6 @@ public class SimpleSlider {
                 }
             }
         } else {
-            // Dejó de tocar
             if (isDragging) {
                 Gdx.app.log(TAG, "Fin arrastre - valor: " + getPercentage() + "%");
             }
@@ -147,8 +142,7 @@ public class SimpleSlider {
     }
     
     /**
-     * Dibuja el slider (3 capas en orden)
-     * @param batch SpriteBatch para dibujar
+     * Dibuja el slider (3 capas)
      */
     public void draw(SpriteBatch batch) {
         // === CAPA 1: FONDO ===
@@ -160,12 +154,9 @@ public class SimpleSlider {
             );
         }
         
-        // === CAPA 2: RELLENO (recortado según valor) ===
+        // === CAPA 2: RELLENO ===
         if (fillTexture != null && value > 0.01f) {
-            // Ancho del relleno visible
             float fillWidth = bounds.width * value;
-            
-            // Recortar la región de textura proporcionalmente
             int textureCropWidth = (int)(fillTexture.getWidth() * value);
             fillRegion.setRegion(0, 0, textureCropWidth, fillTexture.getHeight());
             
@@ -178,12 +169,10 @@ public class SimpleSlider {
         
         // === CAPA 3: KNOB ===
         if (knobTexture != null) {
-            // Posición X del knob (centrado en el punto del valor)
             float knobX = bounds.x + (bounds.width * value) - (knobSize / 2f);
-            // Posición Y del knob (centrado verticalmente respecto al slider)
             float knobY = bounds.y + (bounds.height / 2f) - (knobSize / 2f);
             
-            // Efecto visual si está siendo arrastrado
+            // Efecto visual al arrastrar
             float scale = isDragging ? 1.15f : 1.0f;
             float scaledSize = knobSize * scale;
             float offset = (knobSize - scaledSize) / 2f;
@@ -197,23 +186,21 @@ public class SimpleSlider {
     }
     
     /**
-     * Establece el callback para cuando cambia el valor
+     * Establece el callback
      */
     public void setOnValueChanged(ValueChangedListener listener) {
         this.listener = listener;
     }
     
     /**
-     * Establece el valor programáticamente (sin trigger callback)
-     * @param value Valor entre 0.0 y 1.0
+     * Establece el valor (sin callback)
      */
     public void setValue(float value) {
         this.value = MathUtils.clamp(value, 0f, 1f);
     }
     
     /**
-     * Establece el valor Y dispara el callback
-     * @param value Valor entre 0.0 y 1.0
+     * Establece el valor Y dispara callback
      */
     public void setValueAndNotify(float value) {
         setValue(value);
@@ -222,7 +209,7 @@ public class SimpleSlider {
         }
     }
     
-    // ==================== GETTERS ====================
+    // === GETTERS ===
     
     public float getValue() {
         return value;
@@ -240,14 +227,11 @@ public class SimpleSlider {
         return knobSize;
     }
     
-    /**
-     * Obtiene el valor como porcentaje entero (0-100)
-     */
     public int getPercentage() {
         return Math.round(value * 100);
     }
     
     public void dispose() {
-        // Las texturas se manejan externamente (compartidas entre sliders)
+        // Texturas manejadas externamente
     }
 }

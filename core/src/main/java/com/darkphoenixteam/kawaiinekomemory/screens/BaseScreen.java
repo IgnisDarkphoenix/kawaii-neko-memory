@@ -10,7 +10,7 @@ import com.darkphoenixteam.kawaiinekomemory.KawaiiNekoMemory;
 import com.darkphoenixteam.kawaiinekomemory.config.Constants;
 
 /**
- * Pantalla base - todas las pantallas extienden de esta
+ * Pantalla base que todas las demás pantallas extienden
  * 
  * @author DarkphoenixTeam
  */
@@ -20,16 +20,16 @@ public abstract class BaseScreen implements Screen {
     protected final OrthographicCamera camera;
     protected final Viewport viewport;
     
-    // Color de fondo (rosa pastel por defecto)
-    protected float bgR = 1f;
-    protected float bgG = 0.92f;
-    protected float bgB = 0.95f;
+    // Color de fondo por defecto (rosa pastel kawaii)
+    protected float bgRed = 0.98f;
+    protected float bgGreen = 0.90f;
+    protected float bgBlue = 0.95f;
     
     public BaseScreen(KawaiiNekoMemory game) {
         this.game = game;
         
-        camera = new OrthographicCamera();
-        viewport = new FitViewport(
+        this.camera = new OrthographicCamera();
+        this.viewport = new FitViewport(
             Constants.VIRTUAL_WIDTH,
             Constants.VIRTUAL_HEIGHT,
             camera
@@ -43,19 +43,27 @@ public abstract class BaseScreen implements Screen {
         camera.update();
     }
     
+    /**
+     * Actualizar lógica del juego
+     */
     protected abstract void update(float delta);
+    
+    /**
+     * Dibujar en pantalla
+     */
     protected abstract void draw();
     
     @Override
     public void render(float delta) {
         // Limpiar pantalla
-        Gdx.gl.glClearColor(bgR, bgG, bgB, 1f);
+        Gdx.gl.glClearColor(bgRed, bgGreen, bgBlue, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         
         // Actualizar cámara
         camera.update();
         game.getBatch().setProjectionMatrix(camera.combined);
         
+        // Actualizar y dibujar
         update(delta);
         draw();
     }
@@ -72,7 +80,7 @@ public abstract class BaseScreen implements Screen {
     
     @Override
     public void show() {
-        Gdx.app.log("Screen", "Show: " + getClass().getSimpleName());
+        Gdx.app.log("Screen", "Show: " + this.getClass().getSimpleName());
     }
     
     @Override
@@ -87,9 +95,19 @@ public abstract class BaseScreen implements Screen {
     @Override
     public void dispose() {}
     
+    /**
+     * Cambiar color de fondo
+     */
     protected void setBackgroundColor(float r, float g, float b) {
-        bgR = r;
-        bgG = g;
-        bgB = b;
+        this.bgRed = r;
+        this.bgGreen = g;
+        this.bgBlue = b;
+    }
+    
+    /**
+     * Obtener viewport para detección de toques
+     */
+    public Viewport getViewport() {
+        return viewport;
     }
 }

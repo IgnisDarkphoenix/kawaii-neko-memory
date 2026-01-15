@@ -30,6 +30,9 @@ public class HomeScreen extends BaseScreen {
     // Botones
     private Array<SimpleButton> buttons;
     
+    // Audio
+    private AudioManager audioManager;
+    
     // === LAYOUT CONFIG ===
     // Zona de título: 35% superior de la pantalla
     private static final float TITLE_ZONE_PERCENT = 0.35f;
@@ -62,6 +65,9 @@ public class HomeScreen extends BaseScreen {
         
         layout = new GlyphLayout();
         buttons = new Array<>();
+        
+        // Obtener AudioManager (singleton)
+        audioManager = AudioManager.getInstance();
         
         // Calcular dimensiones de botones
         calculateButtonDimensions();
@@ -176,7 +182,7 @@ public class HomeScreen extends BaseScreen {
      */
     private void handleButtonClick(String buttonName) {
         // Reproducir sonido de click
-        AudioManager.getInstance().playSound(AssetPaths.SFX_BUTTON);
+        audioManager.playSound(AssetPaths.SFX_BUTTON);
         
         switch (buttonName) {
             case "JUGAR":

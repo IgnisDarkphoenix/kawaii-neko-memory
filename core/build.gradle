@@ -8,5 +8,9 @@ java {
 }
 
 dependencies {
+    // LibGDX Core
     api "com.badlogicgames.gdx:gdx:1.12.1"
+    
+    // FreeType para fuentes vectoriales (TTF/OTF)
+    api "com.badlogicgames.gdx:gdx-freetype:1.12.1"
 }

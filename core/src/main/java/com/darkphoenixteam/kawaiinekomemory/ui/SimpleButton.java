@@ -1,6 +1,7 @@
 package com.darkphoenixteam.kawaiinekomemory.ui;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
@@ -10,7 +11,8 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
 /**
- * Botón simple con detección de toques y aspect ratio automático
+ * Botón simple con detección de toques
+ * SIN scaling manual - usa tint + offset para feedback visual
  * 
  * @author DarkphoenixTeam
  */
@@ -31,50 +33,39 @@ public class SimpleButton {
     // Vector reutilizable
     private final Vector2 touchPoint = new Vector2();
     
+    // Colores para estados
+    private static final Color COLOR_NORMAL = new Color(1f, 1f, 1f, 1f);
+    private static final Color COLOR_PRESSED = new Color(0.85f, 0.85f, 0.85f, 1f);
+    
+    // Offset visual al presionar (simula "hundimiento")
+    private static final float PRESS_OFFSET_Y = -4f;
+    
     /**
-     * Constructor que calcula automáticamente el height basado en aspect ratio de la textura
-     * @param texture Textura del botón
-     * @param text Texto a mostrar (puede ser vacío)
-     * @param x Posición X
-     * @param y Posición Y
-     * @param width Ancho deseado (height se calcula automáticamente)
+     * Constructor con aspect ratio automático
      */
     public SimpleButton(Texture texture, String text, float x, float y, float width) {
         this.texture = texture;
         this.text = text;
         this.layout = new GlyphLayout();
         
-        // Calcular height manteniendo aspect ratio de la textura
+        // Calcular height manteniendo aspect ratio
         float height = width;
         if (texture != null) {
             float aspectRatio = (float) texture.getHeight() / (float) texture.getWidth();
             height = width * aspectRatio;
-            Gdx.app.log("SimpleButton", String.format(
-                "Textura: %dx%d, Ratio: %.2f, Renderizado: %.0fx%.0f",
-                texture.getWidth(), texture.getHeight(), aspectRatio, width, height
-            ));
         }
         
         this.bounds = new Rectangle(x, y, width, height);
     }
     
     /**
-     * Constructor legacy con width y height manual (puede deformar)
+     * Constructor legacy con dimensiones manuales
      */
     public SimpleButton(Texture texture, String text, float x, float y, float width, float height) {
         this.texture = texture;
         this.text = text;
         this.bounds = new Rectangle(x, y, width, height);
         this.layout = new GlyphLayout();
-        
-        if (texture != null) {
-            float textureRatio = (float) texture.getHeight() / (float) texture.getWidth();
-            float renderRatio = height / width;
-            if (Math.abs(textureRatio - renderRatio) > 0.01f) {
-                Gdx.app.log("SimpleButton", "WARNING: Aspect ratio mismatch! " +
-                    "Texture=" + textureRatio + " Render=" + renderRatio);
-            }
-        }
     }
     
     /**
@@ -99,55 +90,60 @@ public class SimpleButton {
     }
     
     /**
-     * Dibuja el botón con efecto de presión
+     * Dibuja el botón CON texto
+     * Usa tint + offset en lugar de scaling
      */
     public void draw(SpriteBatch batch, BitmapFont font) {
-        // Efecto visual de presionado (5% más pequeño)
-        float scale = isPressed ? 0.95f : 1.0f;
-        float scaledWidth = bounds.width * scale;
-        float scaledHeight = bounds.height * scale;
-        float offsetX = (bounds.width - scaledWidth) / 2f;
-        float offsetY = (bounds.height - scaledHeight) / 2f;
+        // Calcular offset visual
+        float offsetY = isPressed ? PRESS_OFFSET_Y : 0f;
         
-        // Dibujar textura
+        // Aplicar tint según estado
+        Color oldColor = batch.getColor().cpy();
+        batch.setColor(isPressed ? COLOR_PRESSED : COLOR_NORMAL);
+        
+        // Dibujar textura (sin scaling, solo offset)
         if (texture != null) {
             batch.draw(
                 texture, 
-                bounds.x + offsetX, 
+                bounds.x, 
                 bounds.y + offsetY, 
-                scaledWidth, 
-                scaledHeight
+                bounds.width, 
+                bounds.height
             );
         }
         
-        // Dibujar texto centrado
+        // Restaurar color
+        batch.setColor(oldColor);
+        
+        // Dibujar texto centrado (con mismo offset)
         if (text != null && font != null && !text.isEmpty()) {
             layout.setText(font, text);
             float textX = bounds.x + (bounds.width - layout.width) / 2f;
-            float textY = bounds.y + (bounds.height + layout.height) / 2f;
+            float textY = bounds.y + offsetY + (bounds.height + layout.height) / 2f;
             font.draw(batch, text, textX, textY);
         }
     }
     
     /**
-     * Dibuja el botón SIN texto (para imágenes con texto integrado)
+     * Dibuja el botón SIN texto
      */
     public void drawNoText(SpriteBatch batch) {
-        float scale = isPressed ? 0.95f : 1.0f;
-        float scaledWidth = bounds.width * scale;
-        float scaledHeight = bounds.height * scale;
-        float offsetX = (bounds.width - scaledWidth) / 2f;
-        float offsetY = (bounds.height - scaledHeight) / 2f;
+        float offsetY = isPressed ? PRESS_OFFSET_Y : 0f;
+        
+        Color oldColor = batch.getColor().cpy();
+        batch.setColor(isPressed ? COLOR_PRESSED : COLOR_NORMAL);
         
         if (texture != null) {
             batch.draw(
                 texture, 
-                bounds.x + offsetX, 
+                bounds.x, 
                 bounds.y + offsetY, 
-                scaledWidth, 
-                scaledHeight
+                bounds.width, 
+                bounds.height
             );
         }
+        
+        batch.setColor(oldColor);
     }
     
     /**
@@ -158,28 +154,17 @@ public class SimpleButton {
     }
     
     private void triggerClick() {
-        Gdx.app.log("SimpleButton", "Click en: " + (text.isEmpty() ? "botón" : text));
+        Gdx.app.log("SimpleButton", "Click: " + (text != null && !text.isEmpty() ? text : "botón"));
         if (onClick != null) {
             onClick.run();
         }
     }
     
     // Getters
-    public Rectangle getBounds() {
-        return bounds;
-    }
-    
-    public boolean isPressed() {
-        return isPressed;
-    }
-    
-    public float getWidth() {
-        return bounds.width;
-    }
-    
-    public float getHeight() {
-        return bounds.height;
-    }
+    public Rectangle getBounds() { return bounds; }
+    public boolean isPressed() { return isPressed; }
+    public float getWidth() { return bounds.width; }
+    public float getHeight() { return bounds.height; }
     
     public void dispose() {
         if (texture != null) {

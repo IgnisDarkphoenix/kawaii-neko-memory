@@ -7,7 +7,6 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.utils.viewport.Viewport;
 
 /**
  * Slider personalizado para controles de volumen
@@ -38,9 +37,6 @@ public class SimpleSlider {
     
     // Callback
     private ValueChangedListener listener;
-    
-    // Vector reutilizable (evita GC)
-    private final Vector2 touchPoint = new Vector2();
     
     /**
      * Interface para callback de cambio de valor
@@ -93,13 +89,11 @@ public class SimpleSlider {
     
     /**
      * Actualiza el estado del slider (detecta arrastre)
-     * @param viewport Viewport para convertir coordenadas de pantalla
+     * @param touchPoint Coordenadas del mundo (ya convertidas con unproject)
+     * @param isTouched Si el usuario está tocando la pantalla
      */
-    public void update(Viewport viewport) {
-        if (Gdx.input.isTouched()) {
-            // Convertir coordenadas de pantalla a mundo
-            viewport.unproject(touchPoint.set(Gdx.input.getX(), Gdx.input.getY()));
-            
+    public void update(Vector2 touchPoint, boolean isTouched) {
+        if (isTouched) {
             // Área de detección expandida (incluye el knob que sobresale)
             float expandedMinY = bounds.y - (knobHeight - bounds.height) / 2f;
             Rectangle touchArea = new Rectangle(
@@ -111,6 +105,9 @@ public class SimpleSlider {
             
             // Verificar si está tocando el área o ya estaba arrastrando
             if (touchArea.contains(touchPoint.x, touchPoint.y) || isDragging) {
+                if (!isDragging) {
+                    Gdx.app.log(TAG, "Iniciando arrastre - pos: " + touchPoint.x + ", " + touchPoint.y);
+                }
                 isDragging = true;
                 
                 // Calcular nuevo valor basado en posición X relativa
@@ -128,6 +125,9 @@ public class SimpleSlider {
             }
         } else {
             // Dejó de tocar
+            if (isDragging) {
+                Gdx.app.log(TAG, "Fin de arrastre - valor final: " + (int)(value * 100) + "%");
+            }
             isDragging = false;
         }
     }
@@ -169,10 +169,17 @@ public class SimpleSlider {
             // Posición Y del knob (centrado verticalmente)
             float knobY = bounds.y + (bounds.height / 2f) - (knobHeight / 2f);
             
+            // Efecto visual si está siendo arrastrado (ligeramente más grande)
+            float scale = isDragging ? 1.1f : 1.0f;
+            float scaledWidth = knobWidth * scale;
+            float scaledHeight = knobHeight * scale;
+            float offsetX = (knobWidth - scaledWidth) / 2f;
+            float offsetY = (knobHeight - scaledHeight) / 2f;
+            
             batch.draw(
                 knobTexture,
-                knobX, knobY,
-                knobWidth, knobHeight
+                knobX + offsetX, knobY + offsetY,
+                scaledWidth, scaledHeight
             );
         }
     }

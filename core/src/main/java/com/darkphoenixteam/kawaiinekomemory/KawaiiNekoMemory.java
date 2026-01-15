@@ -31,13 +31,17 @@ public class KawaiiNekoMemory extends Game {
         
         batch = new SpriteBatch();
         
-        // Inicializar FontManager
+        // Inicializar FontManager (por ahora sin fuente custom)
         fontManager = new FontManager();
         
         // Inicializar AudioManager y reproducir música del menú
-        AudioManager audioManager = AudioManager.getInstance();
-        audioManager.playMusic(AssetPaths.MUSIC_MENU, true);
-        Gdx.app.log(TAG, "AudioManager inicializado - Música del menú iniciada");
+        Gdx.app.log(TAG, "Inicializando sistema de audio...");
+        AudioManager.getInstance().playMusic(AssetPaths.MUSIC_MENU, true);
+        
+        // Precargar sonidos frecuentes
+        AudioManager.getInstance().preloadSound(AssetPaths.SFX_BUTTON);
+        AudioManager.getInstance().preloadSound(AssetPaths.SFX_CARD_FLIP);
+        AudioManager.getInstance().preloadSound(AssetPaths.SFX_MATCH);
         
         // Iniciar con SplashScreen
         setScreen(new SplashScreen(this));
@@ -46,6 +50,22 @@ public class KawaiiNekoMemory extends Game {
     @Override
     public void render() {
         super.render();
+    }
+    
+    @Override
+    public void pause() {
+        super.pause();
+        // Pausar música cuando la app pasa a segundo plano
+        AudioManager.getInstance().pauseMusic();
+        Gdx.app.log(TAG, "App pausada - música pausada");
+    }
+    
+    @Override
+    public void resume() {
+        super.resume();
+        // Reanudar música cuando la app vuelve a primer plano
+        AudioManager.getInstance().resumeMusic();
+        Gdx.app.log(TAG, "App resumida - música reanudada");
     }
     
     @Override

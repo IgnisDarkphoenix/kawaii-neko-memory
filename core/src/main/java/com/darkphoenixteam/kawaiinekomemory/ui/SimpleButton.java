@@ -11,12 +11,20 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
 /**
- * Botón simple con detección de toques
- * Solución aplicada: Tint + Offset para feedback visual (Sin Scaling Geométrico)
+ * Botón simple con detección de toques y sistema de debounce
+ * Previene múltiples clicks accidentales
+ * 
  * @author DarkphoenixTeam
  */
 public class SimpleButton {
     
+    private static final String TAG = "SimpleButton";
+    
+    // === DEBOUNCE CONFIG ===
+    private static final float DEFAULT_COOLDOWN = 0.5f;  // 500ms de bloqueo después de click
+    private float cooldownTimer = 0f;
+    
+    // Texturas y bounds
     private Texture texture;
     private String text;
     private Rectangle bounds;
@@ -29,17 +37,15 @@ public class SimpleButton {
     private boolean isPressed = false;
     private boolean wasPressed = false;
     
-    // Vector reutilizable para evitar Garbage Collection
+    // Vector reutilizable
     private final Vector2 touchPoint = new Vector2();
     
-    // CONFIGURACIÓN VISUAL
-    // Color normal (blanco puro, renderiza la textura tal cual)
+    // Colores para estados
     private static final Color COLOR_NORMAL = new Color(1f, 1f, 1f, 1f);
-    // Color presionado (gris claro, simula sombra/oscuridad)
     private static final Color COLOR_PRESSED = new Color(0.85f, 0.85f, 0.85f, 1f);
+    private static final Color COLOR_COOLDOWN = new Color(0.7f, 0.7f, 0.7f, 0.8f);  // Gris durante cooldown
     
-    // Offset visual al presionar (simula "hundimiento" en píxeles del mundo)
-    // -4f es sutil pero notable.
+    // Offset visual al presionar
     private static final float PRESS_OFFSET_Y = -4f;
     
     /**
@@ -50,7 +56,7 @@ public class SimpleButton {
         this.text = text;
         this.layout = new GlyphLayout();
         
-        // Calcular height manteniendo aspect ratio de la textura original
+        // Calcular height manteniendo aspect ratio
         float height = width;
         if (texture != null) {
             float aspectRatio = (float) texture.getHeight() / (float) texture.getWidth();
@@ -61,7 +67,7 @@ public class SimpleButton {
     }
     
     /**
-     * Constructor legacy con dimensiones manuales
+     * Constructor con dimensiones manuales
      */
     public SimpleButton(Texture texture, String text, float x, float y, float width, float height) {
         this.texture = texture;
@@ -71,19 +77,32 @@ public class SimpleButton {
     }
     
     /**
-     * Actualiza el estado del botón
+     * Actualiza el estado del botón con sistema de debounce
+     * @param viewport Viewport para conversión de coordenadas
      */
     public void update(Viewport viewport) {
+        // Obtener delta time
+        float delta = Gdx.graphics.getDeltaTime();
+        
+        // === SISTEMA DE DEBOUNCE ===
+        if (cooldownTimer > 0) {
+            cooldownTimer -= delta;
+            // Durante cooldown, el botón está "dormido"
+            isPressed = false;
+            wasPressed = false;
+            return;  // Ignorar todo input
+        }
+        
+        // === DETECCIÓN NORMAL DE INPUT ===
         isPressed = false;
         
         if (Gdx.input.isTouched()) {
-            // Proyectar las coordenadas del toque al mundo del juego
             viewport.unproject(touchPoint.set(Gdx.input.getX(), Gdx.input.getY()));
             
             if (bounds.contains(touchPoint.x, touchPoint.y)) {
                 isPressed = true;
                 
-                // Lógica "Just Pressed" (opcional si quisieras sonido al pulsar)
+                // Solo trigger en el primer frame del toque
                 if (!wasPressed) {
                     triggerClick();
                 }
@@ -95,17 +114,22 @@ public class SimpleButton {
     
     /**
      * Dibuja el botón CON texto
-     * Usa tint + offset en lugar de scaling
      */
     public void draw(SpriteBatch batch, BitmapFont font) {
-        // 1. Calcular offset visual
+        // Calcular offset visual
         float offsetY = isPressed ? PRESS_OFFSET_Y : 0f;
         
-        // 2. Aplicar tint según estado
-        Color oldColor = batch.getColor().cpy(); // Guardar color previo
-        batch.setColor(isPressed ? COLOR_PRESSED : COLOR_NORMAL);
+        // Determinar color según estado
+        Color oldColor = batch.getColor().cpy();
+        if (cooldownTimer > 0) {
+            batch.setColor(COLOR_COOLDOWN);  // Gris durante cooldown
+        } else if (isPressed) {
+            batch.setColor(COLOR_PRESSED);   // Oscuro al presionar
+        } else {
+            batch.setColor(COLOR_NORMAL);    // Normal
+        }
         
-        // 3. Dibujar textura (Posición base + offset)
+        // Dibujar textura
         if (texture != null) {
             batch.draw(
                 texture, 
@@ -116,27 +140,32 @@ public class SimpleButton {
             );
         }
         
-        // 4. Restaurar color original del batch para no afectar otros dibujos
+        // Restaurar color
         batch.setColor(oldColor);
         
-        // 5. Dibujar texto centrado (aplicando el MISMO offset para que baje con el botón)
+        // Dibujar texto centrado (con mismo offset)
         if (text != null && font != null && !text.isEmpty()) {
             layout.setText(font, text);
             float textX = bounds.x + (bounds.width - layout.width) / 2f;
-            // Nota: Fonts se dibujan desde arriba, ajustamos el centro + offset
             float textY = bounds.y + offsetY + (bounds.height + layout.height) / 2f;
             font.draw(batch, text, textX, textY);
         }
     }
     
     /**
-     * Dibuja el botón SIN texto (útil para iconos o botones gráficos puros)
+     * Dibuja el botón SIN texto
      */
     public void drawNoText(SpriteBatch batch) {
         float offsetY = isPressed ? PRESS_OFFSET_Y : 0f;
         
         Color oldColor = batch.getColor().cpy();
-        batch.setColor(isPressed ? COLOR_PRESSED : COLOR_NORMAL);
+        if (cooldownTimer > 0) {
+            batch.setColor(COLOR_COOLDOWN);
+        } else if (isPressed) {
+            batch.setColor(COLOR_PRESSED);
+        } else {
+            batch.setColor(COLOR_NORMAL);
+        }
         
         if (texture != null) {
             batch.draw(
@@ -158,19 +187,63 @@ public class SimpleButton {
         this.onClick = onClick;
     }
     
+    /**
+     * Dispara el evento de click y activa el cooldown
+     */
     private void triggerClick() {
-        // Log para depuración
-        // Gdx.app.log("SimpleButton", "Click: " + (text != null ? text : "botón"));
+        // Activar cooldown ANTES de ejecutar callback
+        cooldownTimer = DEFAULT_COOLDOWN;
+        
+        Gdx.app.log(TAG, "Click: " + (text != null && !text.isEmpty() ? text : "botón") + 
+                         " (cooldown " + (int)(DEFAULT_COOLDOWN * 1000) + "ms)");
+        
         if (onClick != null) {
             onClick.run();
         }
     }
     
-    // Getters y limpieza
-    public Rectangle getBounds() { return bounds; }
-    public boolean isPressed() { return isPressed; }
-    public float getWidth() { return bounds.width; }
-    public float getHeight() { return bounds.height; }
+    /**
+     * Fuerza el reset del cooldown (útil para testing)
+     */
+    public void resetCooldown() {
+        cooldownTimer = 0f;
+    }
+    
+    /**
+     * Verifica si el botón está en cooldown
+     */
+    public boolean isOnCooldown() {
+        return cooldownTimer > 0;
+    }
+    
+    /**
+     * Establece un cooldown personalizado para este botón
+     */
+    public void setCooldown(float seconds) {
+        cooldownTimer = seconds;
+    }
+    
+    // === GETTERS ===
+    
+    public Rectangle getBounds() { 
+        return bounds; 
+    }
+    
+    public boolean isPressed() { 
+        return isPressed; 
+    }
+    
+    public float getWidth() { 
+        return bounds.width; 
+    }
+    
+    public float getHeight() { 
+        return bounds.height; 
+    }
+    
+    public float getCooldownRemaining() {
+        return cooldownTimer;
+    }
     
     public void dispose() {
         if (texture != null) {

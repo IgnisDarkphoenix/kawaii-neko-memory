@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.badlogic.gdx.math.Vector2;
 import com.darkphoenixteam.kawaiinekomemory.KawaiiNekoMemory;
 import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
 import com.darkphoenixteam.kawaiinekomemory.config.Constants;
@@ -46,6 +47,9 @@ public class SettingsScreen extends BaseScreen {
     // Audio Manager
     private AudioManager audioManager;
     
+    // Vector para conversión de coordenadas (reutilizable)
+    private final Vector2 touchPoint = new Vector2();
+    
     // === LAYOUT CONSTANTS ===
     private static final float SLIDER_WIDTH_PERCENT = 0.55f;  // 55% del ancho
     private static final float SLIDER_HEIGHT = 32f;
@@ -85,9 +89,9 @@ public class SettingsScreen extends BaseScreen {
         
         // Texturas de sliders
         try {
-            sliderBgTexture = new Texture(Gdx.files.internal("images/ui/sliders/slider_background.png"));
-            sliderFillTexture = new Texture(Gdx.files.internal("images/ui/sliders/slider_fill.png"));
-            sliderKnobTexture = new Texture(Gdx.files.internal("images/ui/sliders/slider_knob.png"));
+            sliderBgTexture = new Texture(Gdx.files.internal(AssetPaths.SLIDER_BACKGROUND));
+            sliderFillTexture = new Texture(Gdx.files.internal(AssetPaths.SLIDER_FILL));
+            sliderKnobTexture = new Texture(Gdx.files.internal(AssetPaths.SLIDER_KNOB));
             Gdx.app.log(TAG, "Texturas de sliders cargadas");
         } catch (Exception e) {
             Gdx.app.error(TAG, "Error cargando texturas de sliders: " + e.getMessage());
@@ -186,15 +190,24 @@ public class SettingsScreen extends BaseScreen {
     
     @Override
     protected void update(float delta) {
-        // Actualizar sliders
-        if (musicSlider != null) {
-            musicSlider.update(viewport);
-        }
-        if (soundSlider != null) {
-            soundSlider.update(viewport);
+        // Detectar si hay toque
+        boolean isTouched = Gdx.input.isTouched();
+        
+        // Convertir coordenadas de pantalla a mundo (una sola vez por frame)
+        if (isTouched) {
+            viewport.unproject(touchPoint.set(Gdx.input.getX(), Gdx.input.getY()));
         }
         
-        // Actualizar botón
+        // Actualizar sliders con las coordenadas convertidas
+        if (musicSlider != null) {
+            musicSlider.update(touchPoint, isTouched);
+        }
+        
+        if (soundSlider != null) {
+            soundSlider.update(touchPoint, isTouched);
+        }
+        
+        // Actualizar botón (hace su propio unproject internamente)
         if (backButton != null) {
             backButton.update(viewport);
         }
@@ -274,7 +287,5 @@ public class SettingsScreen extends BaseScreen {
         
         // Botón (hace dispose de su textura internamente)
         if (backButton != null) backButton.dispose();
-        
-        // Nota: backButtonTexture se libera en backButton.dispose()
     }
 }

@@ -12,8 +12,7 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 
 /**
  * Botón simple con detección de toques
- * SIN scaling manual - usa tint + offset para feedback visual
- * 
+ * Solución aplicada: Tint + Offset para feedback visual (Sin Scaling Geométrico)
  * @author DarkphoenixTeam
  */
 public class SimpleButton {
@@ -30,14 +29,17 @@ public class SimpleButton {
     private boolean isPressed = false;
     private boolean wasPressed = false;
     
-    // Vector reutilizable
+    // Vector reutilizable para evitar Garbage Collection
     private final Vector2 touchPoint = new Vector2();
     
-    // Colores para estados
+    // CONFIGURACIÓN VISUAL
+    // Color normal (blanco puro, renderiza la textura tal cual)
     private static final Color COLOR_NORMAL = new Color(1f, 1f, 1f, 1f);
+    // Color presionado (gris claro, simula sombra/oscuridad)
     private static final Color COLOR_PRESSED = new Color(0.85f, 0.85f, 0.85f, 1f);
     
-    // Offset visual al presionar (simula "hundimiento")
+    // Offset visual al presionar (simula "hundimiento" en píxeles del mundo)
+    // -4f es sutil pero notable.
     private static final float PRESS_OFFSET_Y = -4f;
     
     /**
@@ -48,7 +50,7 @@ public class SimpleButton {
         this.text = text;
         this.layout = new GlyphLayout();
         
-        // Calcular height manteniendo aspect ratio
+        // Calcular height manteniendo aspect ratio de la textura original
         float height = width;
         if (texture != null) {
             float aspectRatio = (float) texture.getHeight() / (float) texture.getWidth();
@@ -75,11 +77,13 @@ public class SimpleButton {
         isPressed = false;
         
         if (Gdx.input.isTouched()) {
+            // Proyectar las coordenadas del toque al mundo del juego
             viewport.unproject(touchPoint.set(Gdx.input.getX(), Gdx.input.getY()));
             
             if (bounds.contains(touchPoint.x, touchPoint.y)) {
                 isPressed = true;
                 
+                // Lógica "Just Pressed" (opcional si quisieras sonido al pulsar)
                 if (!wasPressed) {
                     triggerClick();
                 }
@@ -94,14 +98,14 @@ public class SimpleButton {
      * Usa tint + offset en lugar de scaling
      */
     public void draw(SpriteBatch batch, BitmapFont font) {
-        // Calcular offset visual
+        // 1. Calcular offset visual
         float offsetY = isPressed ? PRESS_OFFSET_Y : 0f;
         
-        // Aplicar tint según estado
-        Color oldColor = batch.getColor().cpy();
+        // 2. Aplicar tint según estado
+        Color oldColor = batch.getColor().cpy(); // Guardar color previo
         batch.setColor(isPressed ? COLOR_PRESSED : COLOR_NORMAL);
         
-        // Dibujar textura (sin scaling, solo offset)
+        // 3. Dibujar textura (Posición base + offset)
         if (texture != null) {
             batch.draw(
                 texture, 
@@ -112,20 +116,21 @@ public class SimpleButton {
             );
         }
         
-        // Restaurar color
+        // 4. Restaurar color original del batch para no afectar otros dibujos
         batch.setColor(oldColor);
         
-        // Dibujar texto centrado (con mismo offset)
+        // 5. Dibujar texto centrado (aplicando el MISMO offset para que baje con el botón)
         if (text != null && font != null && !text.isEmpty()) {
             layout.setText(font, text);
             float textX = bounds.x + (bounds.width - layout.width) / 2f;
+            // Nota: Fonts se dibujan desde arriba, ajustamos el centro + offset
             float textY = bounds.y + offsetY + (bounds.height + layout.height) / 2f;
             font.draw(batch, text, textX, textY);
         }
     }
     
     /**
-     * Dibuja el botón SIN texto
+     * Dibuja el botón SIN texto (útil para iconos o botones gráficos puros)
      */
     public void drawNoText(SpriteBatch batch) {
         float offsetY = isPressed ? PRESS_OFFSET_Y : 0f;
@@ -154,13 +159,14 @@ public class SimpleButton {
     }
     
     private void triggerClick() {
-        Gdx.app.log("SimpleButton", "Click: " + (text != null && !text.isEmpty() ? text : "botón"));
+        // Log para depuración
+        // Gdx.app.log("SimpleButton", "Click: " + (text != null ? text : "botón"));
         if (onClick != null) {
             onClick.run();
         }
     }
     
-    // Getters
+    // Getters y limpieza
     public Rectangle getBounds() { return bounds; }
     public boolean isPressed() { return isPressed; }
     public float getWidth() { return bounds.width; }

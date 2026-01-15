@@ -4,6 +4,7 @@ import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.darkphoenixteam.kawaiinekomemory.screens.SplashScreen;
+import com.darkphoenixteam.kawaiinekomemory.systems.FontManager;
 
 /**
  * Clase principal del juego Kawaii Neko Memory
@@ -15,6 +16,7 @@ public class KawaiiNekoMemory extends Game {
     public static final String TAG = "KawaiiNekoMemory";
     
     private SpriteBatch batch;
+    private FontManager fontManager;
     
     public KawaiiNekoMemory() {
     }
@@ -26,6 +28,9 @@ public class KawaiiNekoMemory extends Game {
         Gdx.app.log(TAG, "Screen: " + Gdx.graphics.getWidth() + "x" + Gdx.graphics.getHeight());
         
         batch = new SpriteBatch();
+        
+        // Inicializar FontManager (por ahora sin fuente custom)
+        fontManager = new FontManager();
         
         // Iniciar con SplashScreen
         setScreen(new SplashScreen(this));
@@ -44,6 +49,10 @@ public class KawaiiNekoMemory extends Game {
             batch.dispose();
         }
         
+        if (fontManager != null) {
+            fontManager.dispose();
+        }
+        
         if (getScreen() != null) {
             getScreen().dispose();
         }
@@ -51,5 +60,9 @@ public class KawaiiNekoMemory extends Game {
     
     public SpriteBatch getBatch() {
         return batch;
+    }
+    
+    public FontManager getFontManager() {
+        return fontManager;
     }
 }

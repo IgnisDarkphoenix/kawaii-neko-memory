@@ -31,9 +31,20 @@ public final class AssetPaths {
     public static final String BTN_SETTINGS = "images/ui/buttons/btn_settings.png";
     public static final String BTN_LEVEL = "images/ui/buttons/btn_level.png";
     
+    // === SLIDERS ===
+    public static final String SLIDER_BACKGROUND = "images/ui/sliders/slider_background.png";
+    public static final String SLIDER_FILL = "images/ui/sliders/slider_fill.png";
+    public static final String SLIDER_KNOB = "images/ui/sliders/slider_knob.png";
+    
     // === CARDS ===
     public static final String CARD_BACK = "images/cards/card_back.png";
     
+    /**
+     * Obtiene la ruta de una carta específica
+     * @param deckIndex Índice del mazo (0-4)
+     * @param cardIndex Índice de la carta (0-6)
+     * @return Ruta del asset
+     */
     public static String getCardPath(int deckIndex, int cardIndex) {
         return "images/cards/deck" + deckIndex + "/character" + deckIndex + "_" + cardIndex + ".png";
     }
@@ -48,6 +59,11 @@ public final class AssetPaths {
     public static final String MUSIC_MENU = "audio/music/menu_theme.ogg";
     public static final String MUSIC_BAZAAR = "audio/music/bazaar_theme.ogg";
     
+    /**
+     * Obtiene la ruta de una pista de juego
+     * @param trackIndex Índice de la pista (0-4)
+     * @return Ruta del asset
+     */
     public static String getGameMusicPath(int trackIndex) {
         return "audio/music/game_track_0" + (trackIndex + 1) + ".ogg";
     }

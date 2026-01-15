@@ -8,6 +8,7 @@ import com.badlogic.gdx.utils.Array;
 import com.darkphoenixteam.kawaiinekomemory.KawaiiNekoMemory;
 import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
 import com.darkphoenixteam.kawaiinekomemory.config.Constants;
+import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 
 /**
@@ -174,21 +175,33 @@ public class HomeScreen extends BaseScreen {
      * Maneja los clicks de los botones
      */
     private void handleButtonClick(String buttonName) {
+        // Reproducir sonido de click
+        AudioManager.getInstance().playSound(AssetPaths.SFX_BUTTON);
+        
         switch (buttonName) {
             case "JUGAR":
+                Gdx.app.log("HomeScreen", "Navegando a LevelSelect...");
                 // TODO: game.setScreen(new LevelSelectScreen(game));
                 break;
+                
             case "MAZO":
+                Gdx.app.log("HomeScreen", "Navegando a Deck...");
                 // TODO: game.setScreen(new DeckScreen(game));
                 break;
+                
             case "BAZAAR":
+                Gdx.app.log("HomeScreen", "Navegando a Bazaar...");
                 // TODO: game.setScreen(new BazaarScreen(game));
                 break;
+                
             case "LOGROS":
+                Gdx.app.log("HomeScreen", "Navegando a Achievements...");
                 // TODO: game.setScreen(new AchievementsScreen(game));
                 break;
+                
             case "AJUSTES":
-                // TODO: game.setScreen(new SettingsScreen(game));
+                Gdx.app.log("HomeScreen", "Navegando a Settings...");
+                game.setScreen(new SettingsScreen(game));
                 break;
         }
     }

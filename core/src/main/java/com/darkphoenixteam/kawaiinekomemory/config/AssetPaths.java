@@ -30,6 +30,7 @@ public final class AssetPaths {
     public static final String BTN_ACHIEVEMENTS = "images/ui/buttons/btn_achievements.png";
     public static final String BTN_SETTINGS = "images/ui/buttons/btn_settings.png";
     public static final String BTN_LEVEL = "images/ui/buttons/btn_level.png";
+    public static final String BTN_BACK = "images/ui/buttons/btn_back.png";
     
     // === SLIDERS ===
     public static final String SLIDER_BACKGROUND = "images/ui/sliders/slider_background.png";
@@ -41,7 +42,7 @@ public final class AssetPaths {
     
     /**
      * Obtiene la ruta de una carta específica
-     * @param deckIndex Índice del mazo (0-4)
+     * @param deckIndex Índice del deck (0-4)
      * @param cardIndex Índice de la carta (0-6)
      * @return Ruta del asset
      */
@@ -54,13 +55,19 @@ public final class AssetPaths {
     public static final String ICON_TIMEFREEZE = "images/ui/icons/icon_timefreeze.png";
     public static final String ICON_PAUSE = "images/ui/icons/icon_pause.png";
     public static final String ICON_NEKOIN = "images/ui/icons/icon_nekoin.png";
+    public static final String ICON_MUSIC = "images/ui/icons/icon_music.png";
+    public static final String ICON_SOUND = "images/ui/icons/icon_sound.png";
+    
+    // === PANELS ===
+    public static final String PANEL_DIALOG = "images/ui/panels/panel_dialog.png";
+    public static final String PANEL_POPUP = "images/ui/panels/panel_popup.png";
     
     // === MUSIC ===
     public static final String MUSIC_MENU = "audio/music/menu_theme.ogg";
     public static final String MUSIC_BAZAAR = "audio/music/bazaar_theme.ogg";
     
     /**
-     * Obtiene la ruta de una pista de juego
+     * Obtiene la ruta de una pista de música de gameplay
      * @param trackIndex Índice de la pista (0-4)
      * @return Ruta del asset
      */

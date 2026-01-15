@@ -52,9 +52,9 @@ public class SettingsScreen extends BaseScreen {
     
     // === LAYOUT CONSTANTS ===
     private static final float SLIDER_WIDTH_PERCENT = 0.55f;  // 55% del ancho
-    private static final float SLIDER_HEIGHT = 32f;
-    private static final float LABEL_SPACING = 20f;           // Espacio entre label y slider
-    private static final float SECTION_SPACING = 80f;         // Espacio entre secciones
+    private static final float SLIDER_MAX_HEIGHT = 50f;       // Altura máxima del slider
+    private static final float LABEL_SPACING = 15f;           // Espacio entre label y slider
+    private static final float SECTION_SPACING = 100f;        // Espacio entre secciones
     private static final float BUTTON_WIDTH_PERCENT = 0.45f;  // 45% del ancho
     
     public SettingsScreen(KawaiiNekoMemory game) {
@@ -92,7 +92,13 @@ public class SettingsScreen extends BaseScreen {
             sliderBgTexture = new Texture(Gdx.files.internal(AssetPaths.SLIDER_BACKGROUND));
             sliderFillTexture = new Texture(Gdx.files.internal(AssetPaths.SLIDER_FILL));
             sliderKnobTexture = new Texture(Gdx.files.internal(AssetPaths.SLIDER_KNOB));
-            Gdx.app.log(TAG, "Texturas de sliders cargadas");
+            
+            Gdx.app.log(TAG, String.format(
+                "Sliders cargados - BG: %dx%d, Fill: %dx%d, Knob: %dx%d",
+                sliderBgTexture.getWidth(), sliderBgTexture.getHeight(),
+                sliderFillTexture.getWidth(), sliderFillTexture.getHeight(),
+                sliderKnobTexture.getWidth(), sliderKnobTexture.getHeight()
+            ));
         } catch (Exception e) {
             Gdx.app.error(TAG, "Error cargando texturas de sliders: " + e.getMessage());
         }
@@ -112,7 +118,6 @@ public class SettingsScreen extends BaseScreen {
         float sliderX = centerX - (sliderWidth / 2f);
         
         // === SLIDER DE MÚSICA ===
-        // Posicionado en el 55% de la altura
         float musicSliderY = Constants.VIRTUAL_HEIGHT * 0.55f;
         
         if (sliderBgTexture != null) {
@@ -123,7 +128,7 @@ public class SettingsScreen extends BaseScreen {
                 sliderX,
                 musicSliderY,
                 sliderWidth,
-                SLIDER_HEIGHT
+                SLIDER_MAX_HEIGHT  // Ahora es maxHeight, no height fija
             );
             
             // Cargar valor actual
@@ -132,13 +137,16 @@ public class SettingsScreen extends BaseScreen {
             // Callback: actualizar volumen en tiempo real
             musicSlider.setOnValueChanged(volume -> {
                 audioManager.setMusicVolume(volume);
-                Gdx.app.log(TAG, "Volumen música: " + (int)(volume * 100) + "%");
             });
+            
+            Gdx.app.log(TAG, "Slider música creado en Y=" + musicSliderY);
         }
         
         // === SLIDER DE EFECTOS ===
-        // Debajo del slider de música
-        float soundSliderY = musicSliderY - SECTION_SPACING;
+        // Calcular Y basado en el slider anterior + espacio
+        float sliderHeight = (musicSlider != null) ? musicSlider.getBounds().height : SLIDER_MAX_HEIGHT;
+        float knobSize = (musicSlider != null) ? musicSlider.getKnobSize() : SLIDER_MAX_HEIGHT * 1.8f;
+        float soundSliderY = musicSliderY - SECTION_SPACING - sliderHeight;
         
         if (sliderBgTexture != null) {
             soundSlider = new SimpleSlider(
@@ -148,7 +156,7 @@ public class SettingsScreen extends BaseScreen {
                 sliderX,
                 soundSliderY,
                 sliderWidth,
-                SLIDER_HEIGHT
+                SLIDER_MAX_HEIGHT
             );
             
             // Cargar valor actual
@@ -157,10 +165,13 @@ public class SettingsScreen extends BaseScreen {
             // Callback: actualizar volumen + reproducir sonido de prueba
             soundSlider.setOnValueChanged(volume -> {
                 audioManager.setSoundVolume(volume);
-                // Reproducir sonido de feedback
-                audioManager.playSound(AssetPaths.SFX_BUTTON);
-                Gdx.app.log(TAG, "Volumen efectos: " + (int)(volume * 100) + "%");
+                // Solo reproducir feedback si cambió significativamente
+                if (!soundSlider.isDragging()) {
+                    audioManager.playSound(AssetPaths.SFX_BUTTON);
+                }
             });
+            
+            Gdx.app.log(TAG, "Slider efectos creado en Y=" + soundSliderY);
         }
         
         // === BOTÓN VOLVER ===
@@ -169,7 +180,7 @@ public class SettingsScreen extends BaseScreen {
             float aspectRatio = (float) backButtonTexture.getHeight() / backButtonTexture.getWidth();
             float buttonHeight = buttonWidth * aspectRatio;
             float buttonX = centerX - (buttonWidth / 2f);
-            float buttonY = Constants.VIRTUAL_HEIGHT * 0.10f;
+            float buttonY = Constants.VIRTUAL_HEIGHT * 0.08f;
             
             backButton = new SimpleButton(
                 backButtonTexture,
@@ -185,6 +196,8 @@ public class SettingsScreen extends BaseScreen {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 game.setScreen(new HomeScreen(game));
             });
+            
+            Gdx.app.log(TAG, "Botón volver creado");
         }
     }
     
@@ -207,7 +220,7 @@ public class SettingsScreen extends BaseScreen {
             soundSlider.update(touchPoint, isTouched);
         }
         
-        // Actualizar botón (hace su propio unproject internamente)
+        // Actualizar botón
         if (backButton != null) {
             backButton.update(viewport);
         }
@@ -233,7 +246,7 @@ public class SettingsScreen extends BaseScreen {
         String title = "AJUSTES";
         layout.setText(titleFont, title);
         float titleX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
-        float titleY = Constants.VIRTUAL_HEIGHT - 100f;
+        float titleY = Constants.VIRTUAL_HEIGHT - 80f;
         titleFont.draw(game.getBatch(), title, titleX, titleY);
         
         // === SECCIÓN MÚSICA ===
@@ -258,20 +271,24 @@ public class SettingsScreen extends BaseScreen {
      * Dibuja una sección de slider con su etiqueta y porcentaje
      */
     private void drawSliderSection(String label, SimpleSlider slider) {
-        // Etiqueta centrada arriba del slider
+        float sliderHeight = slider.getBounds().height;
+        float knobSize = slider.getKnobSize();
+        
+        // Etiqueta centrada arriba del slider (considerando el knob)
         layout.setText(labelFont, label);
         float labelX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
-        float labelY = slider.getBounds().y + slider.getBounds().height + LABEL_SPACING + layout.height;
+        float knobOverhang = (knobSize - sliderHeight) / 2f;
+        float labelY = slider.getBounds().y + sliderHeight + knobOverhang + LABEL_SPACING + layout.height;
         labelFont.draw(game.getBatch(), label, labelX, labelY);
         
         // Slider
         slider.draw(game.getBatch());
         
-        // Porcentaje a la derecha del slider
+        // Porcentaje a la derecha del slider (considerando el knob)
         String percent = slider.getPercentage() + "%";
         layout.setText(labelFont, percent);
-        float percentX = slider.getBounds().x + slider.getBounds().width + 15f;
-        float percentY = slider.getBounds().y + (slider.getBounds().height + layout.height) / 2f;
+        float percentX = slider.getBounds().x + slider.getBounds().width + knobSize / 2f + 10f;
+        float percentY = slider.getBounds().y + (sliderHeight + layout.height) / 2f;
         labelFont.draw(game.getBatch(), percent, percentX, percentY);
     }
     
@@ -285,7 +302,7 @@ public class SettingsScreen extends BaseScreen {
         if (sliderFillTexture != null) sliderFillTexture.dispose();
         if (sliderKnobTexture != null) sliderKnobTexture.dispose();
         
-        // Botón (hace dispose de su textura internamente)
+        // Botón
         if (backButton != null) backButton.dispose();
     }
 }

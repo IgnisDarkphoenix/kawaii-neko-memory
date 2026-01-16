@@ -2,14 +2,14 @@ package com.darkphoenixteam.kawaiinekomemory.config;
 
 /**
  * Rutas centralizadas de todos los assets
- * ACTUALIZADO: Migración a formato WebP para imágenes
- * * @author DarkphoenixTeam
+ * ACTUALIZADO: Migración a formato WebP completa + Variables faltantes
+ * @author DarkphoenixTeam
  */
 public final class AssetPaths {
     
     private AssetPaths() {}
     
-    // === SPLASH (¡Aquí va tu nueva imagen!) ===
+    // === SPLASH ===
     public static final String LOGO_DARKPHOENIX = "images/splash/logo_darkphoenix.webp";
     public static final String LOGO_GAME = "images/splash/logo_game.webp";
     
@@ -26,10 +26,19 @@ public final class AssetPaths {
     public static final String BTN_PLAY = "images/ui/buttons/btn_play.webp";
     public static final String BTN_DECK = "images/ui/buttons/btn_deck.webp";
     public static final String BTN_BAZAAR = "images/ui/buttons/btn_bazaar.webp";
-    public static final String BTN_OPTIONS = "images/ui/buttons/btn_options.webp";
+    public static final String BTN_OPTIONS = "images/ui/buttons/btn_options.webp"; 
+    // Faltaban estos dos que causaban error en HomeScreen:
+    public static final String BTN_SETTINGS = "images/ui/buttons/btn_settings.webp";
+    public static final String BTN_ACHIEVEMENTS = "images/ui/buttons/btn_achievements.webp";
+    
     public static final String BTN_BACK = "images/ui/buttons/btn_back.webp";
     public static final String BTN_CLOSE = "images/ui/buttons/btn_close.webp";
     public static final String BTN_PAUSE = "images/ui/buttons/btn_pause.webp";
+    
+    // === SLIDERS (Faltaban estos para SettingsScreen) ===
+    public static final String SLIDER_BACKGROUND = "images/ui/sliders/slider_background.webp";
+    public static final String SLIDER_FILL = "images/ui/sliders/slider_fill.webp";
+    public static final String SLIDER_KNOB = "images/ui/sliders/slider_knob.webp";
     
     // === UI ELEMENTS ===
     public static final String CARD_BACK = "images/ui/cards/card_back.webp";
@@ -46,11 +55,6 @@ public final class AssetPaths {
     public static final String MUSIC_MENU = "audio/music/menu_theme.ogg";
     public static final String MUSIC_BAZAAR = "audio/music/bazaar_theme.ogg";
     
-    /**
-     * Obtiene la ruta de una pista de música de gameplay
-     * @param trackIndex Índice de la pista (0-4)
-     * @return Ruta del asset
-     */
     public static String getGameMusicPath(int trackIndex) {
         return "audio/music/game_track_0" + (trackIndex + 1) + ".ogg";
     }

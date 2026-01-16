@@ -4,6 +4,8 @@ package com.darkphoenixteam.kawaiinekomemory.config;
  * Rutas centralizadas de todos los assets
  * Cambiar aquí = cambiar en todo el juego
  * 
+ * NOTA: Imágenes migradas a WebP para optimización de tamaño
+ * 
  * @author DarkphoenixTeam
  */
 public final class AssetPaths {
@@ -11,34 +13,34 @@ public final class AssetPaths {
     private AssetPaths() {}
     
     // === SPLASH ===
-    public static final String LOGO_DARKPHOENIX = "images/splash/logo_darkphoenix.png";
-    public static final String LOGO_GAME = "images/splash/logo_game.png";
+    public static final String LOGO_DARKPHOENIX = "images/splash/logo_darkphoenix.webp";
+    public static final String LOGO_GAME = "images/splash/logo_game.webp";
     
     // === BACKGROUNDS ===
-    public static final String BG_EASY = "images/backgrounds/bg_easy.png";
-    public static final String BG_NORMAL = "images/backgrounds/bg_normal.png";
-    public static final String BG_ADVANCED = "images/backgrounds/bg_advanced.png";
-    public static final String BG_HARD = "images/backgrounds/bg_hard.png";
-    public static final String PATTERN_HOME = "images/backgrounds/pattern_home.png";
-    public static final String PATTERN_LEVELS = "images/backgrounds/pattern_levels.png";
-    public static final String PATTERN_BAZAAR = "images/backgrounds/pattern_bazaar.png";
+    public static final String BG_EASY = "images/backgrounds/bg_easy.webp";
+    public static final String BG_NORMAL = "images/backgrounds/bg_normal.webp";
+    public static final String BG_ADVANCED = "images/backgrounds/bg_advanced.webp";
+    public static final String BG_HARD = "images/backgrounds/bg_hard.webp";
+    public static final String PATTERN_HOME = "images/backgrounds/pattern_home.webp";
+    public static final String PATTERN_LEVELS = "images/backgrounds/pattern_levels.webp";
+    public static final String PATTERN_BAZAAR = "images/backgrounds/pattern_bazaar.webp";
     
     // === BUTTONS ===
-    public static final String BTN_PLAY = "images/ui/buttons/btn_play.png";
-    public static final String BTN_DECK = "images/ui/buttons/btn_deck.png";
-    public static final String BTN_BAZAAR = "images/ui/buttons/btn_bazaar.png";
-    public static final String BTN_ACHIEVEMENTS = "images/ui/buttons/btn_achievements.png";
-    public static final String BTN_SETTINGS = "images/ui/buttons/btn_settings.png";
-    public static final String BTN_LEVEL = "images/ui/buttons/btn_level.png";
-    public static final String BTN_BACK = "images/ui/buttons/btn_back.png";
+    public static final String BTN_PLAY = "images/ui/buttons/btn_play.webp";
+    public static final String BTN_DECK = "images/ui/buttons/btn_deck.webp";
+    public static final String BTN_BAZAAR = "images/ui/buttons/btn_bazaar.webp";
+    public static final String BTN_ACHIEVEMENTS = "images/ui/buttons/btn_achievements.webp";
+    public static final String BTN_SETTINGS = "images/ui/buttons/btn_settings.webp";
+    public static final String BTN_LEVEL = "images/ui/buttons/btn_level.webp";
+    public static final String BTN_BACK = "images/ui/buttons/btn_back.webp";
     
     // === SLIDERS ===
-    public static final String SLIDER_BACKGROUND = "images/ui/sliders/slider_background.png";
-    public static final String SLIDER_FILL = "images/ui/sliders/slider_fill.png";
-    public static final String SLIDER_KNOB = "images/ui/sliders/slider_knob.png";
+    public static final String SLIDER_BACKGROUND = "images/ui/sliders/slider_background.webp";
+    public static final String SLIDER_FILL = "images/ui/sliders/slider_fill.webp";
+    public static final String SLIDER_KNOB = "images/ui/sliders/slider_knob.webp";
     
     // === CARDS ===
-    public static final String CARD_BACK = "images/cards/card_back.png";
+    public static final String CARD_BACK = "images/cards/card_back.webp";
     
     /**
      * Obtiene la ruta de una carta específica
@@ -47,22 +49,22 @@ public final class AssetPaths {
      * @return Ruta del asset
      */
     public static String getCardPath(int deckIndex, int cardIndex) {
-        return "images/cards/deck" + deckIndex + "/character" + deckIndex + "_" + cardIndex + ".png";
+        return "images/cards/deck" + deckIndex + "/character" + deckIndex + "_" + cardIndex + ".webp";
     }
     
     // === ICONS ===
-    public static final String ICON_HINT = "images/ui/icons/icon_hint.png";
-    public static final String ICON_TIMEFREEZE = "images/ui/icons/icon_timefreeze.png";
-    public static final String ICON_PAUSE = "images/ui/icons/icon_pause.png";
-    public static final String ICON_NEKOIN = "images/ui/icons/icon_nekoin.png";
-    public static final String ICON_MUSIC = "images/ui/icons/icon_music.png";
-    public static final String ICON_SOUND = "images/ui/icons/icon_sound.png";
+    public static final String ICON_HINT = "images/ui/icons/icon_hint.webp";
+    public static final String ICON_TIMEFREEZE = "images/ui/icons/icon_timefreeze.webp";
+    public static final String ICON_PAUSE = "images/ui/icons/icon_pause.webp";
+    public static final String ICON_NEKOIN = "images/ui/icons/icon_nekoin.webp";
+    public static final String ICON_MUSIC = "images/ui/icons/icon_music.webp";
+    public static final String ICON_SOUND = "images/ui/icons/icon_sound.webp";
     
     // === PANELS ===
-    public static final String PANEL_DIALOG = "images/ui/panels/panel_dialog.png";
-    public static final String PANEL_POPUP = "images/ui/panels/panel_popup.png";
+    public static final String PANEL_DIALOG = "images/ui/panels/panel_dialog.webp";
+    public static final String PANEL_POPUP = "images/ui/panels/panel_popup.webp";
     
-    // === MUSIC ===
+    // === MUSIC (mantiene .ogg) ===
     public static final String MUSIC_MENU = "audio/music/menu_theme.ogg";
     public static final String MUSIC_BAZAAR = "audio/music/bazaar_theme.ogg";
     
@@ -75,7 +77,7 @@ public final class AssetPaths {
         return "audio/music/game_track_0" + (trackIndex + 1) + ".ogg";
     }
     
-    // === SFX ===
+    // === SFX (mantiene .ogg) ===
     public static final String SFX_CARD_FLIP = "audio/sfx/card_flip.ogg";
     public static final String SFX_CARD_SHUFFLE = "audio/sfx/card_shuffle.ogg";
     public static final String SFX_MATCH = "audio/sfx/match.ogg";

@@ -4,14 +4,13 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.darkphoenixteam.kawaiinekomemory.KawaiiNekoMemory;
 import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
 import com.darkphoenixteam.kawaiinekomemory.config.Constants;
 
 /**
- * Pantalla de splash MODIFICADA PARA DIAGNÓSTICO
- * Si falla la carga, mostrará el error en pantalla.
+ * Pantalla de splash (DIAGNÓSTICO V2)
+ * Corregido para usar game.getBatch() y cumplir contrato de BaseScreen
  */
 public class SplashScreen extends BaseScreen {
 
@@ -19,36 +18,38 @@ public class SplashScreen extends BaseScreen {
 
     private Texture teamLogo;
     private Texture gameLogo;
-    private BitmapFont debugFont; // Fuente de sistema para mostrar errores
+    private BitmapFont debugFont; 
 
     private float timer = 0f;
     private boolean showingTeamLogo = true;
     private boolean assetsLoaded = false;
-    
-    // Variable para guardar el mensaje de error si algo falla
     private String errorMessage = "";
 
     public SplashScreen(KawaiiNekoMemory game) {
         super(game);
-        // Fondo gris oscuro para que resalte el texto blanco
         setBackgroundColor(0.2f, 0.2f, 0.2f); 
-        debugFont = new BitmapFont(); // Carga la fuente Arial por defecto de LibGDX
-        debugFont.getData().setScale(2.0f); // Hacerla grande para leerla en el cel
+        debugFont = new BitmapFont(); 
+        debugFont.getData().setScale(2.0f);
         
         loadAssets();
     }
 
+    // === CORRECCIÓN: Método obligatorio por BaseScreen ===
+    // Lo dejamos vacío porque usaremos render() para tener control total
+    // Si la compilación falla pidiendo argumentos aquí, avísame.
+    @Override
+    public void draw() {
+    }
+
     private void loadAssets() {
         try {
-            // Intentamos cargar PRIMERO el logo del equipo
-            // Usamos FileHandle para verificar existencia antes de cargar textura
+            // Verificamos existencia antes de cargar
             if (!Gdx.files.internal(AssetPaths.LOGO_DARKPHOENIX).exists()) {
                 errorMessage += "NO EXISTE: " + AssetPaths.LOGO_DARKPHOENIX + "\n";
             } else {
                 teamLogo = new Texture(Gdx.files.internal(AssetPaths.LOGO_DARKPHOENIX));
             }
 
-            // Intentamos cargar el logo del juego
             if (!Gdx.files.internal(AssetPaths.LOGO_GAME).exists()) {
                 errorMessage += "NO EXISTE: " + AssetPaths.LOGO_GAME + "\n";
             } else {
@@ -58,24 +59,25 @@ public class SplashScreen extends BaseScreen {
             assetsLoaded = true;
 
         } catch (Exception e) {
-            // AQUÍ ESTÁ LA CLAVE: Capturamos el error y lo guardamos para mostrarlo
             Gdx.app.error(TAG, "Error fatal cargando assets", e);
-            errorMessage += "ERROR EXCEPCION:\n" + e.getMessage();
+            errorMessage += "EXCEPCION:\n" + e.getMessage();
             assetsLoaded = false;
         }
     }
 
     @Override
     public void render(float delta) {
-        super.render(delta); // Limpia la pantalla con el color de fondo
+        super.render(delta); 
+
+        // === CORRECCIÓN: Obtener el batch desde 'game' ===
+        SpriteBatch batch = game.getBatch();
 
         batch.begin();
 
         if (assetsLoaded && errorMessage.isEmpty()) {
-            // === FLUJO NORMAL (Si todo cargó bien) ===
+            // === MODO NORMAL ===
             timer += delta;
             
-            // Lógica de fade simple
             float alpha = 1f;
             if (timer < Constants.FADE_DURATION) {
                 alpha = timer / Constants.FADE_DURATION;
@@ -93,7 +95,6 @@ public class SplashScreen extends BaseScreen {
                 batch.draw(currentLogo, logoX, logoY, logoWidth, logoHeight);
             }
 
-            // Cambio de pantalla
             if (timer > Constants.SPLASH_DURATION) {
                 if (showingTeamLogo) {
                     showingTeamLogo = false;
@@ -103,18 +104,16 @@ public class SplashScreen extends BaseScreen {
                 }
             }
         } else {
-            // === MODO PÁNICO (Si hay errores) ===
-            // NO cambiamos de pantalla, nos quedamos aquí mostrando el error
-            batch.setColor(1f, 0.2f, 0.2f, 1f); // Texto rojo claro
+            // === MODO PÁNICO (Mostrar Error) ===
+            batch.setColor(1f, 0.2f, 0.2f, 1f); 
             
-            debugFont.draw(batch, "ERROR DE CARGA DETECTADO:", 20, Constants.VIRTUAL_HEIGHT - 50);
+            debugFont.draw(batch, "ERROR CRITICO DETECTADO:", 20, Constants.VIRTUAL_HEIGHT - 50);
             
-            batch.setColor(1f, 1f, 1f, 1f); // Texto blanco
-            // Dibujamos el mensaje de error en el centro
+            batch.setColor(1f, 1f, 1f, 1f); 
             debugFont.draw(batch, errorMessage, 20, Constants.VIRTUAL_HEIGHT - 150, 
                            Constants.VIRTUAL_WIDTH - 40, -1, true);
                            
-            debugFont.draw(batch, "Ruta buscada: " + AssetPaths.LOGO_DARKPHOENIX, 
+            debugFont.draw(batch, "Buscando: " + AssetPaths.LOGO_DARKPHOENIX, 
                            20, 200, Constants.VIRTUAL_WIDTH - 40, -1, true);
         }
 

@@ -1,6 +1,6 @@
 name: Limpieza Automática de PNGs
 
-# Se activa inmediatamente al guardar este archivo
+# Se activa al hacer push
 on: [push]
 
 jobs:
@@ -15,20 +15,21 @@ jobs:
 
       - name: Ejecutar Limpieza
         run: |
-          # 1. Configurar identidad temporal
+          # 1. Configurar identidad
           git config --global user.name 'Limpiador Automatico'
           git config --global user.email 'bot@noreply.github.com'
           
-          # 2. Borrar PNGs SOLO en assets (protege tus iconos de app en res/)
-          echo "Buscando archivos PNG en android/assets..."
-          find android/assets -name "*.png" -type f -delete
+          # 2. BORRAR PNGs EN LA CARPETA RAÍZ 'assets'
+          # (Esto no tocará la carpeta 'android/res' donde están tus iconos)
+          echo "Buscando archivos PNG en la carpeta raiz assets..."
+          find assets -name "*.png" -type f -delete
           
-          # 3. Guardar los cambios (Commit)
+          # 3. Guardar cambios
           if [[ `git status --porcelain` ]]; then
             git add -u
-            git commit -m "LIMPIEZA: Eliminados archivos PNG antiguos (Migración a WebP)"
+            git commit -m "LIMPIEZA: Eliminados PNGs viejos de la carpeta assets raiz"
             git push
-            echo "¡Éxito! Archivos PNG eliminados."
+            echo "¡Limpieza completada con éxito!"
           else
             echo "No se encontraron archivos PNG para borrar."
           fi

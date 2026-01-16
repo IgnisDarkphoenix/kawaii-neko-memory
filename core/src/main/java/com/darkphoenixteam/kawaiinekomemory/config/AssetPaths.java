@@ -2,9 +2,7 @@ package com.darkphoenixteam.kawaiinekomemory.config;
 
 /**
  * Rutas centralizadas de todos los assets
- * Cambiar aquí = cambiar en todo el juego
- * 
- * ACTUALIZADO: Coincide exactamente con la estructura de archivos real
+ * VERIFICADO: Coincide exactamente con la estructura de archivos real
  * 
  * @author DarkphoenixTeam
  */
@@ -13,6 +11,7 @@ public final class AssetPaths {
     private AssetPaths() {}
     
     // === SPLASH ===
+    // Archivos: logo_darkphoenix.webp, logo_game.webp
     public static final String LOGO_DARKPHOENIX = "images/splash/logo_darkphoenix.webp";
     public static final String LOGO_GAME = "images/splash/logo_game.webp";
     
@@ -60,21 +59,10 @@ public final class AssetPaths {
     // === CARDS ===
     public static final String CARD_BACK = "images/cards/card_back.webp";
     
-    /**
-     * Obtiene la ruta de una carta específica
-     * @param deckIndex Índice del deck (0-4)
-     * @param cardIndex Índice de la carta (0-6)
-     * @return Ruta del asset
-     */
     public static String getCardPath(int deckIndex, int cardIndex) {
         return "images/cards/deck" + deckIndex + "/character" + deckIndex + "_" + cardIndex + ".webp";
     }
     
-    /**
-     * Obtiene todas las rutas de cartas de un deck
-     * @param deckIndex Índice del deck (0-4)
-     * @return Array con las 7 rutas de cartas
-     */
     public static String[] getDeckPaths(int deckIndex) {
         String[] paths = new String[7];
         for (int i = 0; i < 7; i++) {
@@ -83,20 +71,15 @@ public final class AssetPaths {
         return paths;
     }
     
-    // === MUSIC (mantiene .ogg) ===
+    // === MUSIC ===
     public static final String MUSIC_MENU = "audio/music/menu_theme.ogg";
     public static final String MUSIC_BAZAAR = "audio/music/bazaar_theme.ogg";
     
-    /**
-     * Obtiene la ruta de una pista de música de gameplay
-     * @param trackIndex Índice de la pista (0-4)
-     * @return Ruta del asset
-     */
     public static String getGameMusicPath(int trackIndex) {
         return "audio/music/game_track_0" + (trackIndex + 1) + ".ogg";
     }
     
-    // === SFX (mantiene .ogg) ===
+    // === SFX ===
     public static final String SFX_CARD_FLIP = "audio/sfx/card_flip.ogg";
     public static final String SFX_CARD_SHUFFLE = "audio/sfx/card_shuffle.ogg";
     public static final String SFX_MATCH = "audio/sfx/match.ogg";
@@ -107,7 +90,7 @@ public final class AssetPaths {
     public static final String SFX_DEFEAT = "audio/sfx/defeat.ogg";
     public static final String SFX_TIMEFREEZE = "audio/sfx/time_freeze.ogg";
     
-    // === CONSTANTES DE DECKS ===
+    // === CONSTANTES ===
     public static final int TOTAL_DECKS = 5;
     public static final int CARDS_PER_DECK = 7;
 }

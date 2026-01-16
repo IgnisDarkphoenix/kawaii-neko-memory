@@ -8,10 +8,6 @@ import com.darkphoenixteam.kawaiinekomemory.KawaiiNekoMemory;
 import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
 import com.darkphoenixteam.kawaiinekomemory.config.Constants;
 
-/**
- * Pantalla de splash (DIAGNÓSTICO V2)
- * Corregido para usar game.getBatch() y cumplir contrato de BaseScreen
- */
 public class SplashScreen extends BaseScreen {
 
     private static final String TAG = "SplashScreen";
@@ -30,20 +26,23 @@ public class SplashScreen extends BaseScreen {
         setBackgroundColor(0.2f, 0.2f, 0.2f); 
         debugFont = new BitmapFont(); 
         debugFont.getData().setScale(2.0f);
-        
         loadAssets();
     }
 
-    // === CORRECCIÓN: Método obligatorio por BaseScreen ===
-    // Lo dejamos vacío porque usaremos render() para tener control total
-    // Si la compilación falla pidiendo argumentos aquí, avísame.
+    // === MÉTODOS OBLIGATORIOS DE BASESCREEN ===
     @Override
     public void draw() {
+        // Dejar vacío, usamos render() para diagnóstico
     }
+
+    @Override
+    public void update(float delta) {
+        // Dejar vacío, usamos render() para diagnóstico
+    }
+    // ==========================================
 
     private void loadAssets() {
         try {
-            // Verificamos existencia antes de cargar
             if (!Gdx.files.internal(AssetPaths.LOGO_DARKPHOENIX).exists()) {
                 errorMessage += "NO EXISTE: " + AssetPaths.LOGO_DARKPHOENIX + "\n";
             } else {
@@ -69,7 +68,6 @@ public class SplashScreen extends BaseScreen {
     public void render(float delta) {
         super.render(delta); 
 
-        // === CORRECCIÓN: Obtener el batch desde 'game' ===
         SpriteBatch batch = game.getBatch();
 
         batch.begin();
@@ -106,14 +104,13 @@ public class SplashScreen extends BaseScreen {
         } else {
             // === MODO PÁNICO (Mostrar Error) ===
             batch.setColor(1f, 0.2f, 0.2f, 1f); 
-            
-            debugFont.draw(batch, "ERROR CRITICO DETECTADO:", 20, Constants.VIRTUAL_HEIGHT - 50);
+            debugFont.draw(batch, "ERROR CRITICO:", 20, Constants.VIRTUAL_HEIGHT - 50);
             
             batch.setColor(1f, 1f, 1f, 1f); 
             debugFont.draw(batch, errorMessage, 20, Constants.VIRTUAL_HEIGHT - 150, 
                            Constants.VIRTUAL_WIDTH - 40, -1, true);
                            
-            debugFont.draw(batch, "Buscando: " + AssetPaths.LOGO_DARKPHOENIX, 
+            debugFont.draw(batch, "Ruta: " + AssetPaths.LOGO_DARKPHOENIX, 
                            20, 200, Constants.VIRTUAL_WIDTH - 40, -1, true);
         }
 

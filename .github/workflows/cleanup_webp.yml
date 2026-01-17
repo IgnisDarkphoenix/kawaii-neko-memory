@@ -1,0 +1,32 @@
+name: 🧹 Borrar Archivos WebP
+on: 
+  workflow_dispatch: # Esto permite ejecutarlo manualmente con un botón
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Descargar código
+        uses: actions/checkout@v4
+
+      - name: 🗑️ Eliminar todos los .webp
+        run: |
+          # Configurar usuario bot
+          git config --global user.name 'Limpieza Bot'
+          git config --global user.email 'bot@noreply.github.com'
+          
+          # Buscar y borrar archivos .webp
+          find assets -name "*.webp" -type f -delete
+          
+          # Verificar si hay cambios
+          if [[ `git status --porcelain` ]]; then
+            git add -u
+            git commit -m "🔥 Limpieza: Eliminados todos los archivos WebP"
+            git push
+            echo "✅ Archivos WebP eliminados correctamente."
+          else
+            echo "✨ No se encontraron archivos WebP para borrar."
+          fi

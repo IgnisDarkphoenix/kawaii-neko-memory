@@ -51,4 +51,11 @@ public final class Constants {
     public static final int MAX_TIME_ADS_PER_GAME = 2;
     public static final int REWARDED_TIME_BONUS = 5;
     public static final int RETRY_TIME_BONUS = 15;
+
+
+    // === LEVEL SELECT SCREEN ===
+    public static final int LEVELS_PER_ROW = 5;
+    public static final int ROWS_PER_DIFFICULTY = 10;
+    public static final int TOTAL_DIFFICULTIES = 4;
+    public static final int TOTAL_LEVELS = 200;
 }

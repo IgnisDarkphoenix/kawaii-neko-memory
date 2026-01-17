@@ -4,8 +4,6 @@ package com.darkphoenixteam.kawaiinekomemory.config;
  * Rutas centralizadas de todos los assets
  * Formato: PNG para imágenes, OGG para audio
  * 
- * TODO: Migrar a WebP en fase de optimización (post-MVP)
- * 
  * @author DarkphoenixTeam
  */
 public final class AssetPaths {
@@ -34,6 +32,18 @@ public final class AssetPaths {
     public static final String BTN_LEVEL = "images/ui/buttons/btn_level.png";
     public static final String BTN_BACK = "images/ui/buttons/btn_back.png";
     
+    // Botones de navegación (flechas)
+    public static final String BTN_ARROW_UP = "images/ui/buttons/btn_arrow_up.png";
+    public static final String BTN_ARROW_DOWN = "images/ui/buttons/btn_arrow_down.png";
+    public static final String BTN_ARROW_LEFT = "images/ui/buttons/btn_arrow_left.png";
+    public static final String BTN_ARROW_RIGHT = "images/ui/buttons/btn_arrow_right.png";
+    
+    // Tabs de dificultad
+    public static final String TAB_EASY = "images/ui/buttons/tab_easy.png";
+    public static final String TAB_NORMAL = "images/ui/buttons/tab_normal.png";
+    public static final String TAB_ADVANCED = "images/ui/buttons/tab_advanced.png";
+    public static final String TAB_HARD = "images/ui/buttons/tab_hard.png";
+    
     // === SLIDERS ===
     public static final String SLIDER_BACKGROUND = "images/ui/sliders/slider_background.png";
     public static final String SLIDER_FILL = "images/ui/sliders/slider_fill.png";
@@ -60,21 +70,10 @@ public final class AssetPaths {
     // === CARDS ===
     public static final String CARD_BACK = "images/cards/card_back.png";
     
-    /**
-     * Obtiene la ruta de una carta específica
-     * @param deckIndex Índice del deck (0-4)
-     * @param cardIndex Índice de la carta (0-6)
-     * @return Ruta del asset
-     */
     public static String getCardPath(int deckIndex, int cardIndex) {
         return "images/cards/deck" + deckIndex + "/character" + deckIndex + "_" + cardIndex + ".png";
     }
     
-    /**
-     * Obtiene todas las rutas de cartas de un deck
-     * @param deckIndex Índice del deck (0-4)
-     * @return Array con las 7 rutas de cartas
-     */
     public static String[] getDeckPaths(int deckIndex) {
         String[] paths = new String[7];
         for (int i = 0; i < 7; i++) {
@@ -87,11 +86,6 @@ public final class AssetPaths {
     public static final String MUSIC_MENU = "audio/music/menu_theme.ogg";
     public static final String MUSIC_BAZAAR = "audio/music/bazaar_theme.ogg";
     
-    /**
-     * Obtiene la ruta de una pista de música de gameplay
-     * @param trackIndex Índice de la pista (0-4)
-     * @return Ruta del asset
-     */
     public static String getGameMusicPath(int trackIndex) {
         return "audio/music/game_track_0" + (trackIndex + 1) + ".ogg";
     }

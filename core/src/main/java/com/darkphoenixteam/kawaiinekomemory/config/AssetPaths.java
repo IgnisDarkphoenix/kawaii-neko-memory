@@ -2,7 +2,9 @@ package com.darkphoenixteam.kawaiinekomemory.config;
 
 /**
  * Rutas centralizadas de todos los assets
- * VERIFICADO: Coincide exactamente con la estructura de archivos real
+ * Formato: PNG para imágenes, OGG para audio
+ * 
+ * TODO: Migrar a WebP en fase de optimización (post-MVP)
  * 
  * @author DarkphoenixTeam
  */
@@ -11,58 +13,68 @@ public final class AssetPaths {
     private AssetPaths() {}
     
     // === SPLASH ===
-    // Archivos: logo_darkphoenix.webp, logo_game.webp
-    public static final String LOGO_DARKPHOENIX = "images/splash/logo_darkphoenix.webp";
-    public static final String LOGO_GAME = "images/splash/logo_game.webp";
+    public static final String LOGO_DARKPHOENIX = "images/splash/logo_darkphoenix.png";
+    public static final String LOGO_GAME = "images/splash/logo_game.png";
     
     // === BACKGROUNDS ===
-    public static final String BG_EASY = "images/backgrounds/bg_easy.webp";
-    public static final String BG_NORMAL = "images/backgrounds/bg_normal.webp";
-    public static final String BG_ADVANCED = "images/backgrounds/bg_advanced.webp";
-    public static final String BG_HARD = "images/backgrounds/bg_hard.webp";
-    public static final String PATTERN_HOME = "images/backgrounds/pattern_home.webp";
-    public static final String PATTERN_LEVELS = "images/backgrounds/pattern_levels.webp";
-    public static final String PATTERN_BAZAAR = "images/backgrounds/pattern_bazaar.webp";
+    public static final String BG_EASY = "images/backgrounds/bg_easy.png";
+    public static final String BG_NORMAL = "images/backgrounds/bg_normal.png";
+    public static final String BG_ADVANCED = "images/backgrounds/bg_advanced.png";
+    public static final String BG_HARD = "images/backgrounds/bg_hard.png";
+    public static final String PATTERN_HOME = "images/backgrounds/pattern_home.png";
+    public static final String PATTERN_LEVELS = "images/backgrounds/pattern_levels.png";
+    public static final String PATTERN_BAZAAR = "images/backgrounds/pattern_bazaar.png";
     
     // === BUTTONS ===
-    public static final String BTN_PLAY = "images/ui/buttons/btn_play.webp";
-    public static final String BTN_DECK = "images/ui/buttons/btn_deck.webp";
-    public static final String BTN_BAZAAR = "images/ui/buttons/btn_bazaar.webp";
-    public static final String BTN_ACHIEVEMENTS = "images/ui/buttons/btn_achievements.webp";
-    public static final String BTN_SETTINGS = "images/ui/buttons/btn_settings.webp";
-    public static final String BTN_LEVEL = "images/ui/buttons/btn_level.webp";
-    public static final String BTN_BACK = "images/ui/buttons/btn_back.webp";
+    public static final String BTN_PLAY = "images/ui/buttons/btn_play.png";
+    public static final String BTN_DECK = "images/ui/buttons/btn_deck.png";
+    public static final String BTN_BAZAAR = "images/ui/buttons/btn_bazaar.png";
+    public static final String BTN_ACHIEVEMENTS = "images/ui/buttons/btn_achievements.png";
+    public static final String BTN_SETTINGS = "images/ui/buttons/btn_settings.png";
+    public static final String BTN_LEVEL = "images/ui/buttons/btn_level.png";
+    public static final String BTN_BACK = "images/ui/buttons/btn_back.png";
     
     // === SLIDERS ===
-    public static final String SLIDER_BACKGROUND = "images/ui/sliders/slider_background.webp";
-    public static final String SLIDER_FILL = "images/ui/sliders/slider_fill.webp";
-    public static final String SLIDER_KNOB = "images/ui/sliders/slider_knob.webp";
+    public static final String SLIDER_BACKGROUND = "images/ui/sliders/slider_background.png";
+    public static final String SLIDER_FILL = "images/ui/sliders/slider_fill.png";
+    public static final String SLIDER_KNOB = "images/ui/sliders/slider_knob.png";
     
     // === ICONS ===
-    public static final String ICON_DELETE = "images/ui/icons/icon_delete.webp";
-    public static final String ICON_GACHA = "images/ui/icons/icon_gacha.webp";
-    public static final String ICON_HINT = "images/ui/icons/icon_hint.webp";
-    public static final String ICON_HINT_HERO = "images/ui/icons/icon_hint_hero.webp";
-    public static final String ICON_NEKOIN = "images/ui/icons/icon_nekoin.webp";
-    public static final String ICON_PAUSE = "images/ui/icons/icon_pause.webp";
-    public static final String ICON_TIMEFREEZE = "images/ui/icons/icon_timefreeze.webp";
-    public static final String ICON_TIMEFREEZE_HERO = "images/ui/icons/icon_timefreeze_hero.webp";
-    public static final String ICON_UPGRADE = "images/ui/icons/icon_upgrade.webp";
+    public static final String ICON_DELETE = "images/ui/icons/icon_delete.png";
+    public static final String ICON_GACHA = "images/ui/icons/icon_gacha.png";
+    public static final String ICON_HINT = "images/ui/icons/icon_hint.png";
+    public static final String ICON_HINT_HERO = "images/ui/icons/icon_hint_hero.png";
+    public static final String ICON_NEKOIN = "images/ui/icons/icon_nekoin.png";
+    public static final String ICON_PAUSE = "images/ui/icons/icon_pause.png";
+    public static final String ICON_TIMEFREEZE = "images/ui/icons/icon_timefreeze.png";
+    public static final String ICON_TIMEFREEZE_HERO = "images/ui/icons/icon_timefreeze_hero.png";
+    public static final String ICON_UPGRADE = "images/ui/icons/icon_upgrade.png";
     
     // === PANELS ===
-    public static final String PANEL_CONFIRM = "images/ui/panels/panel_confirm.webp";
-    public static final String PANEL_DEFEAT = "images/ui/panels/panel_defeat.webp";
-    public static final String PANEL_PAUSE = "images/ui/panels/panel_pause.webp";
-    public static final String PANEL_SETTINGS = "images/ui/panels/panel_settings.webp";
-    public static final String PANEL_VICTORY = "images/ui/panels/panel_victory.webp";
+    public static final String PANEL_CONFIRM = "images/ui/panels/panel_confirm.png";
+    public static final String PANEL_DEFEAT = "images/ui/panels/panel_defeat.png";
+    public static final String PANEL_PAUSE = "images/ui/panels/panel_pause.png";
+    public static final String PANEL_SETTINGS = "images/ui/panels/panel_settings.png";
+    public static final String PANEL_VICTORY = "images/ui/panels/panel_victory.png";
     
     // === CARDS ===
-    public static final String CARD_BACK = "images/cards/card_back.webp";
+    public static final String CARD_BACK = "images/cards/card_back.png";
     
+    /**
+     * Obtiene la ruta de una carta específica
+     * @param deckIndex Índice del deck (0-4)
+     * @param cardIndex Índice de la carta (0-6)
+     * @return Ruta del asset
+     */
     public static String getCardPath(int deckIndex, int cardIndex) {
-        return "images/cards/deck" + deckIndex + "/character" + deckIndex + "_" + cardIndex + ".webp";
+        return "images/cards/deck" + deckIndex + "/character" + deckIndex + "_" + cardIndex + ".png";
     }
     
+    /**
+     * Obtiene todas las rutas de cartas de un deck
+     * @param deckIndex Índice del deck (0-4)
+     * @return Array con las 7 rutas de cartas
+     */
     public static String[] getDeckPaths(int deckIndex) {
         String[] paths = new String[7];
         for (int i = 0; i < 7; i++) {
@@ -71,15 +83,20 @@ public final class AssetPaths {
         return paths;
     }
     
-    // === MUSIC ===
+    // === MUSIC (OGG) ===
     public static final String MUSIC_MENU = "audio/music/menu_theme.ogg";
     public static final String MUSIC_BAZAAR = "audio/music/bazaar_theme.ogg";
     
+    /**
+     * Obtiene la ruta de una pista de música de gameplay
+     * @param trackIndex Índice de la pista (0-4)
+     * @return Ruta del asset
+     */
     public static String getGameMusicPath(int trackIndex) {
         return "audio/music/game_track_0" + (trackIndex + 1) + ".ogg";
     }
     
-    // === SFX ===
+    // === SFX (OGG) ===
     public static final String SFX_CARD_FLIP = "audio/sfx/card_flip.ogg";
     public static final String SFX_CARD_SHUFFLE = "audio/sfx/card_shuffle.ogg";
     public static final String SFX_MATCH = "audio/sfx/match.ogg";

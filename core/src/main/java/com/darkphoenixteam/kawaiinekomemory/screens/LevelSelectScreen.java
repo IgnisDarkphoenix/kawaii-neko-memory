@@ -6,8 +6,6 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.Rectangle;
-import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.darkphoenixteam.kawaiinekomemory.KawaiiNekoMemory;
 import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
@@ -18,15 +16,30 @@ import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 
 /**
- * Pantalla de selección de niveles
- * 4 tabs de dificultad × 50 niveles cada uno
- * Grid de 5×10 con scroll vertical
+ * Pantalla de selección de niveles - REESCRITA
+ * Navegación por botones de flecha, sin scroll táctil
  * 
  * @author DarkphoenixTeam
  */
 public class LevelSelectScreen extends BaseScreen {
     
     private static final String TAG = "LevelSelectScreen";
+    
+    // === LAYOUT CONSTANTS ===
+    private static final float HEADER_HEIGHT = 120f;           // Espacio para tabs
+    private static final float FOOTER_HEIGHT = 120f;           // Espacio para botón atrás
+    private static final float TAB_HEIGHT = 50f;
+    private static final float TAB_Y = Constants.VIRTUAL_HEIGHT - HEADER_HEIGHT + 20f;
+    
+    private static final float GRID_MARGIN_TOP = HEADER_HEIGHT + 10f;
+    private static final float GRID_MARGIN_BOTTOM = FOOTER_HEIGHT + 10f;
+    
+    private static final int GRID_COLS = 5;
+    private static final int GRID_ROWS = 10;
+    private static final float LEVEL_BUTTON_SIZE = 60f;
+    private static final float LEVEL_BUTTON_SPACING = 8f;
+    
+    private static final float ARROW_BUTTON_SIZE = 60f;
     
     // Fonts
     private BitmapFont titleFont;
@@ -37,35 +50,27 @@ public class LevelSelectScreen extends BaseScreen {
     // Background
     private Texture patternTexture;
     
+    // Tabs de dificultad
+    private Array<SimpleButton> tabButtons;
+    private LevelData.Difficulty currentDifficulty;
+    
+    // Grid de niveles
+    private Array<SimpleButton> levelButtons;
+    private Array<LevelData> currentLevels;
+    
+    // Navegación (flechas)
+    private SimpleButton arrowUpButton;
+    private SimpleButton arrowDownButton;
+    private int currentPage = 0;
+    private int maxPages = 1;  // Por ahora 1 página = todas las 10 filas visibles
+    
     // Botón volver
     private SimpleButton backButton;
     
-    // Tab actual
-    private LevelData.Difficulty currentDifficulty;
-    
-    // Niveles
-    private Array<LevelData> allLevels;
-    private Array<LevelData> currentTabLevels;
-    
-    // Scroll
-    private float scrollY = 0f;
-    private float maxScrollY = 0f;
-    private Vector2 touchStart = new Vector2();
-    private Vector2 touchCurrent = new Vector2();
-    private boolean isDragging = false;
-    
-    // Layout
-    private static final float TAB_HEIGHT = 60f;
-    private static final float TAB_Y = Constants.VIRTUAL_HEIGHT - 100f;
-    private static final float GRID_START_Y = TAB_Y - 20f;
-    private static final float BUTTON_SIZE = 70f;
-    private static final float BUTTON_SPACING = 10f;
-    private static final int COLS = 5;
-    
-    // Shapes para debug/rectangulos
+    // ShapeRenderer para niveles
     private ShapeRenderer shapeRenderer;
     
-    // Audio
+    // Managers
     private AudioManager audioManager;
     private SaveManager saveManager;
     
@@ -84,58 +89,111 @@ public class LevelSelectScreen extends BaseScreen {
         
         shapeRenderer = new ShapeRenderer();
         
-        // Inicializar con dificultad EASY
         currentDifficulty = LevelData.Difficulty.EASY;
         
         loadAssets();
-        createLevels();
+        createTabs();
+        createNavigationButtons();
         createBackButton();
+        loadLevelsForCurrentDifficulty();
         
-        Gdx.app.log(TAG, "Inicializado - Dificultad: " + currentDifficulty.name);
+        Gdx.app.log(TAG, "Inicializado - Layout sin scroll táctil");
     }
+    
+    // ==================== CARGA DE ASSETS ====================
     
     private void loadAssets() {
         try {
             patternTexture = new Texture(Gdx.files.internal(AssetPaths.PATTERN_LEVELS));
             patternTexture.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
+            Gdx.app.log(TAG, "Pattern cargado");
         } catch (Exception e) {
             Gdx.app.log(TAG, "Pattern no encontrado");
         }
     }
     
-    private void createLevels() {
-        allLevels = new Array<>();
-        
-        // Crear los 200 niveles
-        for (int i = 0; i < 200; i++) {
-            LevelData level = new LevelData(i);
-            level.setUnlocked(saveManager.isLevelUnlocked(i));
-            level.setCompleted(saveManager.isLevelCompleted(i));
-            allLevels.add(level);
-        }
-        
-        updateCurrentTabLevels();
-    }
+    // ==================== CREACIÓN DE UI ====================
     
-    private void updateCurrentTabLevels() {
-        currentTabLevels = new Array<>();
+    private void createTabs() {
+        tabButtons = new Array<>();
         
-        // Filtrar niveles de la dificultad actual
-        for (LevelData level : allLevels) {
-            if (level.getDifficulty() == currentDifficulty) {
-                currentTabLevels.add(level);
+        float tabWidth = Constants.VIRTUAL_WIDTH / 4f;
+        
+        String[] tabPaths = {
+            AssetPaths.TAB_EASY,
+            AssetPaths.TAB_NORMAL,
+            AssetPaths.TAB_ADVANCED,
+            AssetPaths.TAB_HARD
+        };
+        
+        String[] tabLabels = {"FÁCIL", "NORMAL", "AVANZADO", "DIFÍCIL"};
+        
+        for (int i = 0; i < 4; i++) {
+            final int index = i;
+            float tabX = i * tabWidth;
+            
+            try {
+                Texture tabTexture = new Texture(Gdx.files.internal(tabPaths[i]));
+                SimpleButton tab = new SimpleButton(
+                    tabTexture,
+                    tabLabels[i],
+                    tabX,
+                    TAB_Y,
+                    tabWidth - 4f,  // Pequeño margen entre tabs
+                    TAB_HEIGHT
+                );
+                
+                tab.setOnClick(() -> switchDifficulty(LevelData.Difficulty.values()[index]));
+                tabButtons.add(tab);
+                
+            } catch (Exception e) {
+                Gdx.app.error(TAG, "Error cargando tab " + i + ": " + e.getMessage());
             }
         }
         
-        // Calcular scroll máximo
-        int rows = (int) Math.ceil(currentTabLevels.size / (float) COLS);
-        float gridHeight = rows * (BUTTON_SIZE + BUTTON_SPACING);
-        float viewportHeight = GRID_START_Y - 100f; // Espacio visible
-        maxScrollY = Math.max(0, gridHeight - viewportHeight);
-        scrollY = 0f; // Reset scroll al cambiar tab
+        Gdx.app.log(TAG, "Tabs creados: " + tabButtons.size);
+    }
+    
+    private void createNavigationButtons() {
+        // Botones de flecha a la derecha del grid
+        float arrowX = Constants.VIRTUAL_WIDTH - ARROW_BUTTON_SIZE - 10f;
+        float gridCenterY = (Constants.VIRTUAL_HEIGHT - GRID_MARGIN_TOP - GRID_MARGIN_BOTTOM) / 2f + GRID_MARGIN_BOTTOM;
         
-        Gdx.app.log(TAG, "Tab " + currentDifficulty.name + ": " + 
-                         currentTabLevels.size + " niveles, maxScroll=" + maxScrollY);
+        // Flecha arriba
+        try {
+            Texture upTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_ARROW_UP));
+            arrowUpButton = new SimpleButton(
+                upTexture,
+                "",
+                arrowX,
+                gridCenterY + 10f,
+                ARROW_BUTTON_SIZE,
+                ARROW_BUTTON_SIZE
+            );
+            
+            arrowUpButton.setOnClick(() -> changePage(-1));
+            
+        } catch (Exception e) {
+            Gdx.app.error(TAG, "Error cargando flecha arriba: " + e.getMessage());
+        }
+        
+        // Flecha abajo
+        try {
+            Texture downTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_ARROW_DOWN));
+            arrowDownButton = new SimpleButton(
+                downTexture,
+                "",
+                arrowX,
+                gridCenterY - ARROW_BUTTON_SIZE - 10f,
+                ARROW_BUTTON_SIZE,
+                ARROW_BUTTON_SIZE
+            );
+            
+            arrowDownButton.setOnClick(() -> changePage(1));
+            
+        } catch (Exception e) {
+            Gdx.app.error(TAG, "Error cargando flecha abajo: " + e.getMessage());
+        }
     }
     
     private void createBackButton() {
@@ -161,10 +219,64 @@ public class LevelSelectScreen extends BaseScreen {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 game.setScreen(new HomeScreen(game));
             });
+            
         } catch (Exception e) {
             Gdx.app.error(TAG, "Error cargando botón back: " + e.getMessage());
         }
     }
+    
+    // ==================== LÓGICA DE NIVELES ====================
+    
+    private void loadLevelsForCurrentDifficulty() {
+        currentLevels = new Array<>();
+        
+        // Obtener niveles de la dificultad actual (0-49, 50-99, 100-149, 150-199)
+        int startId = currentDifficulty.index * 50;
+        int endId = startId + 50;
+        
+        for (int i = startId; i < endId; i++) {
+            LevelData level = new LevelData(i);
+            level.setUnlocked(saveManager.isLevelUnlocked(i));
+            level.setCompleted(saveManager.isLevelCompleted(i));
+            currentLevels.add(level);
+        }
+        
+        currentPage = 0;
+        maxPages = 1; // Por ahora 1 página muestra todos los 50 niveles
+        
+        Gdx.app.log(TAG, "Cargados " + currentLevels.size + " niveles de " + currentDifficulty.name);
+    }
+    
+    private void switchDifficulty(LevelData.Difficulty newDifficulty) {
+        if (newDifficulty != currentDifficulty) {
+            currentDifficulty = newDifficulty;
+            loadLevelsForCurrentDifficulty();
+            audioManager.playSound(AssetPaths.SFX_BUTTON);
+            Gdx.app.log(TAG, "Cambiado a dificultad: " + newDifficulty.name);
+        }
+    }
+    
+    private void changePage(int delta) {
+        int newPage = currentPage + delta;
+        if (newPage >= 0 && newPage < maxPages) {
+            currentPage = newPage;
+            audioManager.playSound(AssetPaths.SFX_BUTTON);
+            Gdx.app.log(TAG, "Página: " + currentPage + "/" + maxPages);
+        }
+    }
+    
+    private void onLevelClick(LevelData level) {
+        if (level.isUnlocked()) {
+            audioManager.playSound(AssetPaths.SFX_BUTTON);
+            Gdx.app.log(TAG, "Nivel seleccionado: " + level.getGlobalId() + 
+                             " (" + level.getDifficulty().name + " " + level.getLocalId() + ")");
+            // TODO: game.setScreen(new GameScreen(game, level));
+        } else {
+            Gdx.app.log(TAG, "Nivel bloqueado: " + level.getGlobalId());
+        }
+    }
+    
+    // ==================== UPDATE ====================
     
     @Override
     protected void update(float delta) {
@@ -172,97 +284,59 @@ public class LevelSelectScreen extends BaseScreen {
             return;
         }
         
+        // Actualizar tabs
+        for (SimpleButton tab : tabButtons) {
+            tab.update(viewport);
+        }
+        
+        // Actualizar flechas
+        if (arrowUpButton != null) {
+            arrowUpButton.update(viewport);
+        }
+        if (arrowDownButton != null) {
+            arrowDownButton.update(viewport);
+        }
+        
         // Actualizar botón volver
         if (backButton != null) {
             backButton.update(viewport);
         }
         
-        // Manejo de scroll y toques
-        handleInput();
-    }
-    
-    private void handleInput() {
+        // Detectar clicks en niveles
         if (Gdx.input.justTouched()) {
-            viewport.unproject(touchStart.set(Gdx.input.getX(), Gdx.input.getY()));
-            isDragging = false;
-        }
-        
-        if (Gdx.input.isTouched()) {
-            viewport.unproject(touchCurrent.set(Gdx.input.getX(), Gdx.input.getY()));
-            
-            float deltaY = touchCurrent.y - touchStart.y;
-            
-            // Detectar drag
-            if (Math.abs(deltaY) > 5f) {
-                isDragging = true;
-                scrollY -= deltaY * 0.5f;
-                scrollY = Math.max(0, Math.min(maxScrollY, scrollY));
-                touchStart.set(touchCurrent);
-            }
-        } else if (isDragging) {
-            isDragging = false;
-        } else {
-            // Solo detectar clicks si no estaba dragging
-            if (Gdx.input.justTouched()) {
-                checkLevelClick();
-                checkTabClick();
-            }
-        }
-    }
-    
-    private void checkTabClick() {
-        viewport.unproject(touchCurrent.set(Gdx.input.getX(), Gdx.input.getY()));
-        
-        float tabWidth = Constants.VIRTUAL_WIDTH / 4f;
-        float tabY = TAB_Y;
-        
-        // Verificar cuál tab se tocó
-        for (int i = 0; i < 4; i++) {
-            float tabX = i * tabWidth;
-            Rectangle tabBounds = new Rectangle(tabX, tabY, tabWidth, TAB_HEIGHT);
-            
-            if (tabBounds.contains(touchCurrent.x, touchCurrent.y)) {
-                LevelData.Difficulty newDifficulty = LevelData.Difficulty.values()[i];
-                if (newDifficulty != currentDifficulty) {
-                    currentDifficulty = newDifficulty;
-                    updateCurrentTabLevels();
-                    audioManager.playSound(AssetPaths.SFX_BUTTON);
-                    Gdx.app.log(TAG, "Tab cambiado a: " + currentDifficulty.name);
-                }
-                break;
-            }
+            checkLevelClick();
         }
     }
     
     private void checkLevelClick() {
-        viewport.unproject(touchCurrent.set(Gdx.input.getX(), Gdx.input.getY()));
+        float touchX = Gdx.input.getX();
+        float touchY = Gdx.input.getY();
+        viewport.unproject(touchPoint.set(touchX, touchY));
         
-        float gridStartX = (Constants.VIRTUAL_WIDTH - (COLS * (BUTTON_SIZE + BUTTON_SPACING))) / 2f;
+        // Calcular dimensiones del grid
+        float gridWidth = GRID_COLS * (LEVEL_BUTTON_SIZE + LEVEL_BUTTON_SPACING);
+        float gridStartX = (Constants.VIRTUAL_WIDTH - gridWidth) / 2f;
+        float gridStartY = Constants.VIRTUAL_HEIGHT - GRID_MARGIN_TOP;
         
-        for (int i = 0; i < currentTabLevels.size; i++) {
-            int row = i / COLS;
-            int col = i % COLS;
+        // Verificar cada nivel visible
+        for (int i = 0; i < currentLevels.size; i++) {
+            int row = i / GRID_COLS;
+            int col = i % GRID_COLS;
             
-            float x = gridStartX + col * (BUTTON_SIZE + BUTTON_SPACING);
-            float y = GRID_START_Y - scrollY - row * (BUTTON_SIZE + BUTTON_SPACING);
+            float x = gridStartX + col * (LEVEL_BUTTON_SIZE + LEVEL_BUTTON_SPACING);
+            float y = gridStartY - row * (LEVEL_BUTTON_SIZE + LEVEL_BUTTON_SPACING);
             
-            Rectangle levelBounds = new Rectangle(x, y, BUTTON_SIZE, BUTTON_SIZE);
-            
-            if (levelBounds.contains(touchCurrent.x, touchCurrent.y)) {
-                LevelData level = currentTabLevels.get(i);
-                
-                if (level.isUnlocked()) {
-                    audioManager.playSound(AssetPaths.SFX_BUTTON);
-                    Gdx.app.log(TAG, "Nivel seleccionado: " + level.getGlobalId());
-                    // TODO: game.setScreen(new GameScreen(game, level));
-                } else {
-                    Gdx.app.log(TAG, "Nivel bloqueado: " + level.getGlobalId());
-                }
-                
+            if (touchPoint.x >= x && touchPoint.x <= x + LEVEL_BUTTON_SIZE &&
+                touchPoint.y >= y - LEVEL_BUTTON_SIZE && touchPoint.y <= y) {
+                onLevelClick(currentLevels.get(i));
                 break;
             }
         }
     }
+    
+    private final com.badlogic.gdx.math.Vector2 touchPoint = new com.badlogic.gdx.math.Vector2();
+    
+    // ==================== DRAW ====================
     
     @Override
     protected void draw() {
@@ -289,95 +363,83 @@ public class LevelSelectScreen extends BaseScreen {
         
         game.getBatch().end();
         
-        // === TABS (con ShapeRenderer) ===
+        // === TABS ===
         drawTabs();
         
         // === GRID DE NIVELES ===
         game.getBatch().begin();
         drawLevelGrid();
+        game.getBatch().end();
         
-        // Botón volver
+        // === NAVEGACIÓN ===
+        game.getBatch().begin();
+        if (arrowUpButton != null) {
+            arrowUpButton.drawNoText(game.getBatch());
+        }
+        if (arrowDownButton != null) {
+            arrowDownButton.drawNoText(game.getBatch());
+        }
+        game.getBatch().end();
+        
+        // === BOTÓN VOLVER ===
+        game.getBatch().begin();
         if (backButton != null) {
             backButton.draw(game.getBatch(), tabFont);
         }
-        
         game.getBatch().end();
     }
     
     private void drawTabs() {
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        
-        float tabWidth = Constants.VIRTUAL_WIDTH / 4f;
-        
-        for (int i = 0; i < 4; i++) {
-            LevelData.Difficulty difficulty = LevelData.Difficulty.values()[i];
-            float x = i * tabWidth;
-            
-            // Color según dificultad
-            Color color;
-            switch (difficulty) {
-                case EASY: color = new Color(0x90EE90FF); break;      // Verde
-                case NORMAL: color = new Color(0xFFD700FF); break;    // Amarillo
-                case ADVANCED: color = new Color(0xFF8C00FF); break;  // Naranja
-                case HARD: color = new Color(0xFF4500FF); break;      // Rojo
-                default: color = Color.GRAY;
-            }
-            
-            // Tab activo más brillante
-            if (difficulty == currentDifficulty) {
-                shapeRenderer.setColor(color);
-            } else {
-                shapeRenderer.setColor(color.r * 0.6f, color.g * 0.6f, color.b * 0.6f, 1f);
-            }
-            
-            shapeRenderer.rect(x, TAB_Y, tabWidth - 2f, TAB_HEIGHT);
-        }
-        
-        shapeRenderer.end();
-        
-        // Texto de tabs
         game.getBatch().begin();
-        for (int i = 0; i < 4; i++) {
-            LevelData.Difficulty difficulty = LevelData.Difficulty.values()[i];
-            String name = difficulty.name.substring(0, Math.min(3, difficulty.name.length())).toUpperCase();
-            layout.setText(tabFont, name);
-            float x = i * tabWidth + (tabWidth - layout.width) / 2f;
-            tabFont.draw(game.getBatch(), name, x, TAB_Y + (TAB_HEIGHT + layout.height) / 2f);
+        
+        for (int i = 0; i < tabButtons.size; i++) {
+            SimpleButton tab = tabButtons.get(i);
+            
+            // Resaltar tab activo
+            if (LevelData.Difficulty.values()[i] == currentDifficulty) {
+                game.getBatch().setColor(1f, 1f, 1f, 1f);
+            } else {
+                game.getBatch().setColor(0.6f, 0.6f, 0.6f, 1f);
+            }
+            
+            tab.draw(game.getBatch(), tabFont);
         }
+        
+        game.getBatch().setColor(1f, 1f, 1f, 1f);
         game.getBatch().end();
     }
     
     private void drawLevelGrid() {
-        float gridStartX = (Constants.VIRTUAL_WIDTH - (COLS * (BUTTON_SIZE + BUTTON_SPACING))) / 2f;
+        float gridWidth = GRID_COLS * (LEVEL_BUTTON_SIZE + LEVEL_BUTTON_SPACING);
+        float gridStartX = (Constants.VIRTUAL_WIDTH - gridWidth) / 2f;
+        float gridStartY = Constants.VIRTUAL_HEIGHT - GRID_MARGIN_TOP;
         
-        for (int i = 0; i < currentTabLevels.size; i++) {
-            LevelData level = currentTabLevels.get(i);
+        for (int i = 0; i < currentLevels.size; i++) {
+            LevelData level = currentLevels.get(i);
             
-            int row = i / COLS;
-            int col = i % COLS;
+            int row = i / GRID_COLS;
+            int col = i % GRID_COLS;
             
-            float x = gridStartX + col * (BUTTON_SIZE + BUTTON_SPACING);
-            float y = GRID_START_Y - scrollY - row * (BUTTON_SIZE + BUTTON_SPACING);
-            
-            // Solo dibujar si está visible
-            if (y + BUTTON_SIZE < 0 || y > Constants.VIRTUAL_HEIGHT) {
-                continue;
-            }
+            float x = gridStartX + col * (LEVEL_BUTTON_SIZE + LEVEL_BUTTON_SPACING);
+            float y = gridStartY - row * (LEVEL_BUTTON_SIZE + LEVEL_BUTTON_SPACING);
             
             game.getBatch().end();
             
-            // Dibujar fondo del botón
+            // Dibujar fondo del botón de nivel
             shapeRenderer.setProjectionMatrix(camera.combined);
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
             
             if (level.isUnlocked()) {
-                shapeRenderer.setColor(level.isCompleted() ? Color.GREEN : Color.WHITE);
+                if (level.isCompleted()) {
+                    shapeRenderer.setColor(Color.GREEN);
+                } else {
+                    shapeRenderer.setColor(Color.WHITE);
+                }
             } else {
                 shapeRenderer.setColor(Color.DARK_GRAY);
             }
             
-            shapeRenderer.rect(x, y, BUTTON_SIZE, BUTTON_SIZE);
+            shapeRenderer.rect(x, y - LEVEL_BUTTON_SIZE, LEVEL_BUTTON_SIZE, LEVEL_BUTTON_SIZE);
             shapeRenderer.end();
             
             game.getBatch().begin();
@@ -385,17 +447,27 @@ public class LevelSelectScreen extends BaseScreen {
             // Número del nivel
             String levelNum = String.valueOf(level.getLocalId());
             layout.setText(levelFont, levelNum);
+            
             levelFont.setColor(level.isUnlocked() ? Color.BLACK : Color.GRAY);
             levelFont.draw(game.getBatch(), levelNum, 
-                          x + (BUTTON_SIZE - layout.width) / 2f,
-                          y + (BUTTON_SIZE + layout.height) / 2f);
+                          x + (LEVEL_BUTTON_SIZE - layout.width) / 2f,
+                          y - LEVEL_BUTTON_SIZE + (LEVEL_BUTTON_SIZE + layout.height) / 2f);
             levelFont.setColor(Color.WHITE);
         }
     }
     
+    // ==================== DISPOSE ====================
+    
     @Override
     public void dispose() {
         if (patternTexture != null) patternTexture.dispose();
+        
+        for (SimpleButton tab : tabButtons) {
+            tab.dispose();
+        }
+        
+        if (arrowUpButton != null) arrowUpButton.dispose();
+        if (arrowDownButton != null) arrowDownButton.dispose();
         if (backButton != null) backButton.dispose();
         if (shapeRenderer != null) shapeRenderer.dispose();
     }

@@ -151,9 +151,9 @@ public class HomeScreen extends BaseScreen {
         
         switch (buttonName) {
             case "JUGAR":
-                Gdx.app.log("HomeScreen", "Navegando a LevelSelect...");
-                // TODO: game.setScreen(new LevelSelectScreen(game));
-                break;
+    Gdx.app.log("HomeScreen", "Navegando a LevelSelect...");
+    game.setScreen(new LevelSelectScreen(game));
+    break;
                 
             case "MAZO":
                 Gdx.app.log("HomeScreen", "Navegando a Deck...");

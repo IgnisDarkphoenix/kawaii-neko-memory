@@ -1,5 +1,6 @@
 package com.darkphoenixteam.kawaiinekomemory.screens;
 
+import com.darkphoenixteam.kawaiinekomemory.screens.GameScreen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;

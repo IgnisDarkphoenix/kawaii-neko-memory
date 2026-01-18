@@ -266,14 +266,17 @@ public class LevelSelectScreen extends BaseScreen {
     }
     
     private void onLevelClick(LevelData level) {
-        if (level.isUnlocked()) {
-            audioManager.playSound(AssetPaths.SFX_BUTTON);
-            Gdx.app.log(TAG, "Nivel seleccionado: " + level.getGlobalId() + 
-                             " (" + level.getDifficulty().name + " " + level.getLocalId() + ")");
-            // TODO: game.setScreen(new GameScreen(game, level));
-        } else {
-            Gdx.app.log(TAG, "Nivel bloqueado: " + level.getGlobalId());
-        }
+    if (level.isUnlocked()) {
+        audioManager.playSound(AssetPaths.SFX_BUTTON);
+        Gdx.app.log(TAG, "Nivel seleccionado: " + level.getGlobalId() + 
+                         " (" + level.getDifficulty().name + " " + level.getLocalId() + ")");
+        
+        // ¡Ahora sí navegamos a GameScreen!
+        game.setScreen(new GameScreen(game, level));
+    } else {
+        audioManager.playSound(AssetPaths.SFX_NO_MATCH);  // Sonido de "bloqueado"
+        Gdx.app.log(TAG, "Nivel bloqueado: " + level.getGlobalId());
+    }
     }
     
     // ==================== UPDATE ====================

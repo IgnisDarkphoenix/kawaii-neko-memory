@@ -121,6 +121,7 @@ public class GameScreen extends BaseScreen {
     private float checkDelayTimer;
     private float startingTimer;
     private static final float STARTING_DURATION = 2.0f;  // Mostrar cartas 2 segundos
+private boolean cardsRevealedAtStart = false;
     
     // ==================== AUDIO ====================
     

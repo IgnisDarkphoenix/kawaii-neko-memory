@@ -507,28 +507,49 @@ private boolean cardsRevealedAtStart = false;
     }
     
     private void updateStarting(float delta) {
-        startingTimer -= delta;
-        
-        // Mostrar todas las cartas al inicio
-        if (startingTimer > STARTING_DURATION - 0.3f) {
-            // Revelar cartas gradualmente
-            for (Card card : cards) {
-                if (card.getState() == Card.State.HIDDEN) {
-                    card.flip();
-                }
+    // Paso 1: Revelar todas las cartas INMEDIATAMENTE al entrar al estado
+    if (!cardsRevealedAtStart) {
+        for (Card card : cards) {
+            if (card.getState() == Card.State.HIDDEN) {
+                card.flip();
+            }
+        }
+        cardsRevealedAtStart = true;
+        audioManager.playSound(AssetPaths.SFX_CARD_SHUFFLE);
+        Gdx.app.log(TAG, "Preview: Revelando " + cards.size + " cartas");
+    }
+    
+    // Paso 2: Contar el tiempo de preview
+    startingTimer -= delta;
+    
+    // Paso 3: Cuando el timer termina, voltear de vuelta
+    if (startingTimer <= 0) {
+        // Verificar que TODAS las cartas hayan terminado de animarse
+        boolean allReady = true;
+        for (Card card : cards) {
+            if (card.isAnimating()) {
+                allReady = false;
+                break;
             }
         }
         
-        if (startingTimer <= 0) {
-            // Voltear todas las cartas de vuelta
+        if (allReady) {
+            // Voltear todas las cartas reveladas hacia atrás
+            int flippedBack = 0;
             for (Card card : cards) {
                 if (card.getState() == Card.State.REVEALED) {
                     card.flipBack();
+                    flippedBack++;
                 }
             }
+            
             gameState = GameState.PLAYING;
-            Gdx.app.log(TAG, "¡COMIENZA EL JUEGO!");
+            cardsRevealedAtStart = false;  // Reset para multi-grid
+            
+            Gdx.app.log(TAG, "¡COMIENZA EL JUEGO! (" + flippedBack + " cartas volteadas)");
         }
+        // Si aún hay cartas animando, esperar al siguiente frame
+    }
     }
     
     private void updatePlaying(float delta) {
@@ -674,20 +695,21 @@ private boolean cardsRevealedAtStart = false;
     }
     
     private void onGridComplete() {
-        currentGrid++;
-        
-        if (currentGrid >= totalGrids) {
-            // ¡Victoria total!
-            onVictory();
-        } else {
-            // Siguiente grid
-            Gdx.app.log(TAG, "Grid " + currentGrid + " completado. Siguiente grid...");
-            pairsFoundThisGrid = 0;
-            matchesSinceShuffle = 0;
-            createBoard();  // Crear nuevo tablero
-            gameState = GameState.STARTING;
-            startingTimer = STARTING_DURATION;
-        }
+    currentGrid++;
+    
+    if (currentGrid >= totalGrids) {
+        // ¡Victoria total!
+        onVictory();
+    } else {
+        // Siguiente grid
+        Gdx.app.log(TAG, "Grid " + currentGrid + " completado. Siguiente grid...");
+        pairsFoundThisGrid = 0;
+        matchesSinceShuffle = 0;
+        cardsRevealedAtStart = false;  // ← Asegurar que esté esta línea
+        createBoard();  // Crear nuevo tablero
+        gameState = GameState.STARTING;
+        startingTimer = STARTING_DURATION;
+    }
     }
     
     private void triggerShuffle() {

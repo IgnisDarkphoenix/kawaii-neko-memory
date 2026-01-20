@@ -48,16 +48,39 @@ public class SaveManager {
     }
     
     private void initializeDefaults() {
-        Gdx.app.log(TAG, "Inicializando progreso por defecto...");
-        
-        // Nekoins iniciales
-        prefs.putInteger(KEY_NEKOINS, 0);
-        
-        // Desbloquear las primeras 15 cartas (deck 0 completo + deck 1 completo + 1 de deck 2)
-        // Esto permite jugar todas las dificultades desde el inicio
-        for (int i = 0; i < 15; i++) {
-            prefs.putBoolean(KEY_CARD_UNLOCKED + i, true);
+    Gdx.app.log(TAG, "Inicializando progreso por defecto...");
+    
+    // Nekoins iniciales
+    prefs.putInteger(KEY_NEKOINS, 0);
+    
+    // Desbloquear solo Deck Base (7 cartas: cardId 0-6)
+    for (int i = 0; i < CARDS_PER_DECK; i++) {
+        prefs.putBoolean(KEY_CARD_UNLOCKED + i, true);
+    }
+    
+    // Configurar cartas activas (solo las 7 del Deck Base)
+    StringBuilder activeCardsStr = new StringBuilder();
+    for (int i = 0; i < ACTIVE_DECK_SIZE; i++) {
+        if (i > 0) activeCardsStr.append(",");
+        if (i < CARDS_PER_DECK) {
+            // Primeros 7 slots: cartas del Deck Base
+            activeCardsStr.append(i);
+            activeCards.add(i);
+        } else {
+            // Slots 7-14: vacíos
+            activeCardsStr.append(-1);
+            activeCards.add(-1);
         }
+    }
+    prefs.putString(KEY_ACTIVE_CARDS, activeCardsStr.toString());
+    
+    // Powers iniciales
+    prefs.putInteger(KEY_HINT_LEVEL, 0);
+    prefs.putInteger(KEY_TIMEFREEZE_LEVEL, 0);
+    
+    prefs.flush();
+    Gdx.app.log(TAG, "Progreso inicial creado - Deck Base desbloqueado (7 cartas)");
+    }
         
         // Configurar cartas activas por defecto (las primeras 15)
         StringBuilder activeCardsStr = new StringBuilder();

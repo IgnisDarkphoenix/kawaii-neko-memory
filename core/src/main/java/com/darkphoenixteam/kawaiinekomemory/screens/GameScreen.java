@@ -33,6 +33,7 @@ public class GameScreen extends BaseScreen {
         STARTING,       // Mostrando cartas brevemente al inicio
         PLAYING,        // Jugando normalmente
         CHECKING,       // Esperando verificación de match
+        NO_MATCH_SHAKE, // Feedback visual antes de volteal
         SHUFFLING,      // Animación de shuffle
         PAUSED,         // Juego pausado
         VICTORY,        // Ganó el nivel
@@ -122,6 +123,11 @@ public class GameScreen extends BaseScreen {
     private float startingTimer;
     private static final float STARTING_DURATION = 2.0f;  // Mostrar cartas 2 segundos
 private boolean cardsRevealedAtStart = false;
+    // No Match feedback
+private float noMatchShakeTimer;
+private static final float NO_MATCH_SHAKE_DURATION = 0.4f;  // 400ms de shake
+private Card noMatchCard1;
+private Card noMatchCard2;
     
     // ==================== AUDIO ====================
     
@@ -484,27 +490,29 @@ private boolean cardsRevealedAtStart = false;
         }
         
         switch (gameState) {
-            case STARTING:
-                updateStarting(delta);
-                break;
-            case PLAYING:
-                updatePlaying(delta);
-                break;
-            case CHECKING:
-                updateChecking(delta);
-                break;
-            case SHUFFLING:
-                updateShuffling(delta);
-                break;
-            case PAUSED:
-                updatePaused(delta);
-                break;
-            case VICTORY:
-            case DEFEAT:
-                updateResult(delta);
-                break;
+    case STARTING:
+        updateStarting(delta);
+        break;
+    case PLAYING:
+        updatePlaying(delta);
+        break;
+    case CHECKING:
+        updateChecking(delta);
+        break;
+    case NO_MATCH_SHAKE:          // ← NUEVO
+        updateNoMatchShake(delta); // ← NUEVO
+        break;                     // ← NUEVO
+    case SHUFFLING:
+        updateShuffling(delta);
+        break;
+    case PAUSED:
+        updatePaused(delta);
+        break;
+    case VICTORY:
+    case DEFEAT:
+        updateResult(delta);
+        break;
         }
-    }
     
     private void updateStarting(float delta) {
     // Paso 1: Revelar todas las cartas INMEDIATAMENTE al entrar al estado
@@ -597,6 +605,27 @@ private boolean cardsRevealedAtStart = false;
         // TODO: Agregar animación de shuffle
         gameState = GameState.PLAYING;
     }
+    private void updateNoMatchShake(float delta) {
+    noMatchShakeTimer -= delta;
+    
+    if (noMatchShakeTimer <= 0) {
+        // Voltear las cartas después del shake
+        if (noMatchCard1 != null) {
+            noMatchCard1.flipBack();
+        }
+        if (noMatchCard2 != null) {
+            noMatchCard2.flipBack();
+        }
+        
+        // Reset referencias
+        noMatchCard1 = null;
+        noMatchCard2 = null;
+        firstRevealed = null;
+        secondRevealed = null;
+        
+        gameState = GameState.PLAYING;
+    }
+    }
     
     private void updatePaused(float delta) {
         if (!isInputEnabled()) return;
@@ -646,52 +675,63 @@ private boolean cardsRevealedAtStart = false;
     }
     
     private void checkForMatch() {
-        if (firstRevealed == null || secondRevealed == null) {
-            gameState = GameState.PLAYING;
-            return;
-        }
+    if (firstRevealed == null || secondRevealed == null) {
+        gameState = GameState.PLAYING;
+        return;
+    }
+    
+    boolean isMatch = firstRevealed.getCardId() == secondRevealed.getCardId();
+    
+    if (isMatch) {
+        // ¡Match!
+        audioManager.playSound(AssetPaths.SFX_MATCH);
+        firstRevealed.setMatched();
+        secondRevealed.setMatched();
         
-        boolean isMatch = firstRevealed.getCardId() == secondRevealed.getCardId();
+        // Sumar nekoin value al bonus
+        deckBonus += firstRevealed.getNekoinValue();
         
-        if (isMatch) {
-            // ¡Match!
-            audioManager.playSound(AssetPaths.SFX_MATCH);
-            firstRevealed.setMatched();
-            secondRevealed.setMatched();
-            
-            // Sumar nekoin value al bonus
-            deckBonus += firstRevealed.getNekoinValue();
-            
-            pairsFoundThisGrid++;
-            pairsFoundTotal++;
-            matchesSinceShuffle++;
-            
-            Gdx.app.log(TAG, "MATCH! Pares: " + pairsFoundThisGrid + "/" + pairsPerGrid + 
-                             " | Bonus: +" + firstRevealed.getNekoinValue());
-            
-            // Verificar victoria del grid
-            if (pairsFoundThisGrid >= pairsPerGrid) {
-                onGridComplete();
-            }
-            // Verificar shuffle
-            else if (levelData.isShuffleEnabled() && 
-                     matchesSinceShuffle >= Constants.SHUFFLE_TRIGGER_PAIRS) {
-                triggerShuffle();
-            }
-            else {
-                gameState = GameState.PLAYING;
-            }
-        } else {
-            // No match
-            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
-            firstRevealed.flipBack();
-            secondRevealed.flipBack();
-            gameState = GameState.PLAYING;
-        }
+        pairsFoundThisGrid++;
+        pairsFoundTotal++;
+        matchesSinceShuffle++;
+        
+        Gdx.app.log(TAG, "MATCH! Pares: " + pairsFoundThisGrid + "/" + pairsPerGrid + 
+                         " | Bonus: +" + firstRevealed.getNekoinValue());
         
         // Reset cartas seleccionadas
         firstRevealed = null;
         secondRevealed = null;
+        
+        // Verificar victoria del grid
+        if (pairsFoundThisGrid >= pairsPerGrid) {
+            onGridComplete();
+        }
+        // Verificar shuffle
+        else if (levelData.isShuffleEnabled() && 
+                 matchesSinceShuffle >= Constants.SHUFFLE_TRIGGER_PAIRS) {
+            triggerShuffle();
+        }
+        else {
+            gameState = GameState.PLAYING;
+        }
+    } else {
+        // No match - iniciar feedback visual con shake
+        audioManager.playSound(AssetPaths.SFX_NO_MATCH);
+        
+        // Guardar referencias para voltear después
+        noMatchCard1 = firstRevealed;
+        noMatchCard2 = secondRevealed;
+        
+        // Iniciar shake en ambas cartas
+        noMatchCard1.startShake(NO_MATCH_SHAKE_DURATION);
+        noMatchCard2.startShake(NO_MATCH_SHAKE_DURATION);
+        
+        // Iniciar timer y cambiar estado
+        noMatchShakeTimer = NO_MATCH_SHAKE_DURATION;
+        gameState = GameState.NO_MATCH_SHAKE;
+        
+        Gdx.app.log(TAG, "No match - shake feedback");
+    }
     }
     
     private void onGridComplete() {

@@ -30,14 +30,14 @@ public class GameScreen extends BaseScreen {
     // ==================== ESTADOS DEL JUEGO ====================
     
     public enum GameState {
-        STARTING,       // Mostrando cartas brevemente al inicio
-        PLAYING,        // Jugando normalmente
-        CHECKING,       // Esperando verificación de match
-        NO_MATCH_SHAKE, // Feedback visual antes de volteal
-        SHUFFLING,      // Animación de shuffle
-        PAUSED,         // Juego pausado
-        VICTORY,        // Ganó el nivel
-        DEFEAT          // Perdió (tiempo agotado)
+        STARTING,
+        PLAYING,
+        CHECKING,
+        NO_MATCH_SHAKE,
+        SHUFFLING,
+        PAUSED,
+        VICTORY,
+        DEFEAT
     }
     
     private GameState gameState;
@@ -45,12 +45,12 @@ public class GameScreen extends BaseScreen {
     // ==================== DATOS DEL NIVEL ====================
     
     private LevelData levelData;
-    private int currentGrid;        // Grid actual (0 o 1 para multi-grid)
+    private int currentGrid;
     private int totalGrids;
     private int pairsFoundThisGrid;
     private int pairsFoundTotal;
     private int pairsPerGrid;
-    private int matchesSinceShuffle; // Para trigger de shuffle
+    private int matchesSinceShuffle;
     
     // ==================== TABLERO ====================
     
@@ -58,12 +58,10 @@ public class GameScreen extends BaseScreen {
     private Card firstRevealed;
     private Card secondRevealed;
     
-    // Texturas
     private Texture cardBackTexture;
     private Array<Texture> cardFrontTextures;
     private Texture backgroundTexture;
     
-    // Layout del tablero
     private float boardX, boardY;
     private float boardWidth, boardHeight;
     private float cardWidth, cardHeight;
@@ -73,7 +71,7 @@ public class GameScreen extends BaseScreen {
     private float timeRemaining;
     private float timeLimit;
     private int moveCount;
-    private int deckBonus;          // Nekoins acumulados por matches
+    private int deckBonus;
     private boolean isTimeFrozen;
     private float timeFreezeRemaining;
     
@@ -84,12 +82,10 @@ public class GameScreen extends BaseScreen {
     private BitmapFont buttonFont;
     private GlyphLayout layout;
     
-    // Botones HUD
     private SimpleButton pauseButton;
     private SimpleButton hintButton;
     private SimpleButton timeFreezeButton;
     
-    // Texturas HUD
     private Texture pauseIconTexture;
     private Texture hintIconTexture;
     private Texture timeFreezeIconTexture;
@@ -101,13 +97,11 @@ public class GameScreen extends BaseScreen {
     private Texture panelVictoryTexture;
     private Texture panelDefeatTexture;
     
-    // Botones de paneles
     private SimpleButton continueButton;
     private SimpleButton restartButton;
     private SimpleButton exitButton;
     private SimpleButton nextLevelButton;
     
-    // Textura genérica para botones de panel
     private Texture buttonTexture;
     
     // ==================== RESULTADOS ====================
@@ -121,13 +115,14 @@ public class GameScreen extends BaseScreen {
     
     private float checkDelayTimer;
     private float startingTimer;
-    private static final float STARTING_DURATION = 2.0f;  // Mostrar cartas 2 segundos
-private boolean cardsRevealedAtStart = false;
+    private static final float STARTING_DURATION = 2.0f;
+    private boolean cardsRevealedAtStart = false;
+    
     // No Match feedback
-private float noMatchShakeTimer;
-private static final float NO_MATCH_SHAKE_DURATION = 0.4f;  // 400ms de shake
-private Card noMatchCard1;
-private Card noMatchCard2;
+    private float noMatchShakeTimer;
+    private static final float NO_MATCH_SHAKE_DURATION = 0.4f;
+    private Card noMatchCard1;
+    private Card noMatchCard2;
     
     // ==================== AUDIO ====================
     
@@ -147,17 +142,14 @@ private Card noMatchCard2;
         this.audioManager = AudioManager.getInstance();
         this.saveManager = SaveManager.getInstance();
         
-        // Fonts
         this.hudFont = game.getFontManager().getButtonFont();
         this.titleFont = game.getFontManager().getTitleFont();
         this.buttonFont = game.getFontManager().getButtonFont();
         this.layout = new GlyphLayout();
         
-        // Inicializar colecciones
         this.cards = new Array<>();
         this.cardFrontTextures = new Array<>();
         
-        // Configurar nivel
         this.timeLimit = levelData.getTimeLimit();
         this.timeRemaining = timeLimit;
         this.totalGrids = levelData.getGridCount();
@@ -170,26 +162,15 @@ private Card noMatchCard2;
         this.deckBonus = 0;
         this.isTimeFrozen = false;
         
-        // Estado inicial
         this.gameState = GameState.STARTING;
         this.startingTimer = STARTING_DURATION;
         
-        // Verificar si es first clear
         this.isFirstClear = !saveManager.isLevelCompleted(levelData.getGlobalId());
         
-        // Cargar assets
         loadAssets();
-        
-        // Crear tablero
         createBoard();
-        
-        // Crear HUD
         createHUD();
-        
-        // Crear paneles
         createPanels();
-        
-        // Música aleatoria
         playRandomGameMusic();
         
         Gdx.app.log(TAG, "=== NIVEL INICIADO ===");
@@ -199,7 +180,6 @@ private Card noMatchCard2;
     // ==================== CARGA DE ASSETS ====================
     
     private void loadAssets() {
-        // Fondo según dificultad
         String bgPath = getBackgroundPath();
         try {
             backgroundTexture = new Texture(Gdx.files.internal(bgPath));
@@ -208,7 +188,6 @@ private Card noMatchCard2;
             Gdx.app.error(TAG, "Error cargando fondo: " + bgPath);
         }
         
-        // Reverso de carta
         try {
             cardBackTexture = new Texture(Gdx.files.internal(AssetPaths.CARD_BACK));
             Gdx.app.log(TAG, "Card back cargado");
@@ -216,10 +195,8 @@ private Card noMatchCard2;
             Gdx.app.error(TAG, "Error cargando card back");
         }
         
-        // Cargar texturas de cartas del deck activo
         loadDeckTextures();
         
-        // Iconos HUD
         try {
             pauseIconTexture = new Texture(Gdx.files.internal(AssetPaths.ICON_PAUSE));
             hintIconTexture = new Texture(Gdx.files.internal(AssetPaths.ICON_HINT));
@@ -229,7 +206,6 @@ private Card noMatchCard2;
             Gdx.app.error(TAG, "Error cargando iconos HUD");
         }
         
-        // Paneles
         try {
             panelPauseTexture = new Texture(Gdx.files.internal(AssetPaths.PANEL_PAUSE));
             panelVictoryTexture = new Texture(Gdx.files.internal(AssetPaths.PANEL_VICTORY));
@@ -238,7 +214,6 @@ private Card noMatchCard2;
             Gdx.app.error(TAG, "Error cargando paneles");
         }
         
-        // Textura para botones (reusar back button)
         try {
             buttonTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_BACK));
         } catch (Exception e) {
@@ -262,8 +237,6 @@ private Card noMatchCard2;
         
         Gdx.app.log(TAG, "Cargando " + cardsNeeded + " cartas del deck " + currentDeck);
         
-        // Por ahora cargamos las primeras N cartas del deck
-        // TODO: Cuando DeckEditor esté listo, cargar las 15 cartas activas
         for (int i = 0; i < cardsNeeded && i < AssetPaths.CARDS_PER_DECK; i++) {
             String path = AssetPaths.getCardPath(currentDeck, i);
             try {
@@ -271,12 +244,10 @@ private Card noMatchCard2;
                 cardFrontTextures.add(tex);
             } catch (Exception e) {
                 Gdx.app.error(TAG, "Error cargando carta: " + path);
-                // Agregar null como placeholder
                 cardFrontTextures.add(null);
             }
         }
         
-        // Si necesitamos más cartas de las que hay en el deck, repetir
         while (cardFrontTextures.size < cardsNeeded) {
             int index = cardFrontTextures.size % AssetPaths.CARDS_PER_DECK;
             if (index < cardFrontTextures.size) {
@@ -299,7 +270,6 @@ private Card noMatchCard2;
         int rows = diff.rows;
         int pairs = diff.getPairs();
         
-        // Calcular área disponible para el tablero
         float hudHeight = Constants.HUD_HEIGHT;
         float padding = Constants.GRID_PADDING;
         float margin = Constants.CARD_MARGIN_PERCENT;
@@ -309,40 +279,33 @@ private Card noMatchCard2;
         boardX = padding;
         boardY = padding;
         
-        // Calcular tamaño de carta
         float totalMarginX = boardWidth * margin * (cols + 1);
         float totalMarginY = boardHeight * margin * (rows + 1);
         
         cardWidth = (boardWidth - totalMarginX) / cols;
         cardHeight = (boardHeight - totalMarginY) / rows;
         
-        // Mantener aspect ratio (cartas más altas que anchas)
-        float desiredRatio = 1.4f;  // altura = 1.4 * ancho
+        float desiredRatio = 1.4f;
         if (cardHeight > cardWidth * desiredRatio) {
             cardHeight = cardWidth * desiredRatio;
         } else {
             cardWidth = cardHeight / desiredRatio;
         }
         
-        // Recalcular márgenes con el nuevo tamaño
         float actualMarginX = (boardWidth - (cardWidth * cols)) / (cols + 1);
         float actualMarginY = (boardHeight - (cardHeight * rows)) / (rows + 1);
         
-        // Centrar el tablero
         float startX = boardX + actualMarginX;
         float startY = boardY + actualMarginY;
         
-        // Crear array de IDs (cada ID aparece 2 veces para formar pares)
         Array<Integer> cardIds = new Array<>();
         for (int i = 0; i < pairs; i++) {
             cardIds.add(i);
             cardIds.add(i);
         }
         
-        // Mezclar
         cardIds.shuffle();
         
-        // Crear cartas
         int cardIndex = 0;
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
@@ -357,7 +320,6 @@ private Card noMatchCard2;
                 
                 Card card = new Card(id, frontTex, cardBackTexture, x, y, cardWidth, cardHeight);
                 
-                // Asignar valor de nekoin según el deck
                 int deckIndex = saveManager.getCurrentDeck();
                 card.setDeckIndex(deckIndex);
                 card.setNekoinValue(Constants.NEKOIN_PER_DECK[deckIndex]);
@@ -377,7 +339,6 @@ private Card noMatchCard2;
         float buttonSize = 50f;
         float spacing = 10f;
         
-        // Botón Pause (izquierda)
         if (pauseIconTexture != null) {
             pauseButton = new SimpleButton(
                 pauseIconTexture, "",
@@ -391,7 +352,6 @@ private Card noMatchCard2;
             });
         }
         
-        // Botón Hint (derecha del pause)
         if (hintIconTexture != null) {
             hintButton = new SimpleButton(
                 hintIconTexture, "",
@@ -405,7 +365,6 @@ private Card noMatchCard2;
             });
         }
         
-        // Botón TimeFreeze (derecha del hint)
         if (timeFreezeIconTexture != null) {
             timeFreezeButton = new SimpleButton(
                 timeFreezeIconTexture, "",
@@ -433,10 +392,8 @@ private Card noMatchCard2;
         float btnX = (Constants.VIRTUAL_WIDTH - btnWidth) / 2f;
         float btnSpacing = 15f;
         
-        // Botones comunes
         float btnY = panelY + panelHeight * 0.15f;
         
-        // Exit button (en todos los paneles)
         if (buttonTexture != null) {
             exitButton = new SimpleButton(buttonTexture, "SALIR", btnX, btnY, btnWidth, btnHeight);
             exitButton.setOnClick(() -> {
@@ -446,7 +403,6 @@ private Card noMatchCard2;
             
             btnY += btnHeight + btnSpacing;
             
-            // Restart button
             restartButton = new SimpleButton(buttonTexture, "REINICIAR", btnX, btnY, btnWidth, btnHeight);
             restartButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
@@ -455,14 +411,12 @@ private Card noMatchCard2;
             
             btnY += btnHeight + btnSpacing;
             
-            // Continue button (solo en pause)
             continueButton = new SimpleButton(buttonTexture, "CONTINUAR", btnX, btnY, btnWidth, btnHeight);
             continueButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 resumeGame();
             });
             
-            // Next level button (solo en victory)
             nextLevelButton = new SimpleButton(buttonTexture, "SIGUIENTE", btnX, btnY, btnWidth, btnHeight);
             nextLevelButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
@@ -484,84 +438,77 @@ private Card noMatchCard2;
     
     @Override
     protected void update(float delta) {
-        // Actualizar cartas siempre (para animaciones)
         for (Card card : cards) {
             card.update(delta);
         }
         
         switch (gameState) {
-    case STARTING:
-        updateStarting(delta);
-        break;
-    case PLAYING:
-        updatePlaying(delta);
-        break;
-    case CHECKING:
-        updateChecking(delta);
-        break;
-    case NO_MATCH_SHAKE:          // ← NUEVO
-        updateNoMatchShake(delta); // ← NUEVO
-        break;                     // ← NUEVO
-    case SHUFFLING:
-        updateShuffling(delta);
-        break;
-    case PAUSED:
-        updatePaused(delta);
-        break;
-    case VICTORY:
-    case DEFEAT:
-        updateResult(delta);
-        break;
+            case STARTING:
+                updateStarting(delta);
+                break;
+            case PLAYING:
+                updatePlaying(delta);
+                break;
+            case CHECKING:
+                updateChecking(delta);
+                break;
+            case NO_MATCH_SHAKE:
+                updateNoMatchShake(delta);
+                break;
+            case SHUFFLING:
+                updateShuffling(delta);
+                break;
+            case PAUSED:
+                updatePaused(delta);
+                break;
+            case VICTORY:
+            case DEFEAT:
+                updateResult(delta);
+                break;
         }
-    
-    private void updateStarting(float delta) {
-    // Paso 1: Revelar todas las cartas INMEDIATAMENTE al entrar al estado
-    if (!cardsRevealedAtStart) {
-        for (Card card : cards) {
-            if (card.getState() == Card.State.HIDDEN) {
-                card.flip();
-            }
-        }
-        cardsRevealedAtStart = true;
-        audioManager.playSound(AssetPaths.SFX_CARD_SHUFFLE);
-        Gdx.app.log(TAG, "Preview: Revelando " + cards.size + " cartas");
     }
     
-    // Paso 2: Contar el tiempo de preview
-    startingTimer -= delta;
-    
-    // Paso 3: Cuando el timer termina, voltear de vuelta
-    if (startingTimer <= 0) {
-        // Verificar que TODAS las cartas hayan terminado de animarse
-        boolean allReady = true;
-        for (Card card : cards) {
-            if (card.isAnimating()) {
-                allReady = false;
-                break;
+    private void updateStarting(float delta) {
+        if (!cardsRevealedAtStart) {
+            for (Card card : cards) {
+                if (card.getState() == Card.State.HIDDEN) {
+                    card.flip();
+                }
             }
+            cardsRevealedAtStart = true;
+            audioManager.playSound(AssetPaths.SFX_CARD_SHUFFLE);
+            Gdx.app.log(TAG, "Preview: Revelando " + cards.size + " cartas");
         }
         
-        if (allReady) {
-            // Voltear todas las cartas reveladas hacia atrás
-            int flippedBack = 0;
+        startingTimer -= delta;
+        
+        if (startingTimer <= 0) {
+            boolean allReady = true;
             for (Card card : cards) {
-                if (card.getState() == Card.State.REVEALED) {
-                    card.flipBack();
-                    flippedBack++;
+                if (card.isAnimating()) {
+                    allReady = false;
+                    break;
                 }
             }
             
-            gameState = GameState.PLAYING;
-            cardsRevealedAtStart = false;  // Reset para multi-grid
-            
-            Gdx.app.log(TAG, "¡COMIENZA EL JUEGO! (" + flippedBack + " cartas volteadas)");
+            if (allReady) {
+                int flippedBack = 0;
+                for (Card card : cards) {
+                    if (card.getState() == Card.State.REVEALED) {
+                        card.flipBack();
+                        flippedBack++;
+                    }
+                }
+                
+                gameState = GameState.PLAYING;
+                cardsRevealedAtStart = false;
+                
+                Gdx.app.log(TAG, "¡COMIENZA EL JUEGO! (" + flippedBack + " cartas volteadas)");
+            }
         }
-        // Si aún hay cartas animando, esperar al siguiente frame
-    }
     }
     
     private void updatePlaying(float delta) {
-        // Actualizar timer (si no está congelado)
         if (!isTimeFrozen) {
             timeRemaining -= delta;
             if (timeRemaining <= 0) {
@@ -577,15 +524,12 @@ private Card noMatchCard2;
             }
         }
         
-        // Verificar input
         if (!isInputEnabled()) return;
         
-        // Actualizar botones HUD
         if (pauseButton != null) pauseButton.update(viewport);
         if (hintButton != null) hintButton.update(viewport);
         if (timeFreezeButton != null) timeFreezeButton.update(viewport);
         
-        // Detectar toque en cartas
         if (Gdx.input.justTouched()) {
             viewport.unproject(touchPoint.set(Gdx.input.getX(), Gdx.input.getY()));
             handleCardTouch(touchPoint.x, touchPoint.y);
@@ -600,31 +544,28 @@ private Card noMatchCard2;
         }
     }
     
-    private void updateShuffling(float delta) {
-        // Por ahora, shuffle instantáneo
-        // TODO: Agregar animación de shuffle
-        gameState = GameState.PLAYING;
-    }
     private void updateNoMatchShake(float delta) {
-    noMatchShakeTimer -= delta;
-    
-    if (noMatchShakeTimer <= 0) {
-        // Voltear las cartas después del shake
-        if (noMatchCard1 != null) {
-            noMatchCard1.flipBack();
-        }
-        if (noMatchCard2 != null) {
-            noMatchCard2.flipBack();
-        }
+        noMatchShakeTimer -= delta;
         
-        // Reset referencias
-        noMatchCard1 = null;
-        noMatchCard2 = null;
-        firstRevealed = null;
-        secondRevealed = null;
-        
-        gameState = GameState.PLAYING;
+        if (noMatchShakeTimer <= 0) {
+            if (noMatchCard1 != null) {
+                noMatchCard1.flipBack();
+            }
+            if (noMatchCard2 != null) {
+                noMatchCard2.flipBack();
+            }
+            
+            noMatchCard1 = null;
+            noMatchCard2 = null;
+            firstRevealed = null;
+            secondRevealed = null;
+            
+            gameState = GameState.PLAYING;
+        }
     }
+    
+    private void updateShuffling(float delta) {
+        gameState = GameState.PLAYING;
     }
     
     private void updatePaused(float delta) {
@@ -648,7 +589,6 @@ private Card noMatchCard2;
     // ==================== LÓGICA DE CARTAS ====================
     
     private void handleCardTouch(float x, float y) {
-        // No procesar si ya hay 2 cartas reveladas
         if (firstRevealed != null && secondRevealed != null) return;
         
         for (Card card : cards) {
@@ -668,88 +608,74 @@ private Card noMatchCard2;
             firstRevealed = card;
         } else {
             secondRevealed = card;
-            // Iniciar verificación después de delay
             gameState = GameState.CHECKING;
             checkDelayTimer = Constants.MATCH_CHECK_DELAY;
         }
     }
     
     private void checkForMatch() {
-    if (firstRevealed == null || secondRevealed == null) {
-        gameState = GameState.PLAYING;
-        return;
-    }
-    
-    boolean isMatch = firstRevealed.getCardId() == secondRevealed.getCardId();
-    
-    if (isMatch) {
-        // ¡Match!
-        audioManager.playSound(AssetPaths.SFX_MATCH);
-        firstRevealed.setMatched();
-        secondRevealed.setMatched();
-        
-        // Sumar nekoin value al bonus
-        deckBonus += firstRevealed.getNekoinValue();
-        
-        pairsFoundThisGrid++;
-        pairsFoundTotal++;
-        matchesSinceShuffle++;
-        
-        Gdx.app.log(TAG, "MATCH! Pares: " + pairsFoundThisGrid + "/" + pairsPerGrid + 
-                         " | Bonus: +" + firstRevealed.getNekoinValue());
-        
-        // Reset cartas seleccionadas
-        firstRevealed = null;
-        secondRevealed = null;
-        
-        // Verificar victoria del grid
-        if (pairsFoundThisGrid >= pairsPerGrid) {
-            onGridComplete();
-        }
-        // Verificar shuffle
-        else if (levelData.isShuffleEnabled() && 
-                 matchesSinceShuffle >= Constants.SHUFFLE_TRIGGER_PAIRS) {
-            triggerShuffle();
-        }
-        else {
+        if (firstRevealed == null || secondRevealed == null) {
             gameState = GameState.PLAYING;
+            return;
         }
-    } else {
-        // No match - iniciar feedback visual con shake
-        audioManager.playSound(AssetPaths.SFX_NO_MATCH);
         
-        // Guardar referencias para voltear después
-        noMatchCard1 = firstRevealed;
-        noMatchCard2 = secondRevealed;
+        boolean isMatch = firstRevealed.getCardId() == secondRevealed.getCardId();
         
-        // Iniciar shake en ambas cartas
-        noMatchCard1.startShake(NO_MATCH_SHAKE_DURATION);
-        noMatchCard2.startShake(NO_MATCH_SHAKE_DURATION);
-        
-        // Iniciar timer y cambiar estado
-        noMatchShakeTimer = NO_MATCH_SHAKE_DURATION;
-        gameState = GameState.NO_MATCH_SHAKE;
-        
-        Gdx.app.log(TAG, "No match - shake feedback");
-    }
+        if (isMatch) {
+            audioManager.playSound(AssetPaths.SFX_MATCH);
+            firstRevealed.setMatched();
+            secondRevealed.setMatched();
+            
+            deckBonus += firstRevealed.getNekoinValue();
+            
+            pairsFoundThisGrid++;
+            pairsFoundTotal++;
+            matchesSinceShuffle++;
+            
+            Gdx.app.log(TAG, "MATCH! Pares: " + pairsFoundThisGrid + "/" + pairsPerGrid + 
+                             " | Bonus: +" + firstRevealed.getNekoinValue());
+            
+            firstRevealed = null;
+            secondRevealed = null;
+            
+            if (pairsFoundThisGrid >= pairsPerGrid) {
+                onGridComplete();
+            } else if (levelData.isShuffleEnabled() && 
+                       matchesSinceShuffle >= Constants.SHUFFLE_TRIGGER_PAIRS) {
+                triggerShuffle();
+            } else {
+                gameState = GameState.PLAYING;
+            }
+        } else {
+            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
+            
+            noMatchCard1 = firstRevealed;
+            noMatchCard2 = secondRevealed;
+            
+            noMatchCard1.startShake(NO_MATCH_SHAKE_DURATION);
+            noMatchCard2.startShake(NO_MATCH_SHAKE_DURATION);
+            
+            noMatchShakeTimer = NO_MATCH_SHAKE_DURATION;
+            gameState = GameState.NO_MATCH_SHAKE;
+            
+            Gdx.app.log(TAG, "No match - shake feedback");
+        }
     }
     
     private void onGridComplete() {
-    currentGrid++;
-    
-    if (currentGrid >= totalGrids) {
-        // ¡Victoria total!
-        onVictory();
-    } else {
-        // Siguiente grid
-        Gdx.app.log(TAG, "Grid " + currentGrid + " completado. Siguiente grid...");
-        pairsFoundThisGrid = 0;
-        matchesSinceShuffle = 0;
-        cardsRevealedAtStart = false;  // ← Asegurar que esté esta línea
-        createBoard();  // Crear nuevo tablero
-        gameState = GameState.STARTING;
-        startingTimer = STARTING_DURATION;
-    }
+        currentGrid++;
+        
+        if (currentGrid >= totalGrids) {
+            onVictory();
+        } else {
+            Gdx.app.log(TAG, "Grid " + currentGrid + " completado. Siguiente grid...");
+            pairsFoundThisGrid = 0;
+            matchesSinceShuffle = 0;
+            cardsRevealedAtStart = false;
+            createBoard();
+            gameState = GameState.STARTING;
+            startingTimer = STARTING_DURATION;
+        }
     }
     
     private void triggerShuffle() {
@@ -758,7 +684,6 @@ private Card noMatchCard2;
         
         matchesSinceShuffle = 0;
         
-        // Recolectar cartas no emparejadas
         Array<Card> unmatched = new Array<>();
         Array<Float> positionsX = new Array<>();
         Array<Float> positionsY = new Array<>();
@@ -771,20 +696,16 @@ private Card noMatchCard2;
             }
         }
         
-        // Mezclar posiciones
         for (int i = positionsX.size - 1; i > 0; i--) {
             int j = MathUtils.random(i);
-            // Swap X
             float tempX = positionsX.get(i);
             positionsX.set(i, positionsX.get(j));
             positionsX.set(j, tempX);
-            // Swap Y
             float tempY = positionsY.get(i);
             positionsY.set(i, positionsY.get(j));
             positionsY.set(j, tempY);
         }
         
-        // Asignar nuevas posiciones
         for (int i = 0; i < unmatched.size; i++) {
             unmatched.get(i).setPosition(positionsX.get(i), positionsY.get(i));
         }
@@ -798,14 +719,10 @@ private Card noMatchCard2;
         gameState = GameState.VICTORY;
         audioManager.playSound(AssetPaths.SFX_VICTORY);
         
-        // Calcular estrellas
         starsEarned = levelData.calculateStars(timeRemaining);
-        
-        // Calcular recompensa
         levelReward = levelData.calculateLevelReward(starsEarned, isFirstClear);
         totalNekoins = levelReward + deckBonus;
         
-        // Guardar progreso
         if (isFirstClear) {
             saveManager.setLevelCompleted(levelData.getGlobalId());
         }
@@ -848,43 +765,30 @@ private Card noMatchCard2;
     }
     
     private void useHint() {
-        // Por ahora solo reproduce sonido
         audioManager.playSound(AssetPaths.SFX_BUTTON);
         Gdx.app.log(TAG, "Hint usado (TODO: implementar lógica)");
-        
-        // TODO: Implementar lógica de hint
-        // - Encontrar 2 pares no revelados
-        // - Hacer shake en esas cartas
     }
     
     private void useTimeFreeze() {
-        // Por ahora solo reproduce sonido
         audioManager.playSound(AssetPaths.SFX_TIMEFREEZE);
         Gdx.app.log(TAG, "TimeFreeze usado (TODO: implementar lógica)");
-        
-        // TODO: Implementar lógica de timefreeze
-        // isTimeFrozen = true;
-        // timeFreezeRemaining = X segundos según nivel de mejora
     }
     
     private void goToNextLevel() {
         int nextGlobalId = levelData.getGlobalId() + 1;
         
-        // Verificar si hay siguiente nivel
         if (nextGlobalId >= Constants.TOTAL_LEVELS) {
             Gdx.app.log(TAG, "¡Último nivel completado!");
             game.setScreen(new HomeScreen(game));
             return;
         }
         
-        // Verificar si está desbloqueado
         if (!saveManager.isLevelUnlocked(nextGlobalId)) {
             Gdx.app.log(TAG, "Siguiente nivel no desbloqueado");
             game.setScreen(new LevelSelectScreen(game));
             return;
         }
         
-        // Ir al siguiente nivel
         LevelData nextLevel = new LevelData(nextGlobalId);
         game.setScreen(new GameScreen(game, nextLevel));
     }
@@ -895,21 +799,16 @@ private Card noMatchCard2;
     protected void draw() {
         game.getBatch().begin();
         
-        // Fondo
         if (backgroundTexture != null) {
             game.getBatch().draw(backgroundTexture, 0, 0, 
                                  Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
         }
         
-        // Tablero
         drawBoard();
-        
-        // HUD
         drawHUD();
         
         game.getBatch().end();
         
-        // Paneles (encima de todo)
         if (gameState == GameState.PAUSED) {
             drawPausePanel();
         } else if (gameState == GameState.VICTORY) {
@@ -928,17 +827,14 @@ private Card noMatchCard2;
     private void drawHUD() {
         float hudY = Constants.VIRTUAL_HEIGHT - Constants.HUD_HEIGHT;
         
-        // Fondo semi-transparente del HUD
         game.getBatch().setColor(0, 0, 0, 0.3f);
         game.getBatch().draw(cardBackTexture, 0, hudY, Constants.VIRTUAL_WIDTH, Constants.HUD_HEIGHT);
         game.getBatch().setColor(1, 1, 1, 1);
         
-        // Botones
         if (pauseButton != null) pauseButton.drawNoText(game.getBatch());
         if (hintButton != null) hintButton.drawNoText(game.getBatch());
         if (timeFreezeButton != null) timeFreezeButton.drawNoText(game.getBatch());
         
-        // Timer (derecha)
         String timeText = formatTime(timeRemaining);
         if (isTimeFrozen) {
             hudFont.setColor(Color.CYAN);
@@ -954,13 +850,11 @@ private Card noMatchCard2;
         hudFont.draw(game.getBatch(), timeText, timeX, timeY);
         hudFont.setColor(Color.WHITE);
         
-        // Nivel (centro)
         String levelText = levelData.getDifficulty().name + " " + levelData.getLocalId();
         layout.setText(hudFont, levelText);
         float levelX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
         hudFont.draw(game.getBatch(), levelText, levelX, timeY);
         
-        // Nekoins acumulados (debajo del nivel)
         if (nekoinIconTexture != null && deckBonus > 0) {
             String bonusText = "+" + deckBonus;
             layout.setText(hudFont, bonusText);
@@ -979,12 +873,10 @@ private Card noMatchCard2;
     private void drawPausePanel() {
         game.getBatch().begin();
         
-        // Overlay oscuro
         game.getBatch().setColor(0, 0, 0, 0.7f);
         game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
         game.getBatch().setColor(1, 1, 1, 1);
         
-        // Panel
         if (panelPauseTexture != null) {
             float panelWidth = Constants.VIRTUAL_WIDTH * 0.85f;
             float panelHeight = panelWidth * 1.0f;
@@ -993,14 +885,12 @@ private Card noMatchCard2;
             game.getBatch().draw(panelPauseTexture, panelX, panelY, panelWidth, panelHeight);
         }
         
-        // Título
         String title = "PAUSA";
         layout.setText(titleFont, title);
         titleFont.draw(game.getBatch(), title, 
                       (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
                       Constants.VIRTUAL_HEIGHT * 0.7f);
         
-        // Botones
         if (continueButton != null) continueButton.draw(game.getBatch(), buttonFont);
         if (restartButton != null) restartButton.draw(game.getBatch(), buttonFont);
         if (exitButton != null) exitButton.draw(game.getBatch(), buttonFont);
@@ -1011,12 +901,10 @@ private Card noMatchCard2;
     private void drawVictoryPanel() {
         game.getBatch().begin();
         
-        // Overlay
         game.getBatch().setColor(0, 0, 0, 0.7f);
         game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
         game.getBatch().setColor(1, 1, 1, 1);
         
-        // Panel
         if (panelVictoryTexture != null) {
             float panelWidth = Constants.VIRTUAL_WIDTH * 0.85f;
             float panelHeight = panelWidth * 1.2f;
@@ -1025,7 +913,6 @@ private Card noMatchCard2;
             game.getBatch().draw(panelVictoryTexture, panelX, panelY, panelWidth, panelHeight);
         }
         
-        // Título
         String title = "¡VICTORIA!";
         layout.setText(titleFont, title);
         titleFont.setColor(Color.GOLD);
@@ -1034,7 +921,6 @@ private Card noMatchCard2;
                       Constants.VIRTUAL_HEIGHT * 0.75f);
         titleFont.setColor(Color.WHITE);
         
-        // Estrellas
         String stars = "";
         for (int i = 0; i < starsEarned; i++) stars += "★ ";
         for (int i = starsEarned; i < 3; i++) stars += "☆ ";
@@ -1045,7 +931,6 @@ private Card noMatchCard2;
                       Constants.VIRTUAL_HEIGHT * 0.65f);
         titleFont.setColor(Color.WHITE);
         
-        // Estadísticas
         float statsY = Constants.VIRTUAL_HEIGHT * 0.52f;
         float lineHeight = 35f;
         
@@ -1082,7 +967,6 @@ private Card noMatchCard2;
             hudFont.setColor(Color.WHITE);
         }
         
-        // Botones
         if (nextLevelButton != null) nextLevelButton.draw(game.getBatch(), buttonFont);
         if (restartButton != null) restartButton.draw(game.getBatch(), buttonFont);
         if (exitButton != null) exitButton.draw(game.getBatch(), buttonFont);
@@ -1093,12 +977,10 @@ private Card noMatchCard2;
     private void drawDefeatPanel() {
         game.getBatch().begin();
         
-        // Overlay
         game.getBatch().setColor(0, 0, 0, 0.7f);
         game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
         game.getBatch().setColor(1, 1, 1, 1);
         
-        // Panel
         if (panelDefeatTexture != null) {
             float panelWidth = Constants.VIRTUAL_WIDTH * 0.85f;
             float panelHeight = panelWidth * 1.0f;
@@ -1107,7 +989,6 @@ private Card noMatchCard2;
             game.getBatch().draw(panelDefeatTexture, panelX, panelY, panelWidth, panelHeight);
         }
         
-        // Título
         String title = "TIEMPO AGOTADO";
         layout.setText(titleFont, title);
         titleFont.setColor(Color.RED);
@@ -1116,14 +997,12 @@ private Card noMatchCard2;
                       Constants.VIRTUAL_HEIGHT * 0.65f);
         titleFont.setColor(Color.WHITE);
         
-        // Estadísticas
         String pairsText = "Pares encontrados: " + pairsFoundTotal + "/" + (pairsPerGrid * totalGrids);
         layout.setText(hudFont, pairsText);
         hudFont.draw(game.getBatch(), pairsText, 
                     (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
                     Constants.VIRTUAL_HEIGHT * 0.5f);
         
-        // Botones
         if (restartButton != null) restartButton.draw(game.getBatch(), buttonFont);
         if (exitButton != null) exitButton.draw(game.getBatch(), buttonFont);
         
@@ -1165,8 +1044,5 @@ private Card noMatchCard2;
         if (panelDefeatTexture != null) panelDefeatTexture.dispose();
         
         if (buttonTexture != null) buttonTexture.dispose();
-        
-        // Los botones disponen sus propias texturas
-        // pero ya las liberamos arriba, así que no llamamos dispose en ellos
     }
-}
+                    }

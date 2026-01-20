@@ -18,14 +18,14 @@ public class SaveManager {
     // Keys de guardado
     private static final String KEY_NEKOINS = "nekoins";
     private static final String KEY_LEVEL_COMPLETED = "level_completed_";
-    private static final String KEY_CARD_UNLOCKED = "card_unlocked_";      // + cardId (0-34)
-    private static final String KEY_ACTIVE_CARDS = "active_cards";          // CSV de cardIds
+    private static final String KEY_CARD_UNLOCKED = "card_unlocked_";
+    private static final String KEY_ACTIVE_CARDS = "active_cards";
     private static final String KEY_HINT_LEVEL = "hint_level";
     private static final String KEY_TIMEFREEZE_LEVEL = "timefreeze_level";
     
     // Constantes
-    private static final int TOTAL_CARDS = 35;          // 5 decks × 7 cartas
-    private static final int ACTIVE_DECK_SIZE = 15;     // Cartas activas
+    private static final int TOTAL_CARDS = 35;
+    private static final int ACTIVE_DECK_SIZE = 15;
     private static final int CARDS_PER_DECK = 7;
     
     // Singleton
@@ -39,7 +39,6 @@ public class SaveManager {
         prefs = Gdx.app.getPreferences(PREFS_NAME);
         activeCards = new Array<>();
         
-        // Inicializar valores por defecto si es primera vez
         if (!prefs.contains(KEY_NEKOINS)) {
             initializeDefaults();
         } else {
@@ -48,55 +47,34 @@ public class SaveManager {
     }
     
     private void initializeDefaults() {
-    Gdx.app.log(TAG, "Inicializando progreso por defecto...");
-    
-    // Nekoins iniciales
-    prefs.putInteger(KEY_NEKOINS, 0);
-    
-    // Desbloquear solo Deck Base (7 cartas: cardId 0-6)
-    for (int i = 0; i < CARDS_PER_DECK; i++) {
-        prefs.putBoolean(KEY_CARD_UNLOCKED + i, true);
-    }
-    
-    // Configurar cartas activas (solo las 7 del Deck Base)
-    StringBuilder activeCardsStr = new StringBuilder();
-    for (int i = 0; i < ACTIVE_DECK_SIZE; i++) {
-        if (i > 0) activeCardsStr.append(",");
-        if (i < CARDS_PER_DECK) {
-            // Primeros 7 slots: cartas del Deck Base
-            activeCardsStr.append(i);
-            activeCards.add(i);
-        } else {
-            // Slots 7-14: vacíos
-            activeCardsStr.append(-1);
-            activeCards.add(-1);
-        }
-    }
-    prefs.putString(KEY_ACTIVE_CARDS, activeCardsStr.toString());
-    
-    // Powers iniciales
-    prefs.putInteger(KEY_HINT_LEVEL, 0);
-    prefs.putInteger(KEY_TIMEFREEZE_LEVEL, 0);
-    
-    prefs.flush();
-    Gdx.app.log(TAG, "Progreso inicial creado - Deck Base desbloqueado (7 cartas)");
-    }
+        Gdx.app.log(TAG, "Inicializando progreso por defecto...");
         
-        // Configurar cartas activas por defecto (las primeras 15)
+        prefs.putInteger(KEY_NEKOINS, 0);
+        
+        // Solo desbloquear Deck Base (7 cartas: cardId 0-6)
+        for (int i = 0; i < CARDS_PER_DECK; i++) {
+            prefs.putBoolean(KEY_CARD_UNLOCKED + i, true);
+        }
+        
+        // Configurar cartas activas (solo las 7 del Deck Base, resto vacío)
         StringBuilder activeCardsStr = new StringBuilder();
         for (int i = 0; i < ACTIVE_DECK_SIZE; i++) {
             if (i > 0) activeCardsStr.append(",");
-            activeCardsStr.append(i);
-            activeCards.add(i);
+            if (i < CARDS_PER_DECK) {
+                activeCardsStr.append(i);
+                activeCards.add(i);
+            } else {
+                activeCardsStr.append(-1);
+                activeCards.add(-1);
+            }
         }
         prefs.putString(KEY_ACTIVE_CARDS, activeCardsStr.toString());
         
-        // Powers iniciales
         prefs.putInteger(KEY_HINT_LEVEL, 0);
         prefs.putInteger(KEY_TIMEFREEZE_LEVEL, 0);
         
         prefs.flush();
-        Gdx.app.log(TAG, "Progreso inicial creado - 15 cartas desbloqueadas y activas");
+        Gdx.app.log(TAG, "Progreso inicial creado - Deck Base desbloqueado (7 cartas)");
     }
     
     private void loadActiveCards() {
@@ -115,7 +93,6 @@ public class SaveManager {
             }
         }
         
-        // Si no hay cartas activas válidas, reinicializar
         if (activeCards.size == 0) {
             Gdx.app.log(TAG, "No hay cartas activas, reinicializando...");
             initializeDefaults();
@@ -141,7 +118,7 @@ public class SaveManager {
         int current = getNekoins();
         prefs.putInteger(KEY_NEKOINS, current + amount);
         prefs.flush();
-        Gdx.app.log(TAG, "Nekoins: " + current + " → " + (current + amount));
+        Gdx.app.log(TAG, "Nekoins: " + current + " -> " + (current + amount));
     }
     
     public boolean spendNekoins(int amount) {
@@ -152,37 +129,24 @@ public class SaveManager {
             Gdx.app.log(TAG, "Gastados " + amount + " nekoins (quedan " + (current - amount) + ")");
             return true;
         }
-        Gdx.app.log(TAG, "No hay suficientes nekoins (tienes " + current + ", necesitas " + amount + ")");
+        Gdx.app.log(TAG, "No hay suficientes nekoins");
         return false;
     }
     
     // ==================== CARTAS INDIVIDUALES ====================
     
-    /**
-     * Verifica si una carta está desbloqueada
-     * @param cardId ID único de la carta (0-34)
-     */
     public boolean isCardUnlocked(int cardId) {
         if (cardId < 0 || cardId >= TOTAL_CARDS) return false;
         return prefs.getBoolean(KEY_CARD_UNLOCKED + cardId, false);
     }
     
-    /**
-     * Desbloquea una carta individual
-     * @param cardId ID único de la carta (0-34)
-     */
     public void unlockCard(int cardId) {
         if (cardId < 0 || cardId >= TOTAL_CARDS) return;
         prefs.putBoolean(KEY_CARD_UNLOCKED + cardId, true);
         prefs.flush();
-        Gdx.app.log(TAG, "Carta desbloqueada: " + cardId + " (Deck " + getDeckFromCardId(cardId) + 
-                         ", Card " + getCardIndexFromCardId(cardId) + ")");
+        Gdx.app.log(TAG, "Carta desbloqueada: " + cardId);
     }
     
-    /**
-     * Obtiene todas las cartas desbloqueadas
-     * @return Array con los IDs de cartas desbloqueadas
-     */
     public Array<Integer> getUnlockedCards() {
         Array<Integer> unlocked = new Array<>();
         for (int i = 0; i < TOTAL_CARDS; i++) {
@@ -193,9 +157,6 @@ public class SaveManager {
         return unlocked;
     }
     
-    /**
-     * Cuenta cuántas cartas están desbloqueadas
-     */
     public int getUnlockedCardCount() {
         int count = 0;
         for (int i = 0; i < TOTAL_CARDS; i++) {
@@ -204,34 +165,19 @@ public class SaveManager {
         return count;
     }
     
-    // ==================== CARTAS ACTIVAS (15 slots) ====================
+    // ==================== CARTAS ACTIVAS ====================
     
-    /**
-     * Obtiene las cartas activas actuales
-     * @return Array con los IDs de las 15 cartas activas
-     */
     public Array<Integer> getActiveCards() {
         return new Array<>(activeCards);
     }
     
-    /**
-     * Verifica si una carta está en el mazo activo
-     * @param cardId ID de la carta
-     */
     public boolean isCardActive(int cardId) {
         return activeCards.contains(cardId, false);
     }
     
-    /**
-     * Establece una carta en un slot específico
-     * @param slotIndex Índice del slot (0-14)
-     * @param cardId ID de la carta a colocar (-1 para vaciar)
-     * @return true si se pudo colocar
-     */
     public boolean setActiveCardSlot(int slotIndex, int cardId) {
         if (slotIndex < 0 || slotIndex >= ACTIVE_DECK_SIZE) return false;
         
-        // Vaciar slot
         if (cardId == -1) {
             if (slotIndex < activeCards.size) {
                 activeCards.set(slotIndex, -1);
@@ -241,19 +187,16 @@ public class SaveManager {
             return false;
         }
         
-        // Verificar que la carta esté desbloqueada
         if (!isCardUnlocked(cardId)) {
-            Gdx.app.log(TAG, "Carta " + cardId + " no está desbloqueada");
+            Gdx.app.log(TAG, "Carta " + cardId + " no esta desbloqueada");
             return false;
         }
         
-        // Verificar que no esté duplicada
         if (isCardActive(cardId)) {
-            Gdx.app.log(TAG, "Carta " + cardId + " ya está activa (no duplicados)");
+            Gdx.app.log(TAG, "Carta " + cardId + " ya esta activa");
             return false;
         }
         
-        // Colocar carta
         while (activeCards.size <= slotIndex) {
             activeCards.add(-1);
         }
@@ -264,9 +207,6 @@ public class SaveManager {
         return true;
     }
     
-    /**
-     * Intercambia dos slots
-     */
     public void swapActiveCards(int slot1, int slot2) {
         if (slot1 < 0 || slot1 >= activeCards.size) return;
         if (slot2 < 0 || slot2 >= activeCards.size) return;
@@ -277,11 +217,6 @@ public class SaveManager {
         saveActiveCards();
     }
     
-    /**
-     * Quita una carta del mazo activo
-     * @param cardId ID de la carta a quitar
-     * @return Índice del slot donde estaba (-1 si no estaba)
-     */
     public int removeActiveCard(int cardId) {
         int index = activeCards.indexOf(cardId, false);
         if (index >= 0) {
@@ -292,19 +227,10 @@ public class SaveManager {
         return index;
     }
     
-    /**
-     * Agrega una carta al primer slot vacío
-     * @param cardId ID de la carta
-     * @return Índice del slot donde se colocó (-1 si no hay espacio o error)
-     */
     public int addActiveCard(int cardId) {
-        // Verificar desbloqueada
         if (!isCardUnlocked(cardId)) return -1;
-        
-        // Verificar no duplicada
         if (isCardActive(cardId)) return -1;
         
-        // Buscar primer slot vacío
         for (int i = 0; i < ACTIVE_DECK_SIZE; i++) {
             if (i >= activeCards.size || activeCards.get(i) == -1) {
                 setActiveCardSlot(i, cardId);
@@ -312,12 +238,9 @@ public class SaveManager {
             }
         }
         
-        return -1; // No hay espacio
+        return -1;
     }
     
-    /**
-     * Obtiene cuántos slots activos están ocupados
-     */
     public int getActiveCardCount() {
         int count = 0;
         for (int i = 0; i < activeCards.size; i++) {
@@ -338,30 +261,18 @@ public class SaveManager {
     
     // ==================== UTILIDADES DE CARTAS ====================
     
-    /**
-     * Convierte cardId a índice de deck (0-4)
-     */
     public static int getDeckFromCardId(int cardId) {
         return cardId / CARDS_PER_DECK;
     }
     
-    /**
-     * Convierte cardId a índice dentro del deck (0-6)
-     */
     public static int getCardIndexFromCardId(int cardId) {
         return cardId % CARDS_PER_DECK;
     }
     
-    /**
-     * Convierte deck + cardIndex a cardId global
-     */
     public static int getCardId(int deckIndex, int cardIndex) {
         return deckIndex * CARDS_PER_DECK + cardIndex;
     }
     
-    /**
-     * Obtiene el valor en nekoins de una carta
-     */
     public int getCardNekoinValue(int cardId) {
         int deckIndex = getDeckFromCardId(cardId);
         int[] values = {1, 2, 3, 5, 7};
@@ -390,31 +301,20 @@ public class SaveManager {
         return isLevelCompleted(levelId - 1);
     }
     
-    // ==================== DECK ACTIVO (LEGACY - para compatibilidad) ====================
+    // ==================== LEGACY ====================
     
-    /**
-     * @deprecated Usar getActiveCards() en su lugar
-     */
     public int getCurrentDeck() {
-        // Retornar el deck de la primera carta activa
         if (activeCards.size > 0 && activeCards.get(0) >= 0) {
             return getDeckFromCardId(activeCards.get(0));
         }
         return 0;
     }
     
-    /**
-     * @deprecated Usar sistema de cartas individuales
-     */
     public void setCurrentDeck(int deckIndex) {
         // Legacy - no hacer nada
     }
     
-    /**
-     * @deprecated Usar isCardUnlocked()
-     */
     public boolean isDeckUnlocked(int deckIndex) {
-        // Un deck está "desbloqueado" si al menos una carta está desbloqueada
         int startId = deckIndex * CARDS_PER_DECK;
         for (int i = 0; i < CARDS_PER_DECK; i++) {
             if (isCardUnlocked(startId + i)) return true;
@@ -450,7 +350,7 @@ public class SaveManager {
         prefs.clear();
         prefs.flush();
         activeCards.clear();
-        Gdx.app.log(TAG, "⚠️ Progreso borrado");
+        Gdx.app.log(TAG, "Progreso borrado");
         initializeDefaults();
     }
     
@@ -471,4 +371,4 @@ public class SaveManager {
             getActiveCardCount()
         );
     }
-}
+                    }

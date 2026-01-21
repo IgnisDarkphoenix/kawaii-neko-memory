@@ -11,6 +11,7 @@ import com.darkphoenixteam.kawaiinekomemory.config.Constants;
 import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 import com.darkphoenixteam.kawaiinekomemory.screens.DeckEditorScreen;
+import com.darkphoenixteam.kawaiinekomemory.screens.BazaarScreen;
 
 /**
  * Pantalla principal del menú
@@ -162,9 +163,9 @@ public class HomeScreen extends BaseScreen {
     break;
                 
             case "BAZAAR":
-                Gdx.app.log("HomeScreen", "Navegando a Bazaar...");
-                // TODO: game.setScreen(new BazaarScreen(game));
-                break;
+    Gdx.app.log("HomeScreen", "Navegando a Bazaar...");
+    game.setScreen(new BazaarScreen(game));
+    break;
                 
             case "LOGROS":
                 Gdx.app.log("HomeScreen", "Navegando a Achievements...");

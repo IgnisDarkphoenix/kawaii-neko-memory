@@ -18,6 +18,9 @@ public class BazaarScreen extends BaseScreen {
     
     private static final String TAG = "BazaarScreen";
     
+    private static final float BUTTON_COOLDOWN = 0.5f;
+    private float buttonCooldownTimer = 0f;
+    
     private static final int GACHA_COST = 50;
     private static final int HINT_BASE_COST = 20;
     private static final int TIMEFREEZE_BASE_COST = 10;
@@ -74,7 +77,7 @@ public class BazaarScreen extends BaseScreen {
         loadAssets();
         createButtons();
         
-        Gdx.app.log(TAG, "Inicializado - Nekoins: " + saveManager.getNekoins());
+        Gdx.app.log(TAG, "Nekoins: " + saveManager.getNekoins());
     }
     
     private void loadAssets() {
@@ -82,7 +85,7 @@ public class BazaarScreen extends BaseScreen {
             patternTexture = new Texture(Gdx.files.internal(AssetPaths.PATTERN_BAZAAR));
             patternTexture.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
         } catch (Exception e) {
-            Gdx.app.error(TAG, "Error cargando pattern bazaar");
+            Gdx.app.error(TAG, "Error pattern");
         }
         
         try {
@@ -92,15 +95,14 @@ public class BazaarScreen extends BaseScreen {
             gachaIconTexture = new Texture(Gdx.files.internal(AssetPaths.ICON_GACHA));
             cardBackTexture = new Texture(Gdx.files.internal(AssetPaths.CARD_BACK));
         } catch (Exception e) {
-            Gdx.app.error(TAG, "Error cargando iconos");
+            Gdx.app.error(TAG, "Error iconos");
         }
         
         for (int deck = 0; deck < AssetPaths.TOTAL_DECKS; deck++) {
             for (int card = 0; card < AssetPaths.CARDS_PER_DECK; card++) {
                 String path = AssetPaths.getCardPath(deck, card);
                 try {
-                    Texture tex = new Texture(Gdx.files.internal(path));
-                    allCardTextures.add(tex);
+                    allCardTextures.add(new Texture(Gdx.files.internal(path)));
                 } catch (Exception e) {
                     allCardTextures.add(null);
                 }
@@ -119,16 +121,14 @@ public class BazaarScreen extends BaseScreen {
             Texture btnTex = new Texture(Gdx.files.internal(AssetPaths.BTN_PLAY));
             
             hintBuyButton = new SimpleButton(btnTex, "COMPRAR", 
-                centerX - buttonWidth - 10f, hintY, 
-                buttonWidth, buttonHeight);
+                centerX - buttonWidth - 10f, hintY, buttonWidth, buttonHeight);
             hintBuyButton.setOnClick(this::buyHint);
             
             hintUpgradeButton = new SimpleButton(btnTex, "MEJORAR",
-                centerX + 10f, hintY,
-                buttonWidth, buttonHeight);
+                centerX + 10f, hintY, buttonWidth, buttonHeight);
             hintUpgradeButton.setOnClick(this::upgradeHint);
         } catch (Exception e) {
-            Gdx.app.error(TAG, "Error creando botones Hint");
+            Gdx.app.error(TAG, "Error botones Hint");
         }
         
         float freezeY = Constants.VIRTUAL_HEIGHT - 370f;
@@ -137,59 +137,60 @@ public class BazaarScreen extends BaseScreen {
             Texture btnTex = new Texture(Gdx.files.internal(AssetPaths.BTN_PLAY));
             
             timefreezeBuyButton = new SimpleButton(btnTex, "COMPRAR",
-                centerX - buttonWidth - 10f, freezeY,
-                buttonWidth, buttonHeight);
+                centerX - buttonWidth - 10f, freezeY, buttonWidth, buttonHeight);
             timefreezeBuyButton.setOnClick(this::buyTimeFreeze);
             
             timefreezeUpgradeButton = new SimpleButton(btnTex, "MEJORAR",
-                centerX + 10f, freezeY,
-                buttonWidth, buttonHeight);
+                centerX + 10f, freezeY, buttonWidth, buttonHeight);
             timefreezeUpgradeButton.setOnClick(this::upgradeTimeFreeze);
         } catch (Exception e) {
-            Gdx.app.error(TAG, "Error creando botones TimeFreeze");
+            Gdx.app.error(TAG, "Error botones TimeFreeze");
         }
         
         float gachaY = Constants.VIRTUAL_HEIGHT - 540f;
         
         try {
             Texture btnTex = new Texture(Gdx.files.internal(AssetPaths.BTN_BAZAAR));
-            
             gachaButton = new SimpleButton(btnTex, "ABRIR x" + GACHA_COST,
-                centerX - buttonWidth / 2f, gachaY,
-                buttonWidth, buttonHeight);
+                centerX - buttonWidth / 2f, gachaY, buttonWidth, buttonHeight);
             gachaButton.setOnClick(this::openGacha);
         } catch (Exception e) {
-            Gdx.app.error(TAG, "Error creando boton Gacha");
+            Gdx.app.error(TAG, "Error boton Gacha");
         }
         
         try {
             Texture backTex = new Texture(Gdx.files.internal(AssetPaths.BTN_BACK));
             float backWidth = Constants.VIRTUAL_WIDTH * 0.4f;
             float backHeight = backWidth * 0.35f;
-            
             backButton = new SimpleButton(backTex, "VOLVER",
-                (Constants.VIRTUAL_WIDTH - backWidth) / 2f, 20f,
-                backWidth, backHeight);
+                (Constants.VIRTUAL_WIDTH - backWidth) / 2f, 20f, backWidth, backHeight);
             backButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 game.setScreen(new HomeScreen(game));
             });
         } catch (Exception e) {
-            Gdx.app.error(TAG, "Error creando boton back");
+            Gdx.app.error(TAG, "Error boton back");
         }
     }
     
     private void buyHint() {
-        int cost = getHintCost();
+        if (buttonCooldownTimer > 0) return;
+        buttonCooldownTimer = BUTTON_COOLDOWN;
+        
+        int cost = HINT_BASE_COST;
         if (saveManager.spendNekoins(cost)) {
             saveManager.upgradeHint();
             audioManager.playSound(AssetPaths.SFX_COIN);
+            Gdx.app.log(TAG, "Hint comprado");
         } else {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
         }
     }
     
     private void upgradeHint() {
+        if (buttonCooldownTimer > 0) return;
+        buttonCooldownTimer = BUTTON_COOLDOWN;
+        
         int level = saveManager.getHintLevel();
         if (level <= 0 || level >= MAX_POWER_LEVEL) {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
@@ -199,22 +200,30 @@ public class BazaarScreen extends BaseScreen {
         if (saveManager.spendNekoins(cost)) {
             saveManager.upgradeHint();
             audioManager.playSound(AssetPaths.SFX_MATCH);
+            Gdx.app.log(TAG, "Hint mejorado a nivel " + saveManager.getHintLevel());
         } else {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
         }
     }
     
     private void buyTimeFreeze() {
-        int cost = getTimeFreezeCost();
+        if (buttonCooldownTimer > 0) return;
+        buttonCooldownTimer = BUTTON_COOLDOWN;
+        
+        int cost = TIMEFREEZE_BASE_COST;
         if (saveManager.spendNekoins(cost)) {
             saveManager.upgradeTimeFreeze();
             audioManager.playSound(AssetPaths.SFX_COIN);
+            Gdx.app.log(TAG, "TimeFreeze comprado");
         } else {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
         }
     }
     
     private void upgradeTimeFreeze() {
+        if (buttonCooldownTimer > 0) return;
+        buttonCooldownTimer = BUTTON_COOLDOWN;
+        
         int level = saveManager.getTimeFreezeLevel();
         if (level <= 0 || level >= MAX_POWER_LEVEL) {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
@@ -224,45 +233,42 @@ public class BazaarScreen extends BaseScreen {
         if (saveManager.spendNekoins(cost)) {
             saveManager.upgradeTimeFreeze();
             audioManager.playSound(AssetPaths.SFX_MATCH);
+            Gdx.app.log(TAG, "TimeFreeze mejorado a nivel " + saveManager.getTimeFreezeLevel());
         } else {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
         }
     }
     
     private void openGacha() {
+        if (buttonCooldownTimer > 0) return;
+        buttonCooldownTimer = BUTTON_COOLDOWN;
+        
         Array<Integer> locked = getLockedCards();
         if (locked.size == 0) {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
+            Gdx.app.log(TAG, "Todas las cartas desbloqueadas");
             return;
         }
+        
         if (saveManager.spendNekoins(GACHA_COST)) {
             int randomIndex = MathUtils.random(0, locked.size - 1);
             int cardId = locked.get(randomIndex);
+            
             saveManager.unlockCard(cardId);
+            
             audioManager.playSound(AssetPaths.SFX_VICTORY);
             lastUnlockedCardId = cardId;
             showingGachaResult = true;
             gachaResultTimer = GACHA_RESULT_DURATION;
+            
+            Gdx.app.log(TAG, "Gacha: desbloqueada carta " + cardId);
         } else {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
         }
     }
     
-    private int getHintCost() {
-        int level = saveManager.getHintLevel();
-        if (level == 0) return HINT_BASE_COST;
-        return getUpgradeCost(level);
-    }
-    
-    private int getTimeFreezeCost() {
-        int level = saveManager.getTimeFreezeLevel();
-        if (level == 0) return TIMEFREEZE_BASE_COST;
-        return getUpgradeCost(level);
-    }
-    
     private int getUpgradeCost(int currentLevel) {
-        float cost = UPGRADE_BASE_COST * (float) Math.pow(UPGRADE_MULTIPLIER, currentLevel - 1);
-        return (int) cost;
+        return (int)(UPGRADE_BASE_COST * Math.pow(UPGRADE_MULTIPLIER, currentLevel - 1));
     }
     
     private Array<Integer> getLockedCards() {
@@ -277,9 +283,13 @@ public class BazaarScreen extends BaseScreen {
     
     @Override
     protected void update(float delta) {
+        if (buttonCooldownTimer > 0) {
+            buttonCooldownTimer -= delta;
+        }
+        
         if (showingGachaResult) {
             gachaResultTimer -= delta;
-            if (gachaResultTimer <= 0) {
+            if (gachaResultTimer <= 0 || Gdx.input.justTouched()) {
                 showingGachaResult = false;
                 lastUnlockedCardId = -1;
             }
@@ -322,8 +332,7 @@ public class BazaarScreen extends BaseScreen {
             timefreezeUpgradeButton.draw(game.getBatch(), buttonFont);
         }
         
-        Array<Integer> locked = getLockedCards();
-        if (gachaButton != null && locked.size > 0) {
+        if (gachaButton != null && getLockedCards().size > 0) {
             gachaButton.draw(game.getBatch(), buttonFont);
         }
         
@@ -371,36 +380,20 @@ public class BazaarScreen extends BaseScreen {
         float sectionY = Constants.VIRTUAL_HEIGHT - 130f;
         
         if (hintIconTexture != null) {
-            float iconSize = 50f;
-            game.getBatch().draw(hintIconTexture, 20f, sectionY - iconSize - 10f, iconSize, iconSize);
+            game.getBatch().draw(hintIconTexture, 20f, sectionY - 60f, 50f, 50f);
         }
         
-        String title = "PISTA";
-        layout.setText(buttonFont, title);
-        buttonFont.draw(game.getBatch(), title, 80f, sectionY);
+        buttonFont.draw(game.getBatch(), "PISTA", 80f, sectionY);
         
         int level = saveManager.getHintLevel();
-        String statusText;
-        String costText;
+        String status = level == 0 ? "No comprado" : 
+                       level >= MAX_POWER_LEVEL ? "MAX" : "Nivel " + level;
+        String cost = level == 0 ? "Costo: " + HINT_BASE_COST : 
+                     level >= MAX_POWER_LEVEL ? "" : "Mejora: " + getUpgradeCost(level);
         
-        if (level == 0) {
-            statusText = "No comprado";
-            costText = "Costo: " + HINT_BASE_COST;
-            smallFont.setColor(Color.GRAY);
-        } else if (level >= MAX_POWER_LEVEL) {
-            statusText = "Nivel MAX";
-            costText = "Completado";
-            smallFont.setColor(Color.GREEN);
-        } else {
-            statusText = "Nivel " + level + "/" + MAX_POWER_LEVEL;
-            costText = "Mejora: " + getUpgradeCost(level);
-            smallFont.setColor(Color.WHITE);
-        }
-        
-        layout.setText(smallFont, statusText);
-        smallFont.draw(game.getBatch(), statusText, 80f, sectionY - 25f);
-        layout.setText(smallFont, costText);
-        smallFont.draw(game.getBatch(), costText, 80f, sectionY - 45f);
+        smallFont.setColor(level == 0 ? Color.GRAY : level >= MAX_POWER_LEVEL ? Color.GREEN : Color.WHITE);
+        smallFont.draw(game.getBatch(), status, 80f, sectionY - 25f);
+        smallFont.draw(game.getBatch(), cost, 80f, sectionY - 45f);
         smallFont.setColor(Color.WHITE);
     }
     
@@ -408,36 +401,20 @@ public class BazaarScreen extends BaseScreen {
         float sectionY = Constants.VIRTUAL_HEIGHT - 300f;
         
         if (timefreezeIconTexture != null) {
-            float iconSize = 50f;
-            game.getBatch().draw(timefreezeIconTexture, 20f, sectionY - iconSize - 10f, iconSize, iconSize);
+            game.getBatch().draw(timefreezeIconTexture, 20f, sectionY - 60f, 50f, 50f);
         }
         
-        String title = "CONGELAR TIEMPO";
-        layout.setText(buttonFont, title);
-        buttonFont.draw(game.getBatch(), title, 80f, sectionY);
+        buttonFont.draw(game.getBatch(), "CONGELAR", 80f, sectionY);
         
         int level = saveManager.getTimeFreezeLevel();
-        String statusText;
-        String costText;
+        String status = level == 0 ? "No comprado" : 
+                       level >= MAX_POWER_LEVEL ? "MAX" : "Nivel " + level;
+        String cost = level == 0 ? "Costo: " + TIMEFREEZE_BASE_COST : 
+                     level >= MAX_POWER_LEVEL ? "" : "Mejora: " + getUpgradeCost(level);
         
-        if (level == 0) {
-            statusText = "No comprado";
-            costText = "Costo: " + TIMEFREEZE_BASE_COST;
-            smallFont.setColor(Color.GRAY);
-        } else if (level >= MAX_POWER_LEVEL) {
-            statusText = "Nivel MAX";
-            costText = "Completado";
-            smallFont.setColor(Color.CYAN);
-        } else {
-            statusText = "Nivel " + level + "/" + MAX_POWER_LEVEL;
-            costText = "Mejora: " + getUpgradeCost(level);
-            smallFont.setColor(Color.WHITE);
-        }
-        
-        layout.setText(smallFont, statusText);
-        smallFont.draw(game.getBatch(), statusText, 80f, sectionY - 25f);
-        layout.setText(smallFont, costText);
-        smallFont.draw(game.getBatch(), costText, 80f, sectionY - 45f);
+        smallFont.setColor(level == 0 ? Color.GRAY : level >= MAX_POWER_LEVEL ? Color.CYAN : Color.WHITE);
+        smallFont.draw(game.getBatch(), status, 80f, sectionY - 25f);
+        smallFont.draw(game.getBatch(), cost, 80f, sectionY - 45f);
         smallFont.setColor(Color.WHITE);
     }
     
@@ -446,89 +423,59 @@ public class BazaarScreen extends BaseScreen {
         float centerX = Constants.VIRTUAL_WIDTH / 2f;
         
         if (gachaIconTexture != null) {
-            float iconSize = 60f;
-            game.getBatch().draw(gachaIconTexture, centerX - iconSize / 2f, sectionY - 10f, iconSize, iconSize);
+            game.getBatch().draw(gachaIconTexture, centerX - 30f, sectionY - 10f, 60f, 60f);
         }
         
-        String title = "COFRE GACHAPON";
+        String title = "GACHAPON";
         layout.setText(buttonFont, title);
-        buttonFont.draw(game.getBatch(), title,
-            (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
-            sectionY + 70f);
+        buttonFont.draw(game.getBatch(), title, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, sectionY + 70f);
         
-        Array<Integer> locked = getLockedCards();
-        int unlocked = 35 - locked.size;
-        String statusText = "Cartas: " + unlocked + "/35";
-        
-        if (locked.size == 0) {
-            smallFont.setColor(Color.GREEN);
-            statusText = "Todas desbloqueadas";
-        } else {
-            smallFont.setColor(Color.WHITE);
-        }
-        
-        layout.setText(smallFont, statusText);
-        smallFont.draw(game.getBatch(), statusText,
-            (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
-            sectionY - 70f);
+        int unlocked = saveManager.getUnlockedCardCount();
+        String status = unlocked >= 35 ? "Completo!" : "Cartas: " + unlocked + "/35";
+        smallFont.setColor(unlocked >= 35 ? Color.GREEN : Color.WHITE);
+        layout.setText(smallFont, status);
+        smallFont.draw(game.getBatch(), status, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, sectionY - 70f);
         smallFont.setColor(Color.WHITE);
     }
     
     private void drawGachaResult() {
         game.getBatch().begin();
         
-        game.getBatch().setColor(0, 0, 0, 0.8f);
+        game.getBatch().setColor(0, 0, 0, 0.85f);
         if (cardBackTexture != null) {
             game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
         }
         game.getBatch().setColor(1, 1, 1, 1);
         
-        String title = "NUEVA CARTA";
-        layout.setText(titleFont, title);
         titleFont.setColor(Color.GOLD);
-        titleFont.draw(game.getBatch(), title,
-            (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
-            Constants.VIRTUAL_HEIGHT * 0.75f);
+        String title = "NUEVA CARTA!";
+        layout.setText(titleFont, title);
+        titleFont.draw(game.getBatch(), title, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, Constants.VIRTUAL_HEIGHT * 0.78f);
         titleFont.setColor(Color.WHITE);
         
         if (lastUnlockedCardId >= 0 && lastUnlockedCardId < allCardTextures.size) {
-            Texture cardTex = allCardTextures.get(lastUnlockedCardId);
-            if (cardTex != null) {
-                float cardWidth = 150f;
-                float cardHeight = cardWidth * 1.4f;
-                float cardX = (Constants.VIRTUAL_WIDTH - cardWidth) / 2f;
-                float cardY = (Constants.VIRTUAL_HEIGHT - cardHeight) / 2f;
-                game.getBatch().draw(cardTex, cardX, cardY, cardWidth, cardHeight);
+            Texture tex = allCardTextures.get(lastUnlockedCardId);
+            if (tex != null) {
+                float w = 140f;
+                float h = w * 1.4f;
+                game.getBatch().draw(tex, (Constants.VIRTUAL_WIDTH - w) / 2f, (Constants.VIRTUAL_HEIGHT - h) / 2f, w, h);
             }
         }
         
         int deck = SaveManager.getDeckFromCardId(lastUnlockedCardId);
-        String[] deckNames = {"Base", "1 Estrella", "2 Estrellas", "3 Estrellas", "Corazon"};
-        int[] values = {1, 2, 3, 5, 7};
+        String[] names = {"Base", "Estrella", "2 Estrellas", "3 Estrellas", "Corazon"};
+        int[] vals = {1, 2, 3, 5, 7};
+        String info = names[deck] + " | +" + vals[deck] + " Nekoin/par";
+        layout.setText(buttonFont, info);
+        buttonFont.draw(game.getBatch(), info, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, Constants.VIRTUAL_HEIGHT * 0.25f);
         
-        String deckName = (deck >= 0 && deck < deckNames.length) ? deckNames[deck] : "???";
-        int value = (deck >= 0 && deck < values.length) ? values[deck] : 1;
-        
-        String infoText = deckName + " | +" + value + " Nekoin/par";
-        layout.setText(buttonFont, infoText);
-        buttonFont.draw(game.getBatch(), infoText,
-            (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
-            Constants.VIRTUAL_HEIGHT * 0.28f);
-        
-        String tapText = "Toca para continuar";
-        layout.setText(smallFont, tapText);
         smallFont.setColor(Color.GRAY);
-        smallFont.draw(game.getBatch(), tapText,
-            (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
-            Constants.VIRTUAL_HEIGHT * 0.15f);
+        String tap = "Toca para continuar";
+        layout.setText(smallFont, tap);
+        smallFont.draw(game.getBatch(), tap, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, Constants.VIRTUAL_HEIGHT * 0.12f);
         smallFont.setColor(Color.WHITE);
         
         game.getBatch().end();
-        
-        if (Gdx.input.justTouched()) {
-            showingGachaResult = false;
-            lastUnlockedCardId = -1;
-        }
     }
     
     @Override
@@ -543,7 +490,6 @@ public class BazaarScreen extends BaseScreen {
         for (Texture tex : allCardTextures) {
             if (tex != null) tex.dispose();
         }
-        allCardTextures.clear();
         
         if (backButton != null) backButton.dispose();
         if (hintBuyButton != null) hintBuyButton.dispose();

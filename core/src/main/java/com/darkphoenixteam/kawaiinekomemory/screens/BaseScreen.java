@@ -10,8 +10,7 @@ import com.darkphoenixteam.kawaiinekomemory.KawaiiNekoMemory;
 import com.darkphoenixteam.kawaiinekomemory.config.Constants;
 
 /**
- * Pantalla base que todas las demás pantallas extienden
- * Incluye sistema de input delay para evitar ghost clicks en transiciones
+ * Pantalla base con sistema de input delay y debounce global
  * 
  * @author DarkphoenixTeam
  */
@@ -20,21 +19,21 @@ public abstract class BaseScreen implements Screen {
     private static final String TAG = "BaseScreen";
     
     // === INPUT DELAY CONFIG ===
-    /** Tiempo de espera antes de aceptar input al entrar a una pantalla */
     private static final float INPUT_DELAY_DURATION = 0.3f;
-    
-    /** Timer del delay de input */
     private float inputDelayTimer = 0f;
-    
-    /** Indica si el input está habilitado */
     private boolean inputEnabled = false;
+    
+    // === DEBOUNCE GLOBAL ===
+    private static final float GLOBAL_TAP_COOLDOWN = 0.2f;
+    private float tapCooldownTimer = 0f;
+    private boolean wasTouchedLastFrame = false;
     
     // === CORE ===
     protected final KawaiiNekoMemory game;
     protected final OrthographicCamera camera;
     protected final Viewport viewport;
     
-    // Color de fondo por defecto (rosa pastel kawaii)
+    // Color de fondo
     protected float bgRed = 0.98f;
     protected float bgGreen = 0.90f;
     protected float bgBlue = 0.95f;
@@ -56,19 +55,11 @@ public abstract class BaseScreen implements Screen {
         );
         camera.update();
         
-        // Iniciar con input deshabilitado
         this.inputDelayTimer = INPUT_DELAY_DURATION;
         this.inputEnabled = false;
     }
     
-    /**
-     * Actualizar lógica del juego
-     */
     protected abstract void update(float delta);
-    
-    /**
-     * Dibujar en pantalla
-     */
     protected abstract void draw();
     
     @Override
@@ -81,6 +72,20 @@ public abstract class BaseScreen implements Screen {
                 Gdx.app.log(TAG, "Input habilitado para: " + this.getClass().getSimpleName());
             }
         }
+        
+        // === ACTUALIZAR DEBOUNCE GLOBAL ===
+        if (tapCooldownTimer > 0) {
+            tapCooldownTimer -= delta;
+        }
+        
+        // Detectar nuevo toque (anti multi-tap)
+        boolean isTouched = Gdx.input.isTouched();
+        if (isTouched && !wasTouchedLastFrame) {
+            if (tapCooldownTimer <= 0) {
+                tapCooldownTimer = GLOBAL_TAP_COOLDOWN;
+            }
+        }
+        wasTouchedLastFrame = isTouched;
         
         // Limpiar pantalla
         Gdx.gl.glClearColor(bgRed, bgGreen, bgBlue, 1f);
@@ -107,12 +112,10 @@ public abstract class BaseScreen implements Screen {
     
     @Override
     public void show() {
-        Gdx.app.log(TAG, "Show: " + this.getClass().getSimpleName() + 
-                         " (input delay: " + (int)(INPUT_DELAY_DURATION * 1000) + "ms)");
-        
-        // Reiniciar delay cada vez que se muestra la pantalla
+        Gdx.app.log(TAG, "Show: " + this.getClass().getSimpleName());
         inputDelayTimer = INPUT_DELAY_DURATION;
         inputEnabled = false;
+        tapCooldownTimer = GLOBAL_TAP_COOLDOWN;
     }
     
     @Override
@@ -129,46 +132,40 @@ public abstract class BaseScreen implements Screen {
     
     // === MÉTODOS PARA SUBCLASES ===
     
-    /**
-     * Verifica si el input está habilitado (pasó el delay de transición)
-     * Las subclases deben verificar esto antes de procesar input
-     * 
-     * @return true si el input está habilitado
-     */
     protected boolean isInputEnabled() {
         return inputEnabled;
     }
     
     /**
-     * Obtiene el tiempo restante del delay de input
-     * 
-     * @return segundos restantes (0 si ya está habilitado)
+     * Verifica si se puede procesar un nuevo toque
+     * Combina input delay + debounce global
      */
+    protected boolean canProcessTouch() {
+        return inputEnabled && tapCooldownTimer <= 0;
+    }
+    
+    /**
+     * Consume el toque actual (resetea cooldown)
+     */
+    protected void consumeTouch() {
+        tapCooldownTimer = GLOBAL_TAP_COOLDOWN;
+    }
+    
     protected float getInputDelayRemaining() {
         return Math.max(0, inputDelayTimer);
     }
     
-    /**
-     * Fuerza la habilitación inmediata del input
-     * Usar con precaución
-     */
     protected void forceEnableInput() {
         inputDelayTimer = 0;
         inputEnabled = true;
     }
     
-    /**
-     * Cambiar color de fondo
-     */
     protected void setBackgroundColor(float r, float g, float b) {
         this.bgRed = r;
         this.bgGreen = g;
         this.bgBlue = b;
     }
     
-    /**
-     * Obtener viewport para detección de toques
-     */
     public Viewport getViewport() {
         return viewport;
     }

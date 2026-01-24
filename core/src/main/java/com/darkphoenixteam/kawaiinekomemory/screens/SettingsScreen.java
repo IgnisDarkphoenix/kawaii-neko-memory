@@ -12,47 +12,31 @@ import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleSlider;
 
-/**
- * Pantalla de ajustes
- * Controles de volumen para música y efectos
- * 
- * @author DarkphoenixTeam
- */
 public class SettingsScreen extends BaseScreen {
     
     private static final String TAG = "SettingsScreen";
     
-    // Fonts
     private BitmapFont titleFont;
     private BitmapFont labelFont;
     private BitmapFont buttonFont;
     private GlyphLayout layout;
     
-    // Sliders
     private SimpleSlider musicSlider;
     private SimpleSlider soundSlider;
     
-    // Texturas de sliders
     private Texture sliderBgTexture;
     private Texture sliderFillTexture;
     private Texture sliderKnobTexture;
     
-    // Botón volver
     private SimpleButton backButton;
     private Texture backButtonTexture;
     
-    // Background
     private Texture patternTexture;
     
-    // Audio Manager
     private AudioManager audioManager;
-    // Mantener música del menú
-AudioManager.getInstance().playMusic(AssetPaths.MUSIC_MENU, true);
     
-    // Vector para conversión de coordenadas
     private final Vector2 touchPoint = new Vector2();
     
-    // === LAYOUT CONSTANTS ===
     private static final float SLIDER_WIDTH_PERCENT = 0.55f;
     private static final float SLIDER_MAX_HEIGHT = 50f;
     private static final float LABEL_SPACING = 15f;
@@ -70,6 +54,8 @@ AudioManager.getInstance().playMusic(AssetPaths.MUSIC_MENU, true);
         layout = new GlyphLayout();
         
         audioManager = AudioManager.getInstance();
+        
+        audioManager.playMusic(AssetPaths.MUSIC_MENU, true);
         
         loadAssets();
         createUI();
@@ -89,20 +75,14 @@ AudioManager.getInstance().playMusic(AssetPaths.MUSIC_MENU, true);
             sliderBgTexture = new Texture(Gdx.files.internal(AssetPaths.SLIDER_BACKGROUND));
             sliderFillTexture = new Texture(Gdx.files.internal(AssetPaths.SLIDER_FILL));
             sliderKnobTexture = new Texture(Gdx.files.internal(AssetPaths.SLIDER_KNOB));
-            
-            Gdx.app.log(TAG, String.format(
-                "Sliders cargados - BG: %dx%d, Knob: %dx%d",
-                sliderBgTexture.getWidth(), sliderBgTexture.getHeight(),
-                sliderKnobTexture.getWidth(), sliderKnobTexture.getHeight()
-            ));
         } catch (Exception e) {
             Gdx.app.error(TAG, "Error cargando sliders: " + e.getMessage());
         }
         
         try {
-            backButtonTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_SETTINGS));
+            backButtonTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_BACK));
         } catch (Exception e) {
-            Gdx.app.error(TAG, "Error cargando botón: " + e.getMessage());
+            Gdx.app.error(TAG, "Error cargando boton: " + e.getMessage());
         }
     }
     
@@ -111,7 +91,6 @@ AudioManager.getInstance().playMusic(AssetPaths.MUSIC_MENU, true);
         float sliderWidth = Constants.VIRTUAL_WIDTH * SLIDER_WIDTH_PERCENT;
         float sliderX = centerX - (sliderWidth / 2f);
         
-        // Slider de música
         float musicSliderY = Constants.VIRTUAL_HEIGHT * 0.55f;
         
         if (sliderBgTexture != null) {
@@ -131,7 +110,6 @@ AudioManager.getInstance().playMusic(AssetPaths.MUSIC_MENU, true);
             });
         }
         
-        // Slider de efectos
         float sliderHeight = (musicSlider != null) ? musicSlider.getBounds().height : SLIDER_MAX_HEIGHT;
         float soundSliderY = musicSliderY - SECTION_SPACING - sliderHeight;
         
@@ -155,7 +133,6 @@ AudioManager.getInstance().playMusic(AssetPaths.MUSIC_MENU, true);
             });
         }
         
-        // Botón volver
         if (backButtonTexture != null) {
             float buttonWidth = Constants.VIRTUAL_WIDTH * BUTTON_WIDTH_PERCENT;
             float aspectRatio = (float) backButtonTexture.getHeight() / backButtonTexture.getWidth();
@@ -173,7 +150,7 @@ AudioManager.getInstance().playMusic(AssetPaths.MUSIC_MENU, true);
             );
             
             backButton.setOnClick(() -> {
-                Gdx.app.log(TAG, "Volviendo al menú principal");
+                Gdx.app.log(TAG, "Volviendo al menu principal");
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 game.setScreen(new HomeScreen(game));
             });
@@ -182,21 +159,16 @@ AudioManager.getInstance().playMusic(AssetPaths.MUSIC_MENU, true);
     
     @Override
     protected void update(float delta) {
-        // === VERIFICAR INPUT DELAY ===
-        // Solo procesar input si el delay ya pasó
         if (!isInputEnabled()) {
-            return;  // Ignorar todo input durante el delay
+            return;
         }
         
-        // Detectar toque
         boolean isTouched = Gdx.input.isTouched();
         
-        // Convertir coordenadas
         if (isTouched) {
             viewport.unproject(touchPoint.set(Gdx.input.getX(), Gdx.input.getY()));
         }
         
-        // Actualizar sliders
         if (musicSlider != null) {
             musicSlider.update(touchPoint, isTouched);
         }
@@ -205,7 +177,6 @@ AudioManager.getInstance().playMusic(AssetPaths.MUSIC_MENU, true);
             soundSlider.update(touchPoint, isTouched);
         }
         
-        // Actualizar botón
         if (backButton != null) {
             backButton.update(viewport);
         }
@@ -215,7 +186,6 @@ AudioManager.getInstance().playMusic(AssetPaths.MUSIC_MENU, true);
     protected void draw() {
         game.getBatch().begin();
         
-        // Pattern de fondo
         if (patternTexture != null) {
             game.getBatch().setColor(1f, 1f, 1f, 0.3f);
             int tileSize = 512;
@@ -227,24 +197,20 @@ AudioManager.getInstance().playMusic(AssetPaths.MUSIC_MENU, true);
             game.getBatch().setColor(1f, 1f, 1f, 1f);
         }
         
-        // Título
         String title = "AJUSTES";
         layout.setText(titleFont, title);
         float titleX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
         float titleY = Constants.VIRTUAL_HEIGHT - 80f;
         titleFont.draw(game.getBatch(), title, titleX, titleY);
         
-        // Sección música
         if (musicSlider != null) {
-            drawSliderSection("MÚSICA", musicSlider);
+            drawSliderSection("MUSICA", musicSlider);
         }
         
-        // Sección efectos
         if (soundSlider != null) {
             drawSliderSection("EFECTOS", soundSlider);
         }
         
-        // Botón volver
         if (backButton != null) {
             backButton.draw(game.getBatch(), buttonFont);
         }
@@ -256,17 +222,14 @@ AudioManager.getInstance().playMusic(AssetPaths.MUSIC_MENU, true);
         float sliderHeight = slider.getBounds().height;
         float knobSize = slider.getKnobSize();
         
-        // Etiqueta
         layout.setText(labelFont, label);
         float labelX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
         float knobOverhang = (knobSize - sliderHeight) / 2f;
         float labelY = slider.getBounds().y + sliderHeight + knobOverhang + LABEL_SPACING + layout.height;
         labelFont.draw(game.getBatch(), label, labelX, labelY);
         
-        // Slider
         slider.draw(game.getBatch());
         
-        // Porcentaje
         String percent = slider.getPercentage() + "%";
         layout.setText(labelFont, percent);
         float percentX = slider.getBounds().x + slider.getBounds().width + knobSize / 2f + 10f;

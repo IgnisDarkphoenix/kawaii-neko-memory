@@ -1,12 +1,12 @@
 package com.darkphoenixteam.kawaiinekomemory.screens;
 
-import com.darkphoenixteam.kawaiinekomemory.screens.GameScreen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.darkphoenixteam.kawaiinekomemory.KawaiiNekoMemory;
 import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
@@ -16,19 +16,12 @@ import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
 import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 
-/**
- * Pantalla de selección de niveles - REESCRITA
- * Navegación por botones de flecha, sin scroll táctil
- * 
- * @author DarkphoenixTeam
- */
 public class LevelSelectScreen extends BaseScreen {
     
     private static final String TAG = "LevelSelectScreen";
     
-    // === LAYOUT CONSTANTS ===
-    private static final float HEADER_HEIGHT = 120f;           // Espacio para tabs
-    private static final float FOOTER_HEIGHT = 120f;           // Espacio para botón atrás
+    private static final float HEADER_HEIGHT = 120f;
+    private static final float FOOTER_HEIGHT = 120f;
     private static final float TAB_HEIGHT = 50f;
     private static final float TAB_Y = Constants.VIRTUAL_HEIGHT - HEADER_HEIGHT + 20f;
     
@@ -42,38 +35,31 @@ public class LevelSelectScreen extends BaseScreen {
     
     private static final float ARROW_BUTTON_SIZE = 60f;
     
-    // Fonts
     private BitmapFont titleFont;
     private BitmapFont tabFont;
     private BitmapFont levelFont;
     private GlyphLayout layout;
     
-    // Background
     private Texture patternTexture;
     
-    // Tabs de dificultad
     private Array<SimpleButton> tabButtons;
     private LevelData.Difficulty currentDifficulty;
     
-    // Grid de niveles
-    private Array<SimpleButton> levelButtons;
     private Array<LevelData> currentLevels;
     
-    // Navegación (flechas)
     private SimpleButton arrowUpButton;
     private SimpleButton arrowDownButton;
     private int currentPage = 0;
-    private int maxPages = 1;  // Por ahora 1 página = todas las 10 filas visibles
+    private int maxPages = 1;
     
-    // Botón volver
     private SimpleButton backButton;
     
-    // ShapeRenderer para niveles
     private ShapeRenderer shapeRenderer;
     
-    // Managers
     private AudioManager audioManager;
     private SaveManager saveManager;
+    
+    private final Vector2 touchPoint = new Vector2();
     
     public LevelSelectScreen(KawaiiNekoMemory game) {
         super(game);
@@ -92,28 +78,25 @@ public class LevelSelectScreen extends BaseScreen {
         
         currentDifficulty = LevelData.Difficulty.EASY;
         
+        audioManager.playMusic(AssetPaths.MUSIC_MENU, true);
+        
         loadAssets();
         createTabs();
         createNavigationButtons();
         createBackButton();
         loadLevelsForCurrentDifficulty();
         
-        Gdx.app.log(TAG, "Inicializado - Layout sin scroll táctil");
+        Gdx.app.log(TAG, "Inicializado");
     }
-    
-    // ==================== CARGA DE ASSETS ====================
     
     private void loadAssets() {
         try {
             patternTexture = new Texture(Gdx.files.internal(AssetPaths.PATTERN_LEVELS));
             patternTexture.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-            Gdx.app.log(TAG, "Pattern cargado");
         } catch (Exception e) {
             Gdx.app.log(TAG, "Pattern no encontrado");
         }
     }
-    
-    // ==================== CREACIÓN DE UI ====================
     
     private void createTabs() {
         tabButtons = new Array<>();
@@ -127,7 +110,7 @@ public class LevelSelectScreen extends BaseScreen {
             AssetPaths.TAB_HARD
         };
         
-        String[] tabLabels = {"FÁCIL", "NORMAL", "AVANZADO", "DIFÍCIL"};
+        String[] tabLabels = {"FACIL", "NORMAL", "AVANZADO", "DIFICIL"};
         
         for (int i = 0; i < 4; i++) {
             final int index = i;
@@ -140,7 +123,7 @@ public class LevelSelectScreen extends BaseScreen {
                     tabLabels[i],
                     tabX,
                     TAB_Y,
-                    tabWidth - 4f,  // Pequeño margen entre tabs
+                    tabWidth - 4f,
                     TAB_HEIGHT
                 );
                 
@@ -148,19 +131,15 @@ public class LevelSelectScreen extends BaseScreen {
                 tabButtons.add(tab);
                 
             } catch (Exception e) {
-                Gdx.app.error(TAG, "Error cargando tab " + i + ": " + e.getMessage());
+                Gdx.app.error(TAG, "Error cargando tab " + i);
             }
         }
-        
-        Gdx.app.log(TAG, "Tabs creados: " + tabButtons.size);
     }
     
     private void createNavigationButtons() {
-        // Botones de flecha a la derecha del grid
         float arrowX = Constants.VIRTUAL_WIDTH - ARROW_BUTTON_SIZE - 10f;
         float gridCenterY = (Constants.VIRTUAL_HEIGHT - GRID_MARGIN_TOP - GRID_MARGIN_BOTTOM) / 2f + GRID_MARGIN_BOTTOM;
         
-        // Flecha arriba
         try {
             Texture upTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_ARROW_UP));
             arrowUpButton = new SimpleButton(
@@ -171,14 +150,11 @@ public class LevelSelectScreen extends BaseScreen {
                 ARROW_BUTTON_SIZE,
                 ARROW_BUTTON_SIZE
             );
-            
             arrowUpButton.setOnClick(() -> changePage(-1));
-            
         } catch (Exception e) {
-            Gdx.app.error(TAG, "Error cargando flecha arriba: " + e.getMessage());
+            Gdx.app.error(TAG, "Error cargando flecha arriba");
         }
         
-        // Flecha abajo
         try {
             Texture downTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_ARROW_DOWN));
             arrowDownButton = new SimpleButton(
@@ -189,11 +165,9 @@ public class LevelSelectScreen extends BaseScreen {
                 ARROW_BUTTON_SIZE,
                 ARROW_BUTTON_SIZE
             );
-            
             arrowDownButton.setOnClick(() -> changePage(1));
-            
         } catch (Exception e) {
-            Gdx.app.error(TAG, "Error cargando flecha abajo: " + e.getMessage());
+            Gdx.app.error(TAG, "Error cargando flecha abajo");
         }
     }
     
@@ -216,22 +190,17 @@ public class LevelSelectScreen extends BaseScreen {
             );
             
             backButton.setOnClick(() -> {
-                Gdx.app.log(TAG, "Volviendo al menú principal");
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 game.setScreen(new HomeScreen(game));
             });
-            
         } catch (Exception e) {
-            Gdx.app.error(TAG, "Error cargando botón back: " + e.getMessage());
+            Gdx.app.error(TAG, "Error cargando boton back");
         }
     }
-    
-    // ==================== LÓGICA DE NIVELES ====================
     
     private void loadLevelsForCurrentDifficulty() {
         currentLevels = new Array<>();
         
-        // Obtener niveles de la dificultad actual (0-49, 50-99, 100-149, 150-199)
         int startId = currentDifficulty.index * 50;
         int endId = startId + 50;
         
@@ -243,9 +212,7 @@ public class LevelSelectScreen extends BaseScreen {
         }
         
         currentPage = 0;
-        maxPages = 1; // Por ahora 1 página muestra todos los 50 niveles
-        
-        Gdx.app.log(TAG, "Cargados " + currentLevels.size + " niveles de " + currentDifficulty.name);
+        maxPages = 1;
     }
     
     private void switchDifficulty(LevelData.Difficulty newDifficulty) {
@@ -253,7 +220,6 @@ public class LevelSelectScreen extends BaseScreen {
             currentDifficulty = newDifficulty;
             loadLevelsForCurrentDifficulty();
             audioManager.playSound(AssetPaths.SFX_BUTTON);
-            Gdx.app.log(TAG, "Cambiado a dificultad: " + newDifficulty.name);
         }
     }
     
@@ -262,25 +228,17 @@ public class LevelSelectScreen extends BaseScreen {
         if (newPage >= 0 && newPage < maxPages) {
             currentPage = newPage;
             audioManager.playSound(AssetPaths.SFX_BUTTON);
-            Gdx.app.log(TAG, "Página: " + currentPage + "/" + maxPages);
         }
     }
     
     private void onLevelClick(LevelData level) {
-    if (level.isUnlocked()) {
-        audioManager.playSound(AssetPaths.SFX_BUTTON);
-        Gdx.app.log(TAG, "Nivel seleccionado: " + level.getGlobalId() + 
-                         " (" + level.getDifficulty().name + " " + level.getLocalId() + ")");
-        
-        // ¡Ahora sí navegamos a GameScreen!
-        game.setScreen(new GameScreen(game, level));
-    } else {
-        audioManager.playSound(AssetPaths.SFX_NO_MATCH);  // Sonido de "bloqueado"
-        Gdx.app.log(TAG, "Nivel bloqueado: " + level.getGlobalId());
+        if (level.isUnlocked()) {
+            audioManager.playSound(AssetPaths.SFX_BUTTON);
+            game.setScreen(new GameScreen(game, level));
+        } else {
+            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
+        }
     }
-    }
-    
-    // ==================== UPDATE ====================
     
     @Override
     protected void update(float delta) {
@@ -288,12 +246,10 @@ public class LevelSelectScreen extends BaseScreen {
             return;
         }
         
-        // Actualizar tabs
         for (SimpleButton tab : tabButtons) {
             tab.update(viewport);
         }
         
-        // Actualizar flechas
         if (arrowUpButton != null) {
             arrowUpButton.update(viewport);
         }
@@ -301,12 +257,10 @@ public class LevelSelectScreen extends BaseScreen {
             arrowDownButton.update(viewport);
         }
         
-        // Actualizar botón volver
         if (backButton != null) {
             backButton.update(viewport);
         }
         
-        // Detectar clicks en niveles
         if (Gdx.input.justTouched()) {
             checkLevelClick();
         }
@@ -317,12 +271,10 @@ public class LevelSelectScreen extends BaseScreen {
         float touchY = Gdx.input.getY();
         viewport.unproject(touchPoint.set(touchX, touchY));
         
-        // Calcular dimensiones del grid
         float gridWidth = GRID_COLS * (LEVEL_BUTTON_SIZE + LEVEL_BUTTON_SPACING);
         float gridStartX = (Constants.VIRTUAL_WIDTH - gridWidth) / 2f;
         float gridStartY = Constants.VIRTUAL_HEIGHT - GRID_MARGIN_TOP;
         
-        // Verificar cada nivel visible
         for (int i = 0; i < currentLevels.size; i++) {
             int row = i / GRID_COLS;
             int col = i % GRID_COLS;
@@ -338,15 +290,10 @@ public class LevelSelectScreen extends BaseScreen {
         }
     }
     
-    private final com.badlogic.gdx.math.Vector2 touchPoint = new com.badlogic.gdx.math.Vector2();
-    
-    // ==================== DRAW ====================
-    
     @Override
     protected void draw() {
         game.getBatch().begin();
         
-        // Pattern de fondo
         if (patternTexture != null) {
             game.getBatch().setColor(1f, 1f, 1f, 0.3f);
             int tileSize = 512;
@@ -358,7 +305,6 @@ public class LevelSelectScreen extends BaseScreen {
             game.getBatch().setColor(1f, 1f, 1f, 1f);
         }
         
-        // Título
         String title = "SELECCIONA NIVEL";
         layout.setText(titleFont, title);
         titleFont.draw(game.getBatch(), title, 
@@ -367,15 +313,12 @@ public class LevelSelectScreen extends BaseScreen {
         
         game.getBatch().end();
         
-        // === TABS ===
         drawTabs();
         
-        // === GRID DE NIVELES ===
         game.getBatch().begin();
         drawLevelGrid();
         game.getBatch().end();
         
-        // === NAVEGACIÓN ===
         game.getBatch().begin();
         if (arrowUpButton != null) {
             arrowUpButton.drawNoText(game.getBatch());
@@ -385,7 +328,6 @@ public class LevelSelectScreen extends BaseScreen {
         }
         game.getBatch().end();
         
-        // === BOTÓN VOLVER ===
         game.getBatch().begin();
         if (backButton != null) {
             backButton.draw(game.getBatch(), tabFont);
@@ -399,7 +341,6 @@ public class LevelSelectScreen extends BaseScreen {
         for (int i = 0; i < tabButtons.size; i++) {
             SimpleButton tab = tabButtons.get(i);
             
-            // Resaltar tab activo
             if (LevelData.Difficulty.values()[i] == currentDifficulty) {
                 game.getBatch().setColor(1f, 1f, 1f, 1f);
             } else {
@@ -429,7 +370,6 @@ public class LevelSelectScreen extends BaseScreen {
             
             game.getBatch().end();
             
-            // Dibujar fondo del botón de nivel
             shapeRenderer.setProjectionMatrix(camera.combined);
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
             
@@ -448,7 +388,6 @@ public class LevelSelectScreen extends BaseScreen {
             
             game.getBatch().begin();
             
-            // Número del nivel
             String levelNum = String.valueOf(level.getLocalId());
             layout.setText(levelFont, levelNum);
             
@@ -459,8 +398,6 @@ public class LevelSelectScreen extends BaseScreen {
             levelFont.setColor(Color.WHITE);
         }
     }
-    
-    // ==================== DISPOSE ====================
     
     @Override
     public void dispose() {

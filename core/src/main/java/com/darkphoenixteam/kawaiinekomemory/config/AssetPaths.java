@@ -23,7 +23,7 @@ public final class AssetPaths {
     public static final String PATTERN_LEVELS = "images/backgrounds/pattern_levels.png";
     public static final String PATTERN_BAZAAR = "images/backgrounds/pattern_bazaar.png";
     
-    // === BUTTONS ===
+    // === BUTTONS (512x256) ===
     public static final String BTN_PLAY = "images/ui/buttons/btn_play.png";
     public static final String BTN_DECK = "images/ui/buttons/btn_deck.png";
     public static final String BTN_BAZAAR = "images/ui/buttons/btn_bazaar.png";
@@ -31,6 +31,12 @@ public final class AssetPaths {
     public static final String BTN_SETTINGS = "images/ui/buttons/btn_settings.png";
     public static final String BTN_LEVEL = "images/ui/buttons/btn_level.png";
     public static final String BTN_BACK = "images/ui/buttons/btn_back.png";
+    public static final String BTN_EMPTY = "images/ui/buttons/btn_empty.png";
+    public static final String BTN_CONFIRM = "images/ui/buttons/btn_confirm.png";
+    public static final String BTN_CANCEL = "images/ui/buttons/btn_cancel.png";
+    
+    // Aspect ratio para botones 512x256
+    public static final float BTN_ASPECT_RATIO = 256f / 512f;  // 0.5
     
     // Botones de navegación (flechas)
     public static final String BTN_ARROW_UP = "images/ui/buttons/btn_arrow_up.png";

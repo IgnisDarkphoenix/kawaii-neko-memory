@@ -78,6 +78,8 @@ public class DeckEditorScreen extends BaseScreen {
     // ==================== MANAGERS ====================
     
     private AudioManager audioManager;
+    // Mantener música del menú
+audioManager.playMusic(AssetPaths.MUSIC_MENU, true);
     private SaveManager saveManager;
     private ShapeRenderer shapeRenderer;
     private final Vector2 touchPoint = new Vector2();

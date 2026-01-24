@@ -46,6 +46,8 @@ public class SettingsScreen extends BaseScreen {
     
     // Audio Manager
     private AudioManager audioManager;
+    // Mantener música del menú
+AudioManager.getInstance().playMusic(AssetPaths.MUSIC_MENU, true);
     
     // Vector para conversión de coordenadas
     private final Vector2 touchPoint = new Vector2();

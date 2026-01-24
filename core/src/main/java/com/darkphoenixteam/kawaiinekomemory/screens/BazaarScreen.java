@@ -72,6 +72,8 @@ public class BazaarScreen extends BaseScreen {
     // ==================== MANAGERS ====================
     
     private AudioManager audioManager;
+    // Música de bazaar
+audioManager.playMusic(AssetPaths.MUSIC_BAZAAR, true);
     private SaveManager saveManager;
     
     // ==================== CONSTRUCTOR ====================

@@ -10,8 +10,6 @@ import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
 import com.darkphoenixteam.kawaiinekomemory.config.Constants;
 import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
-import com.darkphoenixteam.kawaiinekomemory.screens.DeckEditorScreen;
-import com.darkphoenixteam.kawaiinekomemory.screens.BazaarScreen;
 
 /**
  * Pantalla principal del menú
@@ -20,33 +18,23 @@ import com.darkphoenixteam.kawaiinekomemory.screens.BazaarScreen;
  */
 public class HomeScreen extends BaseScreen {
     
-    // UI
     private BitmapFont titleFont;
     private BitmapFont buttonFont;
     private BitmapFont smallFont;
     private GlyphLayout layout;
     
-    // Background
     private Texture patternTexture;
-    
-    // Botones
     private Array<SimpleButton> buttons;
-    
-    // Audio
     private AudioManager audioManager;
     
-    // === LAYOUT CONFIG ===
     private static final float TITLE_ZONE_PERCENT = 0.35f;
     private static final float BOTTOM_MARGIN = 40f;
     private static final float BUTTON_SPACING = 10f;
     private static final int BUTTON_COUNT = 5;
-    private static final float BUTTON_ASPECT_RATIO = 0.5f;
     private static final float MAX_BUTTON_WIDTH_PERCENT = 0.60f;
     
-    // Calculados
     private float buttonWidth;
     private float buttonHeight;
-    
     private float animTimer = 0f;
     
     public HomeScreen(KawaiiNekoMemory game) {
@@ -57,17 +45,19 @@ public class HomeScreen extends BaseScreen {
         titleFont = game.getFontManager().getTitleFont();
         buttonFont = game.getFontManager().getButtonFont();
         smallFont = game.getFontManager().getSmallFont();
-        
         layout = new GlyphLayout();
         buttons = new Array<>();
         
         audioManager = AudioManager.getInstance();
         
+        // SIEMPRE iniciar música del menú al entrar
+        audioManager.playMusic(AssetPaths.MUSIC_MENU, true);
+        
         calculateButtonDimensions();
         loadAssets();
         createButtons();
         
-        Gdx.app.log("HomeScreen", "Inicializado - Botones: " + buttonWidth + "x" + buttonHeight);
+        Gdx.app.log("HomeScreen", "Inicializado");
     }
     
     private void calculateButtonDimensions() {
@@ -79,16 +69,13 @@ public class HomeScreen extends BaseScreen {
         float totalSpacing = BUTTON_SPACING * (BUTTON_COUNT - 1);
         float heightForButtons = availableHeight - totalSpacing;
         float maxButtonHeight = heightForButtons / BUTTON_COUNT;
-        float widthFromHeight = maxButtonHeight / BUTTON_ASPECT_RATIO;
+        
+        // Usar aspect ratio de los nuevos botones (512x256 = 0.5)
+        float widthFromHeight = maxButtonHeight / AssetPaths.BTN_ASPECT_RATIO;
         float maxWidth = viewportWidth * MAX_BUTTON_WIDTH_PERCENT;
         
         buttonWidth = Math.min(widthFromHeight, maxWidth);
-        buttonHeight = buttonWidth * BUTTON_ASPECT_RATIO;
-        
-        Gdx.app.log("HomeScreen", String.format(
-            "Layout: disponible=%.0f, final=%.0fx%.0f",
-            availableHeight, buttonWidth, buttonHeight
-        ));
+        buttonHeight = buttonWidth * AssetPaths.BTN_ASPECT_RATIO;
     }
     
     private void loadAssets() {
@@ -107,7 +94,6 @@ public class HomeScreen extends BaseScreen {
         float buttonX = (viewportWidth - buttonWidth) / 2f;
         float titleZoneHeight = viewportHeight * TITLE_ZONE_PERCENT;
         float startY = viewportHeight - titleZoneHeight - buttonHeight;
-        
         float currentY = startY;
         
         String[][] buttonData = {
@@ -126,7 +112,6 @@ public class HomeScreen extends BaseScreen {
             if (btn != null) {
                 final String logText = buttonText;
                 btn.setOnClick(() -> {
-                    Gdx.app.log("HomeScreen", ">>> " + logText + " presionado <<<");
                     handleButtonClick(logText);
                 });
                 buttons.add(btn);
@@ -134,8 +119,6 @@ public class HomeScreen extends BaseScreen {
             
             currentY -= (buttonHeight + BUTTON_SPACING);
         }
-        
-        Gdx.app.log("HomeScreen", "Botones creados: " + buttons.size);
     }
     
     private SimpleButton createButton(String texturePath, String text, float x, float y) {
@@ -153,27 +136,19 @@ public class HomeScreen extends BaseScreen {
         
         switch (buttonName) {
             case "JUGAR":
-    Gdx.app.log("HomeScreen", "Navegando a LevelSelect...");
-    game.setScreen(new LevelSelectScreen(game));
-    break;
-                
-            case "MAZO":
-    Gdx.app.log("HomeScreen", "Navegando a Deck...");
-    game.setScreen(new DeckEditorScreen(game));
-    break;
-                
-            case "BAZAAR":
-    Gdx.app.log("HomeScreen", "Navegando a Bazaar...");
-    game.setScreen(new BazaarScreen(game));
-    break;
-                
-            case "LOGROS":
-                Gdx.app.log("HomeScreen", "Navegando a Achievements...");
-                // TODO: game.setScreen(new AchievementsScreen(game));
+                game.setScreen(new LevelSelectScreen(game));
                 break;
-                
+            case "MAZO":
+                game.setScreen(new DeckEditorScreen(game));
+                break;
+            case "BAZAAR":
+                game.setScreen(new BazaarScreen(game));
+                break;
+            case "LOGROS":
+                // TODO: game.setScreen(new AchievementsScreen(game));
+                Gdx.app.log("HomeScreen", "Achievements pendiente");
+                break;
             case "AJUSTES":
-                Gdx.app.log("HomeScreen", "Navegando a Settings...");
                 game.setScreen(new SettingsScreen(game));
                 break;
         }
@@ -183,8 +158,6 @@ public class HomeScreen extends BaseScreen {
     protected void update(float delta) {
         animTimer += delta;
         
-        // === VERIFICAR INPUT DELAY ===
-        // Solo procesar input de botones si el delay ya pasó
         if (isInputEnabled()) {
             for (SimpleButton button : buttons) {
                 button.update(viewport);
@@ -196,7 +169,6 @@ public class HomeScreen extends BaseScreen {
     protected void draw() {
         game.getBatch().begin();
         
-        // Pattern de fondo
         if (patternTexture != null) {
             game.getBatch().setColor(1f, 1f, 1f, 0.3f);
             int tileSize = 512;
@@ -208,7 +180,6 @@ public class HomeScreen extends BaseScreen {
             game.getBatch().setColor(1f, 1f, 1f, 1f);
         }
         
-        // Título
         String title = "Kawaii Neko Memory";
         layout.setText(titleFont, title);
         float titleX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
@@ -216,12 +187,10 @@ public class HomeScreen extends BaseScreen {
         float titleY = titleZoneCenter + (layout.height / 2f);
         titleFont.draw(game.getBatch(), title, titleX, titleY);
         
-        // Botones
         for (SimpleButton button : buttons) {
             button.draw(game.getBatch(), buttonFont);
         }
         
-        // Versión
         String version = "v1.0.0 - DarkphoenixTeam";
         layout.setText(smallFont, version);
         float verX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
@@ -233,7 +202,6 @@ public class HomeScreen extends BaseScreen {
     @Override
     public void dispose() {
         if (patternTexture != null) patternTexture.dispose();
-        
         for (SimpleButton button : buttons) {
             button.dispose();
         }

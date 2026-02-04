@@ -22,6 +22,7 @@ import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
  * Maneja el tablero de cartas, timer, puntuación y paneles de resultado
  * 
  * @author DarkphoenixTeam
+ * @version 1.1 - Powers implementados
  */
 public class GameScreen extends BaseScreen {
     
@@ -74,6 +75,17 @@ public class GameScreen extends BaseScreen {
     private int deckBonus;
     private boolean isTimeFrozen;
     private float timeFreezeRemaining;
+    
+    // ==================== POWERS ====================
+    
+    private int hintUsesLeft;
+    private int timeFreezeUsesLeft;
+    private int hintsUsedThisGame;
+    private int timeFreezeUsedThisGame;
+    
+    private static final int MAX_HINTS_PER_GAME = 5;
+    private static final int MAX_TIMEFREEZE_PER_GAME = 5;
+    private static final float TIMEFREEZE_DURATION = 5.0f;
     
     // ==================== HUD ====================
     
@@ -161,6 +173,13 @@ public class GameScreen extends BaseScreen {
         this.moveCount = 0;
         this.deckBonus = 0;
         this.isTimeFrozen = false;
+        this.timeFreezeRemaining = 0f;
+        
+        // Cargar uses de powers
+        this.hintUsesLeft = saveManager.getHintUses();
+        this.timeFreezeUsesLeft = saveManager.getTimeFreezeUses();
+        this.hintsUsedThisGame = 0;
+        this.timeFreezeUsedThisGame = 0;
         
         this.gameState = GameState.STARTING;
         this.startingTimer = STARTING_DURATION;
@@ -175,6 +194,7 @@ public class GameScreen extends BaseScreen {
         
         Gdx.app.log(TAG, "=== NIVEL INICIADO ===");
         Gdx.app.log(TAG, levelData.toString());
+        Gdx.app.log(TAG, "Powers: Hint=" + hintUsesLeft + " | TimeFreeze=" + timeFreezeUsesLeft);
     }
     
     // ==================== CARGA DE ASSETS ====================
@@ -231,29 +251,50 @@ public class GameScreen extends BaseScreen {
         }
     }
     
+    /**
+     * Carga las texturas de las cartas activas individuales
+     * FIX: Ahora usa las 15 cartas seleccionadas en DeckEditor
+     */
     private void loadDeckTextures() {
-        int currentDeck = saveManager.getCurrentDeck();
+        Array<Integer> activeCards = saveManager.getActiveCards();
         int cardsNeeded = levelData.getUniqueCardsRequired();
         
-        Gdx.app.log(TAG, "Cargando " + cardsNeeded + " cartas del deck " + currentDeck);
+        Gdx.app.log(TAG, "Cargando " + cardsNeeded + " cartas del mazo activo");
         
-        for (int i = 0; i < cardsNeeded && i < AssetPaths.CARDS_PER_DECK; i++) {
-            String path = AssetPaths.getCardPath(currentDeck, i);
-            try {
-                Texture tex = new Texture(Gdx.files.internal(path));
-                cardFrontTextures.add(tex);
-            } catch (Exception e) {
-                Gdx.app.error(TAG, "Error cargando carta: " + path);
-                cardFrontTextures.add(null);
+        // Filtrar cartas válidas (no -1)
+        Array<Integer> validCardIds = new Array<>();
+        for (int i = 0; i < activeCards.size; i++) {
+            int cardId = activeCards.get(i);
+            if (cardId >= 0) {
+                validCardIds.add(cardId);
             }
         }
         
-        while (cardFrontTextures.size < cardsNeeded) {
-            int index = cardFrontTextures.size % AssetPaths.CARDS_PER_DECK;
-            if (index < cardFrontTextures.size) {
-                cardFrontTextures.add(cardFrontTextures.get(index));
-            } else {
-                break;
+        // Verificar que hay suficientes cartas
+        if (validCardIds.size < cardsNeeded) {
+            Gdx.app.error(TAG, "¡No hay suficientes cartas activas! Necesarias: " + 
+                          cardsNeeded + ", Disponibles: " + validCardIds.size);
+            // Rellenar con las que hay (repetir si es necesario)
+            while (validCardIds.size < cardsNeeded && validCardIds.size > 0) {
+                validCardIds.add(validCardIds.get(validCardIds.size % validCardIds.size));
+            }
+        }
+        
+        // Cargar texturas de las cartas activas individuales
+        for (int i = 0; i < cardsNeeded; i++) {
+            int cardId = validCardIds.get(i);
+            int deck = SaveManager.getDeckFromCardId(cardId);
+            int cardIndex = SaveManager.getCardIndexFromCardId(cardId);
+            String path = AssetPaths.getCardPath(deck, cardIndex);
+            
+            try {
+                Texture tex = new Texture(Gdx.files.internal(path));
+                cardFrontTextures.add(tex);
+                Gdx.app.log(TAG, "Carta " + i + ": cardId=" + cardId + 
+                            " (deck" + deck + "/char" + cardIndex + ")");
+            } catch (Exception e) {
+                Gdx.app.error(TAG, "Error cargando carta: " + path);
+                cardFrontTextures.add(null);
             }
         }
         
@@ -262,6 +303,10 @@ public class GameScreen extends BaseScreen {
     
     // ==================== CREACIÓN DEL TABLERO ====================
     
+    /**
+     * Crea el tablero de juego
+     * FIX: Ahora asigna valores correctos de nekoin por carta individual
+     */
     private void createBoard() {
         cards.clear();
         
@@ -298,13 +343,16 @@ public class GameScreen extends BaseScreen {
         float startX = boardX + actualMarginX;
         float startY = boardY + actualMarginY;
         
+        // Crear pares de IDs
         Array<Integer> cardIds = new Array<>();
         for (int i = 0; i < pairs; i++) {
             cardIds.add(i);
             cardIds.add(i);
         }
-        
         cardIds.shuffle();
+        
+        // Obtener cartas activas para valores de nekoin
+        Array<Integer> activeCardIds = saveManager.getActiveCards();
         
         int cardIndex = 0;
         for (int row = 0; row < rows; row++) {
@@ -314,15 +362,35 @@ public class GameScreen extends BaseScreen {
                 float x = startX + col * (cardWidth + actualMarginX);
                 float y = startY + (rows - 1 - row) * (cardHeight + actualMarginY);
                 
-                int id = cardIds.get(cardIndex);
-                Texture frontTex = (id < cardFrontTextures.size) ? 
-                                   cardFrontTextures.get(id) : null;
+                int pairId = cardIds.get(cardIndex);
+                Texture frontTex = (pairId < cardFrontTextures.size) ? 
+                                   cardFrontTextures.get(pairId) : null;
                 
-                Card card = new Card(id, frontTex, cardBackTexture, x, y, cardWidth, cardHeight);
+                Card card = new Card(pairId, frontTex, cardBackTexture, x, y, cardWidth, cardHeight);
                 
-                int deckIndex = saveManager.getCurrentDeck();
-                card.setDeckIndex(deckIndex);
-                card.setNekoinValue(Constants.NEKOIN_PER_DECK[deckIndex]);
+                // Obtener el cardId REAL de la carta activa
+                int realCardId = -1;
+                int validIndex = 0;
+                for (int i = 0; i < activeCardIds.size && validIndex <= pairId; i++) {
+                    if (activeCardIds.get(i) >= 0) {
+                        if (validIndex == pairId) {
+                            realCardId = activeCardIds.get(i);
+                            break;
+                        }
+                        validIndex++;
+                    }
+                }
+                
+                if (realCardId >= 0) {
+                    int deckIndex = SaveManager.getDeckFromCardId(realCardId);
+                    card.setDeckIndex(deckIndex);
+                    card.setCardIndex(SaveManager.getCardIndexFromCardId(realCardId));
+                    card.setNekoinValue(saveManager.getCardNekoinValue(realCardId));
+                } else {
+                    // Fallback
+                    card.setDeckIndex(0);
+                    card.setNekoinValue(1);
+                }
                 
                 cards.add(card);
                 cardIndex++;
@@ -509,6 +577,7 @@ public class GameScreen extends BaseScreen {
     }
     
     private void updatePlaying(float delta) {
+        // Actualizar timer
         if (!isTimeFrozen) {
             timeRemaining -= delta;
             if (timeRemaining <= 0) {
@@ -520,6 +589,7 @@ public class GameScreen extends BaseScreen {
             timeFreezeRemaining -= delta;
             if (timeFreezeRemaining <= 0) {
                 isTimeFrozen = false;
+                timeFreezeRemaining = 0f;
                 Gdx.app.log(TAG, "TimeFreeze terminado");
             }
         }
@@ -713,6 +783,111 @@ public class GameScreen extends BaseScreen {
         gameState = GameState.SHUFFLING;
     }
     
+    // ==================== POWERS ====================
+    
+    /**
+     * Usa TimeFreeze: Congela el timer por 5 segundos
+     */
+    private void useTimeFreeze() {
+        if (timeFreezeUsesLeft <= 0) {
+            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
+            Gdx.app.log(TAG, "TimeFreeze: Sin usos disponibles");
+            return;
+        }
+        
+        if (timeFreezeUsedThisGame >= MAX_TIMEFREEZE_PER_GAME) {
+            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
+            Gdx.app.log(TAG, "TimeFreeze: Límite por partida alcanzado (" + MAX_TIMEFREEZE_PER_GAME + ")");
+            return;
+        }
+        
+        if (isTimeFrozen) {
+            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
+            Gdx.app.log(TAG, "TimeFreeze: Ya está activo");
+            return;
+        }
+        
+        isTimeFrozen = true;
+        timeFreezeRemaining = TIMEFREEZE_DURATION;
+        timeFreezeUsesLeft--;
+        timeFreezeUsedThisGame++;
+        saveManager.decrementTimeFreezeUses();
+        audioManager.playSound(AssetPaths.SFX_TIMEFREEZE);
+        
+        Gdx.app.log(TAG, "TimeFreeze activado! Duración: " + TIMEFREEZE_DURATION + "s | " +
+                    "Restantes: " + timeFreezeUsesLeft + " | Usados esta partida: " + timeFreezeUsedThisGame);
+    }
+    
+    /**
+     * Usa Hint: Hace temblar 2 pares + 1 carta random
+     */
+    private void useHint() {
+        if (hintUsesLeft <= 0) {
+            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
+            Gdx.app.log(TAG, "Hint: Sin usos disponibles");
+            return;
+        }
+        
+        if (hintsUsedThisGame >= MAX_HINTS_PER_GAME) {
+            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
+            Gdx.app.log(TAG, "Hint: Límite por partida alcanzado (" + MAX_HINTS_PER_GAME + ")");
+            return;
+        }
+        
+        // Encontrar cartas ocultas
+        Array<Card> hiddenCards = new Array<>();
+        for (Card card : cards) {
+            if (card.getState() == Card.State.HIDDEN) {
+                hiddenCards.add(card);
+            }
+        }
+        
+        if (hiddenCards.size < 3) {
+            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
+            Gdx.app.log(TAG, "Hint: No hay suficientes cartas ocultas");
+            return;
+        }
+        
+        // Buscar 2 pares
+        Array<Card> pairsFound = new Array<>();
+        for (int i = 0; i < hiddenCards.size && pairsFound.size < 4; i++) {
+            Card card1 = hiddenCards.get(i);
+            for (int j = i + 1; j < hiddenCards.size && pairsFound.size < 4; j++) {
+                Card card2 = hiddenCards.get(j);
+                if (card1.getCardId() == card2.getCardId()) {
+                    pairsFound.add(card1);
+                    pairsFound.add(card2);
+                    break;
+                }
+            }
+        }
+        
+        // Agregar 1 carta random que no sea de los pares
+        Card randomCard = null;
+        int attempts = 0;
+        do {
+            randomCard = hiddenCards.random();
+            attempts++;
+        } while (pairsFound.contains(randomCard, true) && attempts < 20);
+        
+        if (randomCard != null && !pairsFound.contains(randomCard, true)) {
+            pairsFound.add(randomCard);
+        }
+        
+        // Aplicar shake
+        for (Card c : pairsFound) {
+            c.startShake(Constants.HINT_SHAKE_DURATION);
+        }
+        
+        hintUsesLeft--;
+        hintsUsedThisGame++;
+        saveManager.decrementHintUses();
+        audioManager.playSound(AssetPaths.SFX_BUTTON);
+        
+        Gdx.app.log(TAG, "Hint usado! " + pairsFound.size + " cartas temblando | " +
+                    "Restantes: " + hintUsesLeft + " | Usados esta partida: " + hintsUsedThisGame);
+    }
+    
     // ==================== RESULTADOS ====================
     
     private void onVictory() {
@@ -762,16 +937,6 @@ public class GameScreen extends BaseScreen {
             audioManager.resumeMusic();
             Gdx.app.log(TAG, "Juego reanudado");
         }
-    }
-    
-    private void useHint() {
-        audioManager.playSound(AssetPaths.SFX_BUTTON);
-        Gdx.app.log(TAG, "Hint usado (TODO: implementar lógica)");
-    }
-    
-    private void useTimeFreeze() {
-        audioManager.playSound(AssetPaths.SFX_TIMEFREEZE);
-        Gdx.app.log(TAG, "TimeFreeze usado (TODO: implementar lógica)");
     }
     
     private void goToNextLevel() {
@@ -831,10 +996,36 @@ public class GameScreen extends BaseScreen {
         game.getBatch().draw(cardBackTexture, 0, hudY, Constants.VIRTUAL_WIDTH, Constants.HUD_HEIGHT);
         game.getBatch().setColor(1, 1, 1, 1);
         
+        // Dibujar botones de powers
         if (pauseButton != null) pauseButton.drawNoText(game.getBatch());
-        if (hintButton != null) hintButton.drawNoText(game.getBatch());
-        if (timeFreezeButton != null) timeFreezeButton.drawNoText(game.getBatch());
         
+        // Hint button con contador
+        if (hintButton != null) {
+            hintButton.drawNoText(game.getBatch());
+            if (hintUsesLeft > 0) {
+                String count = String.valueOf(hintUsesLeft);
+                layout.setText(hudFont, count);
+                hudFont.setColor(Color.WHITE);
+                hudFont.draw(game.getBatch(), count, 
+                            hintButton.getX() + hintButton.getWidth() - layout.width - 5f,
+                            hintButton.getY() + 15f);
+            }
+        }
+        
+        // TimeFreeze button con contador
+        if (timeFreezeButton != null) {
+            timeFreezeButton.drawNoText(game.getBatch());
+            if (timeFreezeUsesLeft > 0) {
+                String count = String.valueOf(timeFreezeUsesLeft);
+                layout.setText(hudFont, count);
+                hudFont.setColor(Color.WHITE);
+                hudFont.draw(game.getBatch(), count, 
+                            timeFreezeButton.getX() + timeFreezeButton.getWidth() - layout.width - 5f,
+                            timeFreezeButton.getY() + 15f);
+            }
+        }
+        
+        // Timer
         String timeText = formatTime(timeRemaining);
         if (isTimeFrozen) {
             hudFont.setColor(Color.CYAN);
@@ -850,11 +1041,13 @@ public class GameScreen extends BaseScreen {
         hudFont.draw(game.getBatch(), timeText, timeX, timeY);
         hudFont.setColor(Color.WHITE);
         
+        // Nivel
         String levelText = levelData.getDifficulty().name + " " + levelData.getLocalId();
         layout.setText(hudFont, levelText);
         float levelX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
         hudFont.draw(game.getBatch(), levelText, levelX, timeY);
         
+        // Deck bonus
         if (nekoinIconTexture != null && deckBonus > 0) {
             String bonusText = "+" + deckBonus;
             layout.setText(hudFont, bonusText);
@@ -1045,4 +1238,4 @@ public class GameScreen extends BaseScreen {
         
         if (buttonTexture != null) buttonTexture.dispose();
     }
-                    }
+            }

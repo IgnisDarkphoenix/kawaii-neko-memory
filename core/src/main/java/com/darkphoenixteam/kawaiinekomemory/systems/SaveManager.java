@@ -362,3 +362,47 @@ public class SaveManager {
                " Cartas:" + getUnlockedCardCount() + "/35";
     }
 }
+// ==================== POWER USES ====================
+
+private static final String KEY_HINT_USES = "hint_uses";
+private static final String KEY_TIMEFREEZE_USES = "timefreeze_uses";
+
+public int getHintUses() {
+    return prefs.getInteger(KEY_HINT_USES, 0);
+}
+
+public void addHintUses(int amount) {
+    int current = getHintUses();
+    prefs.putInteger(KEY_HINT_USES, current + amount);
+    prefs.flush();
+    Gdx.app.log(TAG, "Hint uses: " + current + " + " + amount + " = " + (current + amount));
+}
+
+public void decrementHintUses() {
+    int current = getHintUses();
+    if (current > 0) {
+        prefs.putInteger(KEY_HINT_USES, current - 1);
+        prefs.flush();
+        Gdx.app.log(TAG, "Hint uses: " + current + " -> " + (current - 1));
+    }
+}
+
+public int getTimeFreezeUses() {
+    return prefs.getInteger(KEY_TIMEFREEZE_USES, 0);
+}
+
+public void addTimeFreezeUses(int amount) {
+    int current = getTimeFreezeUses();
+    prefs.putInteger(KEY_TIMEFREEZE_USES, current + amount);
+    prefs.flush();
+    Gdx.app.log(TAG, "TimeFreeze uses: " + current + " + " + amount + " = " + (current + amount));
+}
+
+public void decrementTimeFreezeUses() {
+    int current = getTimeFreezeUses();
+    if (current > 0) {
+        prefs.putInteger(KEY_TIMEFREEZE_USES, current - 1);
+        prefs.flush();
+        Gdx.app.log(TAG, "TimeFreeze uses: " + current + " -> " + (current - 1));
+    }
+}

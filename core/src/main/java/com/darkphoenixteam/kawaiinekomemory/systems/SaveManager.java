@@ -16,6 +16,8 @@ public class SaveManager {
     private static final String KEY_HINT_LEVEL = "hint_level";
     private static final String KEY_TIMEFREEZE_LEVEL = "timefreeze_level";
     private static final String KEY_SAVE_VERSION = "save_version_v3";
+    private static final String KEY_HINT_USES = "hint_uses";
+    private static final String KEY_TIMEFREEZE_USES = "timefreeze_uses";
     
     private static final int CURRENT_VERSION = 3;
     private static final int TOTAL_CARDS = 35;
@@ -77,6 +79,8 @@ public class SaveManager {
         
         prefs.putInteger(KEY_HINT_LEVEL, 0);
         prefs.putInteger(KEY_TIMEFREEZE_LEVEL, 0);
+        prefs.putInteger(KEY_HINT_USES, 0);
+        prefs.putInteger(KEY_TIMEFREEZE_USES, 0);
         
         prefs.flush();
         
@@ -125,6 +129,8 @@ public class SaveManager {
         return instance;
     }
     
+    // ==================== NEKOINS ====================
+    
     public int getNekoins() {
         return prefs.getInteger(KEY_NEKOINS, 0);
     }
@@ -144,6 +150,8 @@ public class SaveManager {
         }
         return false;
     }
+    
+    // ==================== CARDS ====================
     
     public boolean isCardUnlocked(int cardId) {
         if (cardId < 0 || cardId >= TOTAL_CARDS) {
@@ -188,6 +196,8 @@ public class SaveManager {
         }
         return count;
     }
+    
+    // ==================== ACTIVE CARDS ====================
     
     public Array<Integer> getActiveCards() {
         return new Array<>(activeCards);
@@ -273,6 +283,8 @@ public class SaveManager {
         prefs.flush();
     }
     
+    // ==================== CARD ID UTILS ====================
+    
     public static int getDeckFromCardId(int cardId) {
         return cardId / CARDS_PER_DECK;
     }
@@ -291,6 +303,8 @@ public class SaveManager {
         return (deck >= 0 && deck < values.length) ? values[deck] : 1;
     }
     
+    // ==================== LEVELS ====================
+    
     public void setLevelCompleted(int levelId) {
         prefs.putBoolean(KEY_LEVEL_COMPLETED + levelId, true);
         prefs.flush();
@@ -304,6 +318,8 @@ public class SaveManager {
         if (levelId % 50 == 0) return true;
         return isLevelCompleted(levelId - 1);
     }
+    
+    // ==================== DECK ====================
     
     public int getCurrentDeck() {
         if (activeCards.size > 0 && activeCards.get(0) >= 0) {
@@ -323,6 +339,8 @@ public class SaveManager {
         return false;
     }
     
+    // ==================== POWER LEVELS ====================
+    
     public int getHintLevel() {
         return prefs.getInteger(KEY_HINT_LEVEL, 0);
     }
@@ -340,6 +358,50 @@ public class SaveManager {
         prefs.putInteger(KEY_TIMEFREEZE_LEVEL, getTimeFreezeLevel() + 1);
         prefs.flush();
     }
+    
+    // ==================== POWER USES ====================
+    
+    public int getHintUses() {
+        return prefs.getInteger(KEY_HINT_USES, 0);
+    }
+    
+    public void addHintUses(int amount) {
+        int current = getHintUses();
+        prefs.putInteger(KEY_HINT_USES, current + amount);
+        prefs.flush();
+        Gdx.app.log(TAG, "Hint uses: " + current + " + " + amount + " = " + (current + amount));
+    }
+    
+    public void decrementHintUses() {
+        int current = getHintUses();
+        if (current > 0) {
+            prefs.putInteger(KEY_HINT_USES, current - 1);
+            prefs.flush();
+            Gdx.app.log(TAG, "Hint uses: " + current + " -> " + (current - 1));
+        }
+    }
+    
+    public int getTimeFreezeUses() {
+        return prefs.getInteger(KEY_TIMEFREEZE_USES, 0);
+    }
+    
+    public void addTimeFreezeUses(int amount) {
+        int current = getTimeFreezeUses();
+        prefs.putInteger(KEY_TIMEFREEZE_USES, current + amount);
+        prefs.flush();
+        Gdx.app.log(TAG, "TimeFreeze uses: " + current + " + " + amount + " = " + (current + amount));
+    }
+    
+    public void decrementTimeFreezeUses() {
+        int current = getTimeFreezeUses();
+        if (current > 0) {
+            prefs.putInteger(KEY_TIMEFREEZE_USES, current - 1);
+            prefs.flush();
+            Gdx.app.log(TAG, "TimeFreeze uses: " + current + " -> " + (current - 1));
+        }
+    }
+    
+    // ==================== STATS & RESET ====================
     
     public void resetAll() {
         instance = null;
@@ -359,50 +421,8 @@ public class SaveManager {
     public String getStats() {
         return "Nekoins:" + getNekoins() + 
                " Niveles:" + getPlayerLevel() + 
-               " Cartas:" + getUnlockedCardCount() + "/35";
+               " Cartas:" + getUnlockedCardCount() + "/35" +
+               " Hints:" + getHintUses() +
+               " TimeFreeze:" + getTimeFreezeUses();
     }
-}
-// ==================== POWER USES ====================
-
-private static final String KEY_HINT_USES = "hint_uses";
-private static final String KEY_TIMEFREEZE_USES = "timefreeze_uses";
-
-public int getHintUses() {
-    return prefs.getInteger(KEY_HINT_USES, 0);
-}
-
-public void addHintUses(int amount) {
-    int current = getHintUses();
-    prefs.putInteger(KEY_HINT_USES, current + amount);
-    prefs.flush();
-    Gdx.app.log(TAG, "Hint uses: " + current + " + " + amount + " = " + (current + amount));
-}
-
-public void decrementHintUses() {
-    int current = getHintUses();
-    if (current > 0) {
-        prefs.putInteger(KEY_HINT_USES, current - 1);
-        prefs.flush();
-        Gdx.app.log(TAG, "Hint uses: " + current + " -> " + (current - 1));
     }
-}
-
-public int getTimeFreezeUses() {
-    return prefs.getInteger(KEY_TIMEFREEZE_USES, 0);
-}
-
-public void addTimeFreezeUses(int amount) {
-    int current = getTimeFreezeUses();
-    prefs.putInteger(KEY_TIMEFREEZE_USES, current + amount);
-    prefs.flush();
-    Gdx.app.log(TAG, "TimeFreeze uses: " + current + " + " + amount + " = " + (current + amount));
-}
-
-public void decrementTimeFreezeUses() {
-    int current = getTimeFreezeUses();
-    if (current > 0) {
-        prefs.putInteger(KEY_TIMEFREEZE_USES, current - 1);
-        prefs.flush();
-        Gdx.app.log(TAG, "TimeFreeze uses: " + current + " -> " + (current - 1));
-    }
-}

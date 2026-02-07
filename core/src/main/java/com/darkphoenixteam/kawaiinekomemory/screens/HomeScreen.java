@@ -145,12 +145,11 @@ public class HomeScreen extends BaseScreen {
                 game.setScreen(new BazaarScreen(game));
                 break;
             case "LOGROS":
-                // TODO: game.setScreen(new AchievementsScreen(game));
-                Gdx.app.log("HomeScreen", "Achievements pendiente");
-                break;
-            case "AJUSTES":
-                game.setScreen(new SettingsScreen(game));
-                break;
+            game.setScreen(new AchievementsScreen(game));  // ← ACTUALIZADO
+            break;
+        case "AJUSTES":
+            game.setScreen(new SettingsScreen(game));
+            break;
         }
     }
     

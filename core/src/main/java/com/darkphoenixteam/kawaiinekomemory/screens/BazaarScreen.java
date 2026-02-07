@@ -15,22 +15,26 @@ import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 
 /**
- * Pantalla del Bazaar - Compra de Powers
- * Simplificado: Solo compra, sin sistema de mejoras
+ * Pantalla del Bazaar - Compra de Powers y Gachapon
+ * Precios dinámicos basados en cantidad de powers acumulados
  * 
  * @author DarkphoenixTeam
- * @version 2.0 - Solo compra de powers
+ * @version 2.1 - Precios dinámicos + tap delay
  */
 public class BazaarScreen extends BaseScreen {
     
     private static final String TAG = "BazaarScreen";
     
-    private static final float BUTTON_COOLDOWN = 0.5f;
-    private float buttonCooldownTimer = 0f;
+    // === TAP DELAY ===
+    private static final float TAP_COOLDOWN = 0.3f;
+    private float tapTimer = 0f;
     
-    // Costos de powers (ajustados para balanceo)
-    private static final int HINT_COST = 30;
-    private static final int TIMEFREEZE_COST = 25;
+    // === PRECIOS DINÁMICOS POR CANTIDAD ===
+    // Índice = cantidad actual de powers del jugador
+    private static final int[] POWER_PRICES = {50, 100, 200, 350, 500};
+    private static final int MAX_POWER_STOCK = 5;
+    
+    // === GACHA ===
     private static final int GACHA_COST = 50;
     
     private BitmapFont titleFont;
@@ -84,6 +88,30 @@ public class BazaarScreen extends BaseScreen {
         Gdx.app.log(TAG, "Hints: " + saveManager.getHintUses() + " | TimeFreeze: " + saveManager.getTimeFreezeUses());
     }
     
+    // ==================== PRECIOS DINÁMICOS ====================
+    
+    /**
+     * Obtiene el precio de un power basado en la cantidad actual
+     * 0 powers = 50, 1 = 100, 2 = 200, 3 = 350, 4 = 500
+     * Si ya tiene 5+, no puede comprar más
+     */
+    private int getPowerPrice(int currentAmount) {
+        if (currentAmount >= MAX_POWER_STOCK) return -1; // No puede comprar
+        if (currentAmount < 0) currentAmount = 0;
+        if (currentAmount >= POWER_PRICES.length) return POWER_PRICES[POWER_PRICES.length - 1];
+        return POWER_PRICES[currentAmount];
+    }
+    
+    private int getHintPrice() {
+        return getPowerPrice(saveManager.getHintUses());
+    }
+    
+    private int getTimeFreezePrice() {
+        return getPowerPrice(saveManager.getTimeFreezeUses());
+    }
+    
+    // ==================== ASSETS ====================
+    
     private void loadAssets() {
         try {
             patternTexture = new Texture(Gdx.files.internal(AssetPaths.PATTERN_BAZAAR));
@@ -114,6 +142,8 @@ public class BazaarScreen extends BaseScreen {
         }
     }
     
+    // ==================== BOTONES ====================
+    
     private void createButtons() {
         float centerX = Constants.VIRTUAL_WIDTH / 2f;
         float buttonWidth = Constants.VIRTUAL_WIDTH * 0.5f;
@@ -125,7 +155,7 @@ public class BazaarScreen extends BaseScreen {
         try {
             Texture btnTex = new Texture(Gdx.files.internal(AssetPaths.BTN_PLAY));
             
-            hintBuyButton = new SimpleButton(btnTex, "COMPRAR x" + HINT_COST, 
+            hintBuyButton = new SimpleButton(btnTex, "COMPRAR", 
                 centerX - buttonWidth / 2f, hintY, buttonWidth, buttonHeight);
             hintBuyButton.setOnClick(this::buyHint);
         } catch (Exception e) {
@@ -138,7 +168,7 @@ public class BazaarScreen extends BaseScreen {
         try {
             Texture btnTex = new Texture(Gdx.files.internal(AssetPaths.BTN_PLAY));
             
-            timefreezeBuyButton = new SimpleButton(btnTex, "COMPRAR x" + TIMEFREEZE_COST,
+            timefreezeBuyButton = new SimpleButton(btnTex, "COMPRAR",
                 centerX - buttonWidth / 2f, freezeY, buttonWidth, buttonHeight);
             timefreezeBuyButton.setOnClick(this::buyTimeFreeze);
         } catch (Exception e) {
@@ -173,37 +203,61 @@ public class BazaarScreen extends BaseScreen {
         }
     }
     
+    // ==================== COMPRAS ====================
+    
     private void buyHint() {
-        if (buttonCooldownTimer > 0) return;
-        buttonCooldownTimer = BUTTON_COOLDOWN;
+        if (tapTimer > 0) return;
+        tapTimer = TAP_COOLDOWN;
         
-        if (saveManager.spendNekoins(HINT_COST)) {
+        int currentHints = saveManager.getHintUses();
+        
+        if (currentHints >= MAX_POWER_STOCK) {
+            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
+            Gdx.app.log(TAG, "Hint: Stock máximo alcanzado (" + MAX_POWER_STOCK + ")");
+            return;
+        }
+        
+        int cost = getHintPrice();
+        
+        if (saveManager.spendNekoins(cost)) {
             saveManager.addHintUses(1);
             audioManager.playSound(AssetPaths.SFX_COIN);
-            Gdx.app.log(TAG, "Hint comprado! Total: " + saveManager.getHintUses());
+            Gdx.app.log(TAG, "Hint comprado por " + cost + "! Total: " + saveManager.getHintUses() + 
+                        " | Siguiente precio: " + getPowerPrice(saveManager.getHintUses()));
         } else {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
-            Gdx.app.log(TAG, "Nekoins insuficientes para Hint");
+            Gdx.app.log(TAG, "Nekoins insuficientes para Hint (necesita " + cost + ")");
         }
     }
     
     private void buyTimeFreeze() {
-        if (buttonCooldownTimer > 0) return;
-        buttonCooldownTimer = BUTTON_COOLDOWN;
+        if (tapTimer > 0) return;
+        tapTimer = TAP_COOLDOWN;
         
-        if (saveManager.spendNekoins(TIMEFREEZE_COST)) {
+        int currentFreeze = saveManager.getTimeFreezeUses();
+        
+        if (currentFreeze >= MAX_POWER_STOCK) {
+            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
+            Gdx.app.log(TAG, "TimeFreeze: Stock máximo alcanzado (" + MAX_POWER_STOCK + ")");
+            return;
+        }
+        
+        int cost = getTimeFreezePrice();
+        
+        if (saveManager.spendNekoins(cost)) {
             saveManager.addTimeFreezeUses(1);
             audioManager.playSound(AssetPaths.SFX_COIN);
-            Gdx.app.log(TAG, "TimeFreeze comprado! Total: " + saveManager.getTimeFreezeUses());
+            Gdx.app.log(TAG, "TimeFreeze comprado por " + cost + "! Total: " + saveManager.getTimeFreezeUses() + 
+                        " | Siguiente precio: " + getPowerPrice(saveManager.getTimeFreezeUses()));
         } else {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
-            Gdx.app.log(TAG, "Nekoins insuficientes para TimeFreeze");
+            Gdx.app.log(TAG, "Nekoins insuficientes para TimeFreeze (necesita " + cost + ")");
         }
     }
     
     private void openGacha() {
-        if (buttonCooldownTimer > 0) return;
-        buttonCooldownTimer = BUTTON_COOLDOWN;
+        if (tapTimer > 0) return;
+        tapTimer = TAP_COOLDOWN;
         
         Array<Integer> locked = getLockedCards();
         if (locked.size == 0) {
@@ -239,17 +293,20 @@ public class BazaarScreen extends BaseScreen {
         return locked;
     }
     
+    // ==================== UPDATE ====================
+    
     @Override
     protected void update(float delta) {
-        if (buttonCooldownTimer > 0) {
-            buttonCooldownTimer -= delta;
+        if (tapTimer > 0) {
+            tapTimer -= delta;
         }
         
         if (showingGachaResult) {
             gachaResultTimer -= delta;
-            if (gachaResultTimer <= 0 || Gdx.input.justTouched()) {
+            if (gachaResultTimer <= 0 || (Gdx.input.justTouched() && tapTimer <= 0)) {
                 showingGachaResult = false;
                 lastUnlockedCardId = -1;
+                tapTimer = TAP_COOLDOWN;
             }
             return;
         }
@@ -262,6 +319,8 @@ public class BazaarScreen extends BaseScreen {
         if (backButton != null) backButton.update(viewport);
     }
     
+    // ==================== DRAW ====================
+    
     @Override
     protected void draw() {
         game.getBatch().begin();
@@ -272,15 +331,19 @@ public class BazaarScreen extends BaseScreen {
         drawTimeFreezeSection();
         drawGachaSection();
         
-        // Botones
-        if (hintBuyButton != null) {
+        // Botón Hint (solo si no ha alcanzado el máximo)
+        int hintUses = saveManager.getHintUses();
+        if (hintBuyButton != null && hintUses < MAX_POWER_STOCK) {
             hintBuyButton.draw(game.getBatch(), buttonFont);
         }
         
-        if (timefreezeBuyButton != null) {
+        // Botón TimeFreeze (solo si no ha alcanzado el máximo)
+        int freezeUses = saveManager.getTimeFreezeUses();
+        if (timefreezeBuyButton != null && freezeUses < MAX_POWER_STOCK) {
             timefreezeBuyButton.draw(game.getBatch(), buttonFont);
         }
         
+        // Botón Gacha (solo si hay cartas por desbloquear)
         if (gachaButton != null && getLockedCards().size > 0) {
             gachaButton.draw(game.getBatch(), buttonFont);
         }
@@ -336,13 +399,27 @@ public class BazaarScreen extends BaseScreen {
         buttonFont.draw(game.getBatch(), "PISTA", 100f, sectionY);
         
         int uses = saveManager.getHintUses();
-        String usesText = "Disponibles: " + uses;
-        smallFont.setColor(uses > 0 ? Color.GREEN : Color.GRAY);
+        int price = getHintPrice();
+        
+        // Stock actual
+        String usesText = "Stock: " + uses + "/" + MAX_POWER_STOCK;
+        smallFont.setColor(uses >= MAX_POWER_STOCK ? Color.GREEN : Color.WHITE);
         smallFont.draw(game.getBatch(), usesText, 100f, sectionY - 25f);
         
-        String desc = "Revela 2 pares + 1 carta";
+        // Precio o MAX
+        if (uses >= MAX_POWER_STOCK) {
+            smallFont.setColor(Color.GREEN);
+            smallFont.draw(game.getBatch(), "STOCK LLENO", 100f, sectionY - 45f);
+        } else {
+            // Color del precio según si puede pagar
+            boolean canAfford = saveManager.getNekoins() >= price;
+            smallFont.setColor(canAfford ? Color.GOLD : Color.RED);
+            smallFont.draw(game.getBatch(), "Precio: " + price + " Nekoins", 100f, sectionY - 45f);
+        }
+        
+        // Descripción
         smallFont.setColor(Color.LIGHT_GRAY);
-        smallFont.draw(game.getBatch(), desc, 100f, sectionY - 45f);
+        smallFont.draw(game.getBatch(), "Revela 2 pares + 1 carta", 100f, sectionY - 65f);
         smallFont.setColor(Color.WHITE);
     }
     
@@ -357,13 +434,26 @@ public class BazaarScreen extends BaseScreen {
         buttonFont.draw(game.getBatch(), "CONGELAR TIEMPO", 100f, sectionY);
         
         int uses = saveManager.getTimeFreezeUses();
-        String usesText = "Disponibles: " + uses;
-        smallFont.setColor(uses > 0 ? Color.CYAN : Color.GRAY);
+        int price = getTimeFreezePrice();
+        
+        // Stock actual
+        String usesText = "Stock: " + uses + "/" + MAX_POWER_STOCK;
+        smallFont.setColor(uses >= MAX_POWER_STOCK ? Color.CYAN : Color.WHITE);
         smallFont.draw(game.getBatch(), usesText, 100f, sectionY - 25f);
         
-        String desc = "Pausa el timer 5 segundos";
+        // Precio o MAX
+        if (uses >= MAX_POWER_STOCK) {
+            smallFont.setColor(Color.CYAN);
+            smallFont.draw(game.getBatch(), "STOCK LLENO", 100f, sectionY - 45f);
+        } else {
+            boolean canAfford = saveManager.getNekoins() >= price;
+            smallFont.setColor(canAfford ? Color.GOLD : Color.RED);
+            smallFont.draw(game.getBatch(), "Precio: " + price + " Nekoins", 100f, sectionY - 45f);
+        }
+        
+        // Descripción
         smallFont.setColor(Color.LIGHT_GRAY);
-        smallFont.draw(game.getBatch(), desc, 100f, sectionY - 45f);
+        smallFont.draw(game.getBatch(), "Pausa el timer 5 segundos", 100f, sectionY - 65f);
         smallFont.setColor(Color.WHITE);
     }
     
@@ -380,10 +470,27 @@ public class BazaarScreen extends BaseScreen {
         buttonFont.draw(game.getBatch(), title, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, sectionY + 70f);
         
         int unlocked = saveManager.getUnlockedCardCount();
-        String status = unlocked >= 35 ? "¡Colección Completa!" : "Cartas: " + unlocked + "/35";
-        smallFont.setColor(unlocked >= 35 ? Color.GREEN : Color.WHITE);
-        layout.setText(smallFont, status);
-        smallFont.draw(game.getBatch(), status, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, sectionY - 70f);
+        
+        if (unlocked >= 35) {
+            smallFont.setColor(Color.GREEN);
+            String status = "¡Colección Completa!";
+            layout.setText(smallFont, status);
+            smallFont.draw(game.getBatch(), status, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, sectionY - 70f);
+        } else {
+            // Precio
+            boolean canAfford = saveManager.getNekoins() >= GACHA_COST;
+            smallFont.setColor(canAfford ? Color.GOLD : Color.RED);
+            String priceText = "Precio: " + GACHA_COST + " Nekoins";
+            layout.setText(smallFont, priceText);
+            smallFont.draw(game.getBatch(), priceText, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, sectionY - 55f);
+            
+            // Progreso
+            smallFont.setColor(Color.WHITE);
+            String status = "Cartas: " + unlocked + "/35";
+            layout.setText(smallFont, status);
+            smallFont.draw(game.getBatch(), status, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, sectionY - 75f);
+        }
+        
         smallFont.setColor(Color.WHITE);
     }
     
@@ -429,6 +536,8 @@ public class BazaarScreen extends BaseScreen {
         game.getBatch().end();
     }
     
+    // ==================== DISPOSE ====================
+    
     @Override
     public void dispose() {
         if (patternTexture != null) patternTexture.dispose();
@@ -447,4 +556,4 @@ public class BazaarScreen extends BaseScreen {
         if (timefreezeBuyButton != null) timefreezeBuyButton.dispose();
         if (gachaButton != null) gachaButton.dispose();
     }
-             }
+}

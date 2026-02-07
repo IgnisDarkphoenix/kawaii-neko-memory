@@ -11,6 +11,7 @@ import com.badlogic.gdx.utils.Array;
 import com.darkphoenixteam.kawaiinekomemory.KawaiiNekoMemory;
 import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
 import com.darkphoenixteam.kawaiinekomemory.config.Constants;
+import com.darkphoenixteam.kawaiinekomemory.models.Achievement;
 import com.darkphoenixteam.kawaiinekomemory.models.Card;
 import com.darkphoenixteam.kawaiinekomemory.models.LevelData;
 import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
@@ -22,7 +23,7 @@ import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
  * Maneja el tablero de cartas, timer, puntuación y paneles de resultado
  * 
  * @author DarkphoenixTeam
- * @version 1.2 - Powers funcionales + Timer total
+ * @version 1.3 - Powers + Timer total + Achievements tracking
  */
 public class GameScreen extends BaseScreen {
     
@@ -71,7 +72,7 @@ public class GameScreen extends BaseScreen {
     
     private float timeRemaining;
     private float timeLimit;
-    private float elapsedTime;           // Timer total de partida
+    private float elapsedTime;
     private int moveCount;
     private int deckBonus;
     private boolean isTimeFrozen;
@@ -88,6 +89,13 @@ public class GameScreen extends BaseScreen {
     private static final int MAX_TIMEFREEZE_PER_GAME = 5;
     private static final float TIMEFREEZE_DURATION = 5.0f;
     private static final float HINT_SHAKE_DURATION = 1.5f;
+    
+    // ==================== ESTADÍSTICAS DE PARTIDA ====================
+    
+    private int currentCombo;
+    private int bestComboThisGame;
+    private int mistakesThisGame;
+    private int powersUsedThisGame;
     
     // ==================== HUD ====================
     
@@ -178,11 +186,17 @@ public class GameScreen extends BaseScreen {
         this.isTimeFrozen = false;
         this.timeFreezeRemaining = 0f;
         
-        // Cargar uses de powers (0 inicial, se compran en Bazaar)
+        // Powers
         this.hintUsesLeft = saveManager.getHintUses();
         this.timeFreezeUsesLeft = saveManager.getTimeFreezeUses();
         this.hintsUsedThisGame = 0;
         this.timeFreezeUsedThisGame = 0;
+        
+        // Estadísticas de partida
+        this.currentCombo = 0;
+        this.bestComboThisGame = 0;
+        this.mistakesThisGame = 0;
+        this.powersUsedThisGame = 0;
         
         this.gameState = GameState.STARTING;
         this.startingTimer = STARTING_DURATION;
@@ -564,10 +578,8 @@ public class GameScreen extends BaseScreen {
     }
     
     private void updatePlaying(float delta) {
-        // Siempre incrementar tiempo total (excepto en pausa)
         elapsedTime += delta;
         
-        // Timer de cuenta regresiva (se congela con TimeFreeze)
         if (!isTimeFrozen) {
             timeRemaining -= delta;
             if (timeRemaining <= 0) {
@@ -576,7 +588,6 @@ public class GameScreen extends BaseScreen {
                 return;
             }
         } else {
-            // TimeFreeze activo - solo decrementar el tiempo de freeze
             timeFreezeRemaining -= delta;
             if (timeFreezeRemaining <= 0) {
                 isTimeFrozen = false;
@@ -665,7 +676,6 @@ public class GameScreen extends BaseScreen {
     }
     
     private void updatePaused(float delta) {
-        // No incrementar elapsedTime durante pausa
         if (!isInputEnabled()) return;
         
         if (continueButton != null) continueButton.update(viewport);
@@ -729,8 +739,15 @@ public class GameScreen extends BaseScreen {
             pairsFoundTotal++;
             matchesSinceShuffle++;
             
+            // Combo tracking
+            currentCombo++;
+            if (currentCombo > bestComboThisGame) {
+                bestComboThisGame = currentCombo;
+            }
+            
             Gdx.app.log(TAG, "MATCH! Pares: " + pairsFoundThisGrid + "/" + pairsPerGrid + 
-                             " | Bonus: +" + firstRevealed.getNekoinValue());
+                             " | Bonus: +" + firstRevealed.getNekoinValue() +
+                             " | Combo: " + currentCombo);
             
             firstRevealed = null;
             secondRevealed = null;
@@ -746,6 +763,10 @@ public class GameScreen extends BaseScreen {
         } else {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
             
+            // Romper combo y contar error
+            currentCombo = 0;
+            mistakesThisGame++;
+            
             noMatchCard1 = firstRevealed;
             noMatchCard2 = secondRevealed;
             
@@ -755,7 +776,7 @@ public class GameScreen extends BaseScreen {
             noMatchShakeTimer = NO_MATCH_SHAKE_DURATION;
             gameState = GameState.NO_MATCH_SHAKE;
             
-            Gdx.app.log(TAG, "No match - shake feedback");
+            Gdx.app.log(TAG, "No match - Combo roto | Errores: " + mistakesThisGame);
         }
     }
     
@@ -812,10 +833,6 @@ public class GameScreen extends BaseScreen {
     
     // ==================== POWERS ====================
     
-    /**
-     * Usa TimeFreeze: Congela SOLO el timer de cuenta regresiva por 5 segundos
-     * Las cartas siguen funcionando normalmente
-     */
     private void useTimeFreeze() {
         if (timeFreezeUsesLeft <= 0) {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
@@ -835,23 +852,18 @@ public class GameScreen extends BaseScreen {
             return;
         }
         
-        // Activar TimeFreeze
         isTimeFrozen = true;
         timeFreezeRemaining = TIMEFREEZE_DURATION;
         timeFreezeUsesLeft--;
         timeFreezeUsedThisGame++;
+        powersUsedThisGame++;
         saveManager.decrementTimeFreezeUses();
         audioManager.playSound(AssetPaths.SFX_TIMEFREEZE);
         
         Gdx.app.log(TAG, "TimeFreeze activado! Duración: " + TIMEFREEZE_DURATION + "s | " +
-                    "Restantes: " + timeFreezeUsesLeft + " | Usados esta partida: " + timeFreezeUsedThisGame);
+                    "Restantes: " + timeFreezeUsesLeft + " | Powers esta partida: " + powersUsedThisGame);
     }
     
-    /**
-     * Usa Hint: Hace temblar cartas para dar pista
-     * - Si hay muchas cartas (>12): 5 cartas (2 pares + 1 random)
-     * - Si hay pocas cartas (<=12): 3 cartas (1 par + 1 random)
-     */
     private void useHint() {
         if (hintUsesLeft <= 0) {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
@@ -865,7 +877,6 @@ public class GameScreen extends BaseScreen {
             return;
         }
         
-        // Encontrar cartas ocultas (no reveladas, no matched)
         Array<Card> hiddenCards = new Array<>();
         for (Card card : cards) {
             if (card.getState() == Card.State.HIDDEN) {
@@ -879,14 +890,12 @@ public class GameScreen extends BaseScreen {
             return;
         }
         
-        // Determinar cuántas cartas mostrar según cantidad disponible
         boolean useFullHint = hiddenCards.size > 12;
         int pairsToShow = useFullHint ? 2 : 1;
         
         Array<Card> cardsToShake = new Array<>();
         Array<Integer> usedCardIds = new Array<>();
         
-        // Buscar pares
         for (int p = 0; p < pairsToShow; p++) {
             for (int i = 0; i < hiddenCards.size; i++) {
                 Card card1 = hiddenCards.get(i);
@@ -909,7 +918,6 @@ public class GameScreen extends BaseScreen {
             }
         }
         
-        // Agregar 1 carta random que NO sea de los pares mostrados
         Card randomCard = null;
         int attempts = 0;
         while (attempts < 30) {
@@ -925,27 +933,25 @@ public class GameScreen extends BaseScreen {
             cardsToShake.add(randomCard);
         }
         
-        // Verificar que encontramos suficientes cartas
         if (cardsToShake.size < 2) {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
             Gdx.app.log(TAG, "Hint: No se encontraron pares disponibles");
             return;
         }
         
-        // Aplicar shake a todas las cartas seleccionadas
         for (Card c : cardsToShake) {
             c.startShake(HINT_SHAKE_DURATION);
         }
         
-        // Consumir uso
         hintUsesLeft--;
         hintsUsedThisGame++;
+        powersUsedThisGame++;
         saveManager.decrementHintUses();
         audioManager.playSound(AssetPaths.SFX_BUTTON);
         
         Gdx.app.log(TAG, "Hint usado! " + cardsToShake.size + " cartas temblando (" + 
                     pairsToShow + " par(es) + 1 random) | Restantes: " + hintUsesLeft + 
-                    " | Usados esta partida: " + hintsUsedThisGame);
+                    " | Powers esta partida: " + powersUsedThisGame);
     }
     
     // ==================== RESULTADOS ====================
@@ -958,10 +964,35 @@ public class GameScreen extends BaseScreen {
         levelReward = levelData.calculateLevelReward(starsEarned, isFirstClear);
         totalNekoins = levelReward + deckBonus;
         
-        if (isFirstClear) {
-            saveManager.setLevelCompleted(levelData.getGlobalId());
-        }
+        // Guardar con estrellas
+        saveManager.setLevelCompleted(levelData.getGlobalId(), starsEarned);
         saveManager.addNekoins(totalNekoins);
+        
+        // Estadísticas globales
+        saveManager.addPairsFound(pairsFoundTotal);
+        saveManager.updateBestCombo(bestComboThisGame);
+        
+        // === VERIFICAR LOGROS DE HABILIDAD ===
+        
+        // Vista de Lince: sin errores
+        if (mistakesThisGame == 0) {
+            saveManager.unlockAchievement(Achievement.NO_MISTAKES);
+        }
+        
+        // Gato Veloz: menos de 15 segundos
+        if (elapsedTime < 15f) {
+            saveManager.unlockAchievement(Achievement.SPEED_DEMON);
+        }
+        
+        // Por los Bigotes: menos de 3 segundos restantes
+        if (timeRemaining < 3f && timeRemaining > 0) {
+            saveManager.unlockAchievement(Achievement.CLOSE_CALL);
+        }
+        
+        // ¿Era necesario?: 3 poderes en un nivel
+        if (powersUsedThisGame >= 3) {
+            saveManager.unlockAchievement(Achievement.POWER_OVERLOAD);
+        }
         
         Gdx.app.log(TAG, "=== VICTORIA ===");
         Gdx.app.log(TAG, "Estrellas: " + starsEarned);
@@ -971,15 +1002,25 @@ public class GameScreen extends BaseScreen {
         Gdx.app.log(TAG, "Deck Bonus: " + deckBonus);
         Gdx.app.log(TAG, "Total Nekoins: " + totalNekoins);
         Gdx.app.log(TAG, "First Clear: " + isFirstClear);
+        Gdx.app.log(TAG, "Mejor combo: " + bestComboThisGame);
+        Gdx.app.log(TAG, "Errores: " + mistakesThisGame);
+        Gdx.app.log(TAG, "Powers usados: " + powersUsedThisGame);
     }
     
     private void onDefeat() {
         gameState = GameState.DEFEAT;
         audioManager.playSound(AssetPaths.SFX_DEFEAT);
         
+        // Registrar derrota y estadísticas
+        saveManager.recordLoss();
+        saveManager.addPairsFound(pairsFoundTotal);
+        saveManager.updateBestCombo(bestComboThisGame);
+        
         Gdx.app.log(TAG, "=== DERROTA ===");
         Gdx.app.log(TAG, "Tiempo total: " + formatTimeComplete(elapsedTime));
         Gdx.app.log(TAG, "Pares encontrados: " + pairsFoundTotal);
+        Gdx.app.log(TAG, "Mejor combo: " + bestComboThisGame);
+        Gdx.app.log(TAG, "Errores: " + mistakesThisGame);
     }
     
     // ==================== ACCIONES DE UI ====================
@@ -1062,10 +1103,8 @@ public class GameScreen extends BaseScreen {
         float spacing = 10f;
         float hudButtonY = Constants.VIRTUAL_HEIGHT - Constants.HUD_HEIGHT + 10f;
         
-        // Dibujar botones
         if (pauseButton != null) pauseButton.drawNoText(game.getBatch());
         
-        // Hint button con contador
         if (hintButton != null) {
             hintButton.drawNoText(game.getBatch());
             if (hintUsesLeft > 0) {
@@ -1079,9 +1118,7 @@ public class GameScreen extends BaseScreen {
             }
         }
         
-        // TimeFreeze button con contador e indicador de activo
         if (timeFreezeButton != null) {
-            // Indicador visual si está activo
             if (isTimeFrozen) {
                 game.getBatch().setColor(0.5f, 0.8f, 1f, 0.5f);
             }
@@ -1099,7 +1136,6 @@ public class GameScreen extends BaseScreen {
             }
         }
         
-        // Timer con efecto visual de TimeFreeze
         String timeText = formatTime(timeRemaining);
         if (isTimeFrozen) {
             hudFont.setColor(Color.CYAN);
@@ -1115,13 +1151,11 @@ public class GameScreen extends BaseScreen {
         hudFont.draw(game.getBatch(), timeText, timeX, timeY);
         hudFont.setColor(Color.WHITE);
         
-        // Nivel
         String levelText = levelData.getDifficulty().name + " " + levelData.getLocalId();
         layout.setText(hudFont, levelText);
         float levelX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
         hudFont.draw(game.getBatch(), levelText, levelX, timeY);
         
-        // Deck bonus
         if (nekoinIconTexture != null && deckBonus > 0) {
             String bonusText = "+" + deckBonus;
             layout.setText(hudFont, bonusText);
@@ -1188,7 +1222,6 @@ public class GameScreen extends BaseScreen {
                       Constants.VIRTUAL_HEIGHT * 0.78f);
         titleFont.setColor(Color.WHITE);
         
-        // Estrellas
         String stars = "";
         for (int i = 0; i < starsEarned; i++) stars += "★ ";
         for (int i = starsEarned; i < 3; i++) stars += "☆ ";
@@ -1199,7 +1232,6 @@ public class GameScreen extends BaseScreen {
                       Constants.VIRTUAL_HEIGHT * 0.70f);
         titleFont.setColor(Color.WHITE);
         
-        // Tiempo total (debajo de estrellas)
         String timeTotal = "Tiempo: " + formatTimeComplete(elapsedTime);
         layout.setText(hudFont, timeTotal);
         hudFont.setColor(Color.LIGHT_GRAY);
@@ -1273,7 +1305,6 @@ public class GameScreen extends BaseScreen {
                       Constants.VIRTUAL_HEIGHT * 0.65f);
         titleFont.setColor(Color.WHITE);
         
-        // Tiempo total jugado
         String timeTotal = "Tiempo: " + formatTimeComplete(elapsedTime);
         layout.setText(hudFont, timeTotal);
         hudFont.setColor(Color.LIGHT_GRAY);
@@ -1296,9 +1327,6 @@ public class GameScreen extends BaseScreen {
     
     // ==================== UTILIDADES ====================
     
-    /**
-     * Formatea tiempo para el HUD (solo segundos si < 1 min)
-     */
     private String formatTime(float seconds) {
         int mins = (int)(seconds / 60);
         int secs = (int)(seconds % 60);
@@ -1308,9 +1336,6 @@ public class GameScreen extends BaseScreen {
         return String.valueOf(secs);
     }
     
-    /**
-     * Formatea tiempo completo para resultados (siempre muestra min:seg)
-     */
     private String formatTimeComplete(float seconds) {
         int mins = (int)(seconds / 60);
         int secs = (int)(seconds % 60);
@@ -1342,4 +1367,4 @@ public class GameScreen extends BaseScreen {
         
         if (buttonTexture != null) buttonTexture.dispose();
     }
-            }
+                                               }

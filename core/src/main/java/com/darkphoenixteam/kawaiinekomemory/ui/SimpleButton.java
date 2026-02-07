@@ -21,7 +21,7 @@ public class SimpleButton {
     private static final String TAG = "SimpleButton";
     
     // === DEBOUNCE CONFIG ===
-    private static final float DEFAULT_COOLDOWN = 0.5f;  // 500ms de bloqueo después de click
+    private static final float DEFAULT_COOLDOWN = 0.5f;
     private float cooldownTimer = 0f;
     
     // Texturas y bounds
@@ -43,7 +43,7 @@ public class SimpleButton {
     // Colores para estados
     private static final Color COLOR_NORMAL = new Color(1f, 1f, 1f, 1f);
     private static final Color COLOR_PRESSED = new Color(0.85f, 0.85f, 0.85f, 1f);
-    private static final Color COLOR_COOLDOWN = new Color(0.7f, 0.7f, 0.7f, 0.8f);  // Gris durante cooldown
+    private static final Color COLOR_COOLDOWN = new Color(0.7f, 0.7f, 0.7f, 0.8f);
     
     // Offset visual al presionar
     private static final float PRESS_OFFSET_Y = -4f;
@@ -56,7 +56,6 @@ public class SimpleButton {
         this.text = text;
         this.layout = new GlyphLayout();
         
-        // Calcular height manteniendo aspect ratio
         float height = width;
         if (texture != null) {
             float aspectRatio = (float) texture.getHeight() / (float) texture.getWidth();
@@ -78,22 +77,17 @@ public class SimpleButton {
     
     /**
      * Actualiza el estado del botón con sistema de debounce
-     * @param viewport Viewport para conversión de coordenadas
      */
     public void update(Viewport viewport) {
-        // Obtener delta time
         float delta = Gdx.graphics.getDeltaTime();
         
-        // === SISTEMA DE DEBOUNCE ===
         if (cooldownTimer > 0) {
             cooldownTimer -= delta;
-            // Durante cooldown, el botón está "dormido"
             isPressed = false;
             wasPressed = false;
-            return;  // Ignorar todo input
+            return;
         }
         
-        // === DETECCIÓN NORMAL DE INPUT ===
         isPressed = false;
         
         if (Gdx.input.isTouched()) {
@@ -102,7 +96,6 @@ public class SimpleButton {
             if (bounds.contains(touchPoint.x, touchPoint.y)) {
                 isPressed = true;
                 
-                // Solo trigger en el primer frame del toque
                 if (!wasPressed) {
                     triggerClick();
                 }
@@ -116,20 +109,17 @@ public class SimpleButton {
      * Dibuja el botón CON texto
      */
     public void draw(SpriteBatch batch, BitmapFont font) {
-        // Calcular offset visual
         float offsetY = isPressed ? PRESS_OFFSET_Y : 0f;
         
-        // Determinar color según estado
         Color oldColor = batch.getColor().cpy();
         if (cooldownTimer > 0) {
-            batch.setColor(COLOR_COOLDOWN);  // Gris durante cooldown
+            batch.setColor(COLOR_COOLDOWN);
         } else if (isPressed) {
-            batch.setColor(COLOR_PRESSED);   // Oscuro al presionar
+            batch.setColor(COLOR_PRESSED);
         } else {
-            batch.setColor(COLOR_NORMAL);    // Normal
+            batch.setColor(COLOR_NORMAL);
         }
         
-        // Dibujar textura
         if (texture != null) {
             batch.draw(
                 texture, 
@@ -140,10 +130,8 @@ public class SimpleButton {
             );
         }
         
-        // Restaurar color
         batch.setColor(oldColor);
         
-        // Dibujar texto centrado (con mismo offset)
         if (text != null && font != null && !text.isEmpty()) {
             layout.setText(font, text);
             float textX = bounds.x + (bounds.width - layout.width) / 2f;
@@ -191,7 +179,6 @@ public class SimpleButton {
      * Dispara el evento de click y activa el cooldown
      */
     private void triggerClick() {
-        // Activar cooldown ANTES de ejecutar callback
         cooldownTimer = DEFAULT_COOLDOWN;
         
         Gdx.app.log(TAG, "Click: " + (text != null && !text.isEmpty() ? text : "botón") + 
@@ -203,7 +190,7 @@ public class SimpleButton {
     }
     
     /**
-     * Fuerza el reset del cooldown (útil para testing)
+     * Fuerza el reset del cooldown
      */
     public void resetCooldown() {
         cooldownTimer = 0f;
@@ -217,7 +204,7 @@ public class SimpleButton {
     }
     
     /**
-     * Establece un cooldown personalizado para este botón
+     * Establece un cooldown personalizado
      */
     public void setCooldown(float seconds) {
         cooldownTimer = seconds;
@@ -231,6 +218,14 @@ public class SimpleButton {
     
     public boolean isPressed() { 
         return isPressed; 
+    }
+    
+    public float getX() {
+        return bounds.x;
+    }
+    
+    public float getY() {
+        return bounds.y;
     }
     
     public float getWidth() { 

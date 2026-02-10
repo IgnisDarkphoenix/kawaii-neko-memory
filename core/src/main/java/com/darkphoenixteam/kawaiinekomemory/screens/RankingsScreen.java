@@ -9,17 +9,17 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.darkphoenixteam.kawaiinekomemory.KawaiiNekoMemory;
 import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
 import com.darkphoenixteam.kawaiinekomemory.config.Constants;
+import com.darkphoenixteam.kawaiinekomemory.models.Achievement;
 import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
+import com.darkphoenixteam.kawaiinekomemory.systems.LocaleManager;
 import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 
 /**
- * Pantalla de Rankings
- * Muestra estadísticas y récords del jugador
- * Preparada para futura expansión a rankings online
+ * Pantalla de Rankings con localización completa
  * 
  * @author DarkphoenixTeam
- * @version 1.0
+ * @version 1.1 - Localización completa
  */
 public class RankingsScreen extends BaseScreen {
     
@@ -34,7 +34,6 @@ public class RankingsScreen extends BaseScreen {
     // === TEXTURAS ===
     private Texture patternTexture;
     private Texture nekoinIconTexture;
-    private Texture trophyTexture;
     
     // === BOTONES ===
     private SimpleButton backButton;
@@ -45,17 +44,17 @@ public class RankingsScreen extends BaseScreen {
     // === SISTEMAS ===
     private AudioManager audioManager;
     private SaveManager saveManager;
+    private LocaleManager locale;
     
     // === LAYOUT ===
     private static final float HEADER_HEIGHT = 100f;
     private static final float CARD_MARGIN = 20f;
-    private static final float CARD_PADDING = 15f;
     private static final float CARD_SPACING = 15f;
     
     public RankingsScreen(KawaiiNekoMemory game) {
         super(game);
         
-        setBackgroundColor(0.15f, 0.1f, 0.2f); // Fondo oscuro elegante
+        setBackgroundColor(0.15f, 0.1f, 0.2f);
         
         titleFont = game.getFontManager().getTitleFont();
         buttonFont = game.getFontManager().getButtonFont();
@@ -64,6 +63,7 @@ public class RankingsScreen extends BaseScreen {
         
         audioManager = AudioManager.getInstance();
         saveManager = SaveManager.getInstance();
+        locale = LocaleManager.getInstance();
         
         shapeRenderer = new ShapeRenderer();
         
@@ -95,7 +95,7 @@ public class RankingsScreen extends BaseScreen {
             Texture backTex = new Texture(Gdx.files.internal(AssetPaths.BTN_BACK));
             float btnWidth = Constants.VIRTUAL_WIDTH * 0.4f;
             float btnHeight = btnWidth * 0.35f;
-            backButton = new SimpleButton(backTex, "VOLVER",
+            backButton = new SimpleButton(backTex, locale.get("common.back"),
                 (Constants.VIRTUAL_WIDTH - btnWidth) / 2f, 20f, btnWidth, btnHeight);
             backButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
@@ -117,7 +117,6 @@ public class RankingsScreen extends BaseScreen {
     protected void draw() {
         game.getBatch().begin();
         
-        // Fondo con patrón sutil
         if (patternTexture != null) {
             game.getBatch().setColor(1f, 1f, 1f, 0.1f);
             int tileSize = 512;
@@ -131,26 +130,19 @@ public class RankingsScreen extends BaseScreen {
         
         game.getBatch().end();
         
-        // Dibujar tarjetas de estadísticas
         drawStatCards();
         
         game.getBatch().begin();
-        
-        // Header
         drawHeader();
-        
-        // Contenido de las tarjetas
         drawStatContent();
         
-        // Botón volver
         if (backButton != null) backButton.draw(game.getBatch(), buttonFont);
         
         game.getBatch().end();
     }
     
     private void drawHeader() {
-        // Título
-        String title = "RANKINGS";
+        String title = locale.get("rankings.title");
         titleFont.setColor(Color.GOLD);
         layout.setText(titleFont, title);
         titleFont.draw(game.getBatch(), title,
@@ -158,8 +150,7 @@ public class RankingsScreen extends BaseScreen {
                       Constants.VIRTUAL_HEIGHT - 30f);
         titleFont.setColor(Color.WHITE);
         
-        // Subtítulo
-        String subtitle = "Tus Estadísticas";
+        String subtitle = locale.get("rankings.subtitle");
         smallFont.setColor(Color.LIGHT_GRAY);
         layout.setText(smallFont, subtitle);
         smallFont.draw(game.getBatch(), subtitle,
@@ -175,37 +166,30 @@ public class RankingsScreen extends BaseScreen {
         float cardHeight = 100f;
         float startY = Constants.VIRTUAL_HEIGHT - HEADER_HEIGHT - 20f;
         
-        // Card 1: Time Attack
         drawCard(CARD_MARGIN, startY - cardHeight, cardWidth, cardHeight, 
                 new Color(0.8f, 0.4f, 0.1f, 0.9f));
         
-        // Card 2: Estadísticas Generales
         drawCard(CARD_MARGIN, startY - cardHeight * 2 - CARD_SPACING, cardWidth, cardHeight,
                 new Color(0.2f, 0.5f, 0.8f, 0.9f));
         
-        // Card 3: Colección
         drawCard(CARD_MARGIN, startY - cardHeight * 3 - CARD_SPACING * 2, cardWidth, cardHeight,
                 new Color(0.6f, 0.3f, 0.7f, 0.9f));
         
-        // Card 4: Logros
         drawCard(CARD_MARGIN, startY - cardHeight * 4 - CARD_SPACING * 3, cardWidth, cardHeight,
                 new Color(0.2f, 0.7f, 0.4f, 0.9f));
     }
     
     private void drawCard(float x, float y, float width, float height, Color color) {
-        // Sombra
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(0, 0, 0, 0.3f);
         shapeRenderer.rect(x + 4f, y - 4f, width, height);
         shapeRenderer.end();
         
-        // Tarjeta
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(color);
         shapeRenderer.rect(x, y, width, height);
         shapeRenderer.end();
         
-        // Borde
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
         shapeRenderer.setColor(1f, 1f, 1f, 0.3f);
         shapeRenderer.rect(x, y, width, height);
@@ -216,13 +200,13 @@ public class RankingsScreen extends BaseScreen {
         float cardWidth = Constants.VIRTUAL_WIDTH - (CARD_MARGIN * 2);
         float cardHeight = 100f;
         float startY = Constants.VIRTUAL_HEIGHT - HEADER_HEIGHT - 20f;
-        float textX = CARD_MARGIN + CARD_PADDING;
+        float textX = CARD_MARGIN + 15f;
         
         // === CARD 1: TIME ATTACK ===
         float card1Y = startY - cardHeight;
         
         buttonFont.setColor(Color.WHITE);
-        buttonFont.draw(game.getBatch(), "⏱ TIME ATTACK", textX, card1Y + cardHeight - CARD_PADDING);
+        buttonFont.draw(game.getBatch(), "⏱ " + locale.get("rankings.timeattack"), textX, card1Y + cardHeight - 15f);
         
         int bestPairs = saveManager.getTimeAttackBestPairs();
         int totalPairs = saveManager.getTimeAttackTotalPairs();
@@ -231,26 +215,25 @@ public class RankingsScreen extends BaseScreen {
         
         smallFont.setColor(Color.WHITE);
         
-        // Mejor récord (destacado)
-        String recordText = "Mejor: " + bestPairs + " pares";
         if (bestPairs > 0) {
             buttonFont.setColor(Color.GOLD);
+            String recordText = locale.format("rankings.best", bestPairs);
             layout.setText(buttonFont, recordText);
             buttonFont.draw(game.getBatch(), recordText, 
-                           Constants.VIRTUAL_WIDTH - CARD_MARGIN - CARD_PADDING - layout.width,
-                           card1Y + cardHeight - CARD_PADDING);
+                           Constants.VIRTUAL_WIDTH - CARD_MARGIN - 15f - layout.width,
+                           card1Y + cardHeight - 15f);
             buttonFont.setColor(Color.WHITE);
         }
         
-        smallFont.draw(game.getBatch(), "Total pares: " + totalPairs, textX, card1Y + cardHeight - 45f);
-        smallFont.draw(game.getBatch(), "Partidas: " + gamesPlayed, textX, card1Y + cardHeight - 65f);
-        smallFont.draw(game.getBatch(), "Tiempo: " + formatTime(currentTime), textX + 150f, card1Y + cardHeight - 65f);
+        smallFont.draw(game.getBatch(), locale.format("rankings.totalpairs", totalPairs), textX, card1Y + cardHeight - 45f);
+        smallFont.draw(game.getBatch(), locale.format("rankings.games", gamesPlayed), textX, card1Y + cardHeight - 65f);
+        smallFont.draw(game.getBatch(), locale.format("game.time", formatTime(currentTime)), textX + 150f, card1Y + cardHeight - 65f);
         
-        // === CARD 2: ESTADÍSTICAS GENERALES ===
+        // === CARD 2: ESTADÍSTICAS ===
         float card2Y = startY - cardHeight * 2 - CARD_SPACING;
         
         buttonFont.setColor(Color.WHITE);
-        buttonFont.draw(game.getBatch(), "📊 ESTADÍSTICAS", textX, card2Y + cardHeight - CARD_PADDING);
+        buttonFont.draw(game.getBatch(), "📊 " + locale.get("rankings.stats"), textX, card2Y + cardHeight - 15f);
         
         int totalWins = saveManager.getTotalWins();
         int totalLosses = saveManager.getTotalLosses();
@@ -258,20 +241,19 @@ public class RankingsScreen extends BaseScreen {
         int bestCombo = saveManager.getBestCombo();
         
         smallFont.setColor(Color.WHITE);
-        smallFont.draw(game.getBatch(), "Victorias: " + totalWins, textX, card2Y + cardHeight - 45f);
-        smallFont.draw(game.getBatch(), "Derrotas: " + totalLosses, textX + 140f, card2Y + cardHeight - 45f);
-        smallFont.draw(game.getBatch(), "Pares totales: " + totalGamePairs, textX, card2Y + cardHeight - 65f);
-        smallFont.draw(game.getBatch(), "Mejor combo: " + bestCombo, textX + 180f, card2Y + cardHeight - 65f);
+        smallFont.draw(game.getBatch(), locale.format("rankings.wins", totalWins), textX, card2Y + cardHeight - 45f);
+        smallFont.draw(game.getBatch(), locale.format("rankings.losses", totalLosses), textX + 140f, card2Y + cardHeight - 45f);
+        smallFont.draw(game.getBatch(), locale.format("rankings.totalpairs", totalGamePairs), textX, card2Y + cardHeight - 65f);
+        smallFont.draw(game.getBatch(), locale.format("rankings.bestcombo", bestCombo), textX + 180f, card2Y + cardHeight - 65f);
         
-        // Ratio de victoria
         if (totalWins + totalLosses > 0) {
             float winRate = (totalWins * 100f) / (totalWins + totalLosses);
             String rateText = String.format("%.1f%%", winRate);
             buttonFont.setColor(winRate >= 50 ? Color.GREEN : Color.RED);
             layout.setText(buttonFont, rateText);
             buttonFont.draw(game.getBatch(), rateText,
-                           Constants.VIRTUAL_WIDTH - CARD_MARGIN - CARD_PADDING - layout.width,
-                           card2Y + cardHeight - CARD_PADDING);
+                           Constants.VIRTUAL_WIDTH - CARD_MARGIN - 15f - layout.width,
+                           card2Y + cardHeight - 15f);
             buttonFont.setColor(Color.WHITE);
         }
         
@@ -279,7 +261,7 @@ public class RankingsScreen extends BaseScreen {
         float card3Y = startY - cardHeight * 3 - CARD_SPACING * 2;
         
         buttonFont.setColor(Color.WHITE);
-        buttonFont.draw(game.getBatch(), "🎴 COLECCIÓN", textX, card3Y + cardHeight - CARD_PADDING);
+        buttonFont.draw(game.getBatch(), "🎴 " + locale.get("rankings.collection"), textX, card3Y + cardHeight - 15f);
         
         int unlockedCards = saveManager.getUnlockedCardCount();
         int totalCards = Constants.TOTAL_CARDS;
@@ -287,57 +269,54 @@ public class RankingsScreen extends BaseScreen {
         int gachaPulls = saveManager.getGachaPulls();
         
         smallFont.setColor(Color.WHITE);
-        smallFont.draw(game.getBatch(), "Cartas: " + unlockedCards + "/" + totalCards, textX, card3Y + cardHeight - 45f);
-        smallFont.draw(game.getBatch(), "Activas: " + activeCards + "/15", textX + 140f, card3Y + cardHeight - 45f);
-        smallFont.draw(game.getBatch(), "Tiradas gacha: " + gachaPulls, textX, card3Y + cardHeight - 65f);
+        smallFont.draw(game.getBatch(), locale.format("rankings.cards", unlockedCards, totalCards), textX, card3Y + cardHeight - 45f);
+        smallFont.draw(game.getBatch(), locale.format("rankings.activecount", activeCards), textX + 140f, card3Y + cardHeight - 45f);
+        smallFont.draw(game.getBatch(), locale.format("rankings.gachapulls", gachaPulls), textX, card3Y + cardHeight - 65f);
         
-        // Porcentaje de colección
         float collectionPercent = (unlockedCards * 100f) / totalCards;
         String percentText = String.format("%.0f%%", collectionPercent);
         buttonFont.setColor(collectionPercent >= 100 ? Color.GOLD : Color.WHITE);
         layout.setText(buttonFont, percentText);
         buttonFont.draw(game.getBatch(), percentText,
-                       Constants.VIRTUAL_WIDTH - CARD_MARGIN - CARD_PADDING - layout.width,
-                       card3Y + cardHeight - CARD_PADDING);
+                       Constants.VIRTUAL_WIDTH - CARD_MARGIN - 15f - layout.width,
+                       card3Y + cardHeight - 15f);
         buttonFont.setColor(Color.WHITE);
         
         // === CARD 4: LOGROS ===
         float card4Y = startY - cardHeight * 4 - CARD_SPACING * 3;
         
         buttonFont.setColor(Color.WHITE);
-        buttonFont.draw(game.getBatch(), "🏆 LOGROS", textX, card4Y + cardHeight - CARD_PADDING);
+        buttonFont.draw(game.getBatch(), "🏆 " + locale.get("rankings.achievements"), textX, card4Y + cardHeight - 15f);
         
         int unlockedAchievements = saveManager.getUnlockedAchievementCount();
-        int totalAchievements = com.darkphoenixteam.kawaiinekomemory.models.Achievement.count();
+        int totalAchievements = Achievement.count();
         int totalEarned = saveManager.getTotalNekoinsEarned();
         int totalSpent = saveManager.getTotalNekoinsSpent();
         int powersUsed = saveManager.getTotalPowersUsed();
         
         smallFont.setColor(Color.WHITE);
-        smallFont.draw(game.getBatch(), "Logros: " + unlockedAchievements + "/" + totalAchievements, 
+        smallFont.draw(game.getBatch(), locale.format("rankings.cards", unlockedAchievements, totalAchievements), 
                       textX, card4Y + cardHeight - 45f);
-        smallFont.draw(game.getBatch(), "Powers usados: " + powersUsed, textX + 150f, card4Y + cardHeight - 45f);
+        smallFont.draw(game.getBatch(), locale.format("rankings.powersused", powersUsed), textX + 150f, card4Y + cardHeight - 45f);
         
-        // Nekoins
         if (nekoinIconTexture != null) {
             float iconSize = 18f;
             float iconY = card4Y + cardHeight - 75f;
             
             game.getBatch().draw(nekoinIconTexture, textX, iconY, iconSize, iconSize);
-            smallFont.draw(game.getBatch(), " Ganados: " + totalEarned, textX + iconSize, iconY + iconSize - 3f);
+            smallFont.draw(game.getBatch(), locale.format("rankings.earned", totalEarned), textX + iconSize + 5f, iconY + iconSize - 3f);
             
             game.getBatch().draw(nekoinIconTexture, textX + 160f, iconY, iconSize, iconSize);
-            smallFont.draw(game.getBatch(), " Gastados: " + totalSpent, textX + 160f + iconSize, iconY + iconSize - 3f);
+            smallFont.draw(game.getBatch(), locale.format("rankings.spent", totalSpent), textX + 160f + iconSize + 5f, iconY + iconSize - 3f);
         }
         
-        // Porcentaje de logros
         float achievePercent = (unlockedAchievements * 100f) / totalAchievements;
         String achieveText = String.format("%.0f%%", achievePercent);
         buttonFont.setColor(achievePercent >= 100 ? Color.GOLD : Color.WHITE);
         layout.setText(buttonFont, achieveText);
         buttonFont.draw(game.getBatch(), achieveText,
-                       Constants.VIRTUAL_WIDTH - CARD_MARGIN - CARD_PADDING - layout.width,
-                       card4Y + cardHeight - CARD_PADDING);
+                       Constants.VIRTUAL_WIDTH - CARD_MARGIN - 15f - layout.width,
+                       card4Y + cardHeight - 15f);
         buttonFont.setColor(Color.WHITE);
         
         smallFont.setColor(Color.WHITE);
@@ -351,8 +330,6 @@ public class RankingsScreen extends BaseScreen {
     
     @Override
     public void dispose() {
-        Gdx.app.log(TAG, "Liberando recursos...");
-        
         if (patternTexture != null) patternTexture.dispose();
         if (nekoinIconTexture != null) nekoinIconTexture.dispose();
         if (backButton != null) backButton.dispose();

@@ -3,13 +3,14 @@ package com.darkphoenixteam.kawaiinekomemory.systems;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.utils.Array;
+import com.darkphoenixteam.kawaiinekomemory.config.Constants;
 import com.darkphoenixteam.kawaiinekomemory.models.Achievement;
 
 /**
- * Gestor de guardado con sistema de logros y estadísticas
+ * Gestor de guardado con sistema de logros, estadísticas y Time Attack
  * 
  * @author DarkphoenixTeam
- * @version 2.0 - Sistema de logros
+ * @version 3.0 - Time Attack + Gacha dinámico
  */
 public class SaveManager {
     
@@ -24,7 +25,7 @@ public class SaveManager {
     private static final String KEY_ACTIVE_CARDS = "active_cards";
     private static final String KEY_HINT_USES = "hint_uses";
     private static final String KEY_TIMEFREEZE_USES = "timefreeze_uses";
-    private static final String KEY_SAVE_VERSION = "save_version_v4";
+    private static final String KEY_SAVE_VERSION = "save_version_v5";
     
     // === KEYS DE LOGROS ===
     private static final String KEY_ACHIEVEMENT = "achievement_";
@@ -39,7 +40,16 @@ public class SaveManager {
     private static final String KEY_STAT_BEST_COMBO = "stat_best_combo";
     private static final String KEY_STAT_PURCHASES = "stat_purchases";
     
-    private static final int CURRENT_VERSION = 4;
+    // === KEYS TIME ATTACK ===
+    private static final String KEY_TIME_ATTACK_UPGRADES = "time_attack_upgrades";
+    private static final String KEY_TIME_ATTACK_BEST_PAIRS = "time_attack_best_pairs";
+    private static final String KEY_TIME_ATTACK_TOTAL_PAIRS = "time_attack_total_pairs";
+    private static final String KEY_TIME_ATTACK_GAMES_PLAYED = "time_attack_games_played";
+    
+    // === KEYS GACHA ===
+    private static final String KEY_GACHA_PULLS = "gacha_total_pulls";
+    
+    private static final int CURRENT_VERSION = 5;
     private static final int TOTAL_CARDS = 35;
     private static final int ACTIVE_DECK_SIZE = 15;
     private static final int CARDS_PER_DECK = 7;
@@ -49,7 +59,6 @@ public class SaveManager {
     private Preferences prefs;
     private Array<Integer> activeCards;
     
-    // Cache de logros nuevos para mostrar popup
     private Array<Achievement> newlyUnlocked;
     
     private SaveManager() {
@@ -71,14 +80,31 @@ public class SaveManager {
     }
     
     private void migrateData(int oldVersion) {
-        // Mantener datos existentes si es posible
-        if (oldVersion >= 3) {
-            // Solo actualizar versión
+        if (oldVersion >= 4) {
+            // Migración desde v4: solo agregar nuevas keys
+            if (!prefs.contains(KEY_TIME_ATTACK_UPGRADES)) {
+                prefs.putInteger(KEY_TIME_ATTACK_UPGRADES, 0);
+            }
+            if (!prefs.contains(KEY_TIME_ATTACK_BEST_PAIRS)) {
+                prefs.putInteger(KEY_TIME_ATTACK_BEST_PAIRS, 0);
+            }
+            if (!prefs.contains(KEY_TIME_ATTACK_TOTAL_PAIRS)) {
+                prefs.putInteger(KEY_TIME_ATTACK_TOTAL_PAIRS, 0);
+            }
+            if (!prefs.contains(KEY_TIME_ATTACK_GAMES_PLAYED)) {
+                prefs.putInteger(KEY_TIME_ATTACK_GAMES_PLAYED, 0);
+            }
+            if (!prefs.contains(KEY_GACHA_PULLS)) {
+                prefs.putInteger(KEY_GACHA_PULLS, 0);
+            }
+            prefs.putInteger(KEY_SAVE_VERSION, CURRENT_VERSION);
+            prefs.flush();
+            loadActiveCards();
+        } else if (oldVersion >= 3) {
             prefs.putInteger(KEY_SAVE_VERSION, CURRENT_VERSION);
             prefs.flush();
             loadActiveCards();
         } else {
-            // Reset completo para versiones muy antiguas
             resetAndInitialize();
         }
     }
@@ -91,12 +117,10 @@ public class SaveManager {
         prefs.putInteger(KEY_SAVE_VERSION, CURRENT_VERSION);
         prefs.putInteger(KEY_NEKOINS, 100);
         
-        // Desbloquear deck base
         for (int i = 0; i < CARDS_PER_DECK; i++) {
             prefs.putBoolean(KEY_CARD_UNLOCKED + i, true);
         }
         
-        // Inicializar cartas activas
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < ACTIVE_DECK_SIZE; i++) {
             if (i > 0) sb.append(",");
@@ -110,15 +134,24 @@ public class SaveManager {
         }
         prefs.putString(KEY_ACTIVE_CARDS, sb.toString());
         
-        // Inicializar estadísticas en 0
+        // Estadísticas
         prefs.putInteger(KEY_STAT_TOTAL_PAIRS, 0);
         prefs.putInteger(KEY_STAT_TOTAL_WINS, 0);
         prefs.putInteger(KEY_STAT_TOTAL_LOSSES, 0);
-        prefs.putInteger(KEY_STAT_TOTAL_EARNED, 100); // Nekoins iniciales
+        prefs.putInteger(KEY_STAT_TOTAL_EARNED, 100);
         prefs.putInteger(KEY_STAT_TOTAL_SPENT, 0);
         prefs.putInteger(KEY_STAT_POWERS_USED, 0);
         prefs.putInteger(KEY_STAT_BEST_COMBO, 0);
         prefs.putInteger(KEY_STAT_PURCHASES, 0);
+        
+        // Time Attack
+        prefs.putInteger(KEY_TIME_ATTACK_UPGRADES, 0);
+        prefs.putInteger(KEY_TIME_ATTACK_BEST_PAIRS, 0);
+        prefs.putInteger(KEY_TIME_ATTACK_TOTAL_PAIRS, 0);
+        prefs.putInteger(KEY_TIME_ATTACK_GAMES_PLAYED, 0);
+        
+        // Gacha
+        prefs.putInteger(KEY_GACHA_PULLS, 0);
         
         prefs.flush();
         Gdx.app.log(TAG, "Inicialización completa");
@@ -161,13 +194,11 @@ public class SaveManager {
         int current = getNekoins();
         prefs.putInteger(KEY_NEKOINS, current + amount);
         
-        // Estadística
         int totalEarned = prefs.getInteger(KEY_STAT_TOTAL_EARNED, 0);
         prefs.putInteger(KEY_STAT_TOTAL_EARNED, totalEarned + amount);
         
         prefs.flush();
         
-        // Verificar logro
         checkAchievement(Achievement.RICH_NEKO);
     }
     
@@ -176,7 +207,6 @@ public class SaveManager {
         if (current >= amount) {
             prefs.putInteger(KEY_NEKOINS, current - amount);
             
-            // Estadísticas
             int totalSpent = prefs.getInteger(KEY_STAT_TOTAL_SPENT, 0);
             prefs.putInteger(KEY_STAT_TOTAL_SPENT, totalSpent + amount);
             
@@ -185,7 +215,6 @@ public class SaveManager {
             
             prefs.flush();
             
-            // Verificar logros
             if (purchases == 0) {
                 unlockAchievement(Achievement.FIRST_SHOP);
             }
@@ -194,6 +223,130 @@ public class SaveManager {
             return true;
         }
         return false;
+    }
+    
+    // ==================== TIME ATTACK ====================
+    
+    public int getTimeAttackUpgrades() {
+        return prefs.getInteger(KEY_TIME_ATTACK_UPGRADES, 0);
+    }
+    
+    public float getTimeAttackTime() {
+        int upgrades = getTimeAttackUpgrades();
+        return Constants.TIME_ATTACK_BASE_TIME + (upgrades * Constants.TIME_ATTACK_UPGRADE_AMOUNT);
+    }
+    
+    public int getTimeAttackUpgradeCost() {
+        int upgrades = getTimeAttackUpgrades();
+        if (upgrades >= Constants.TIME_ATTACK_MAX_UPGRADES) {
+            return -1; // Ya está al máximo
+        }
+        
+        int cost = Constants.TIME_ATTACK_UPGRADE_BASE_COST;
+        for (int i = 0; i < upgrades; i++) {
+            if (i % 2 == 0) {
+                cost += Constants.TIME_ATTACK_UPGRADE_INCREMENT_ODD;
+            } else {
+                cost += Constants.TIME_ATTACK_UPGRADE_INCREMENT_EVEN;
+            }
+        }
+        return cost;
+    }
+    
+    public boolean purchaseTimeAttackUpgrade() {
+        int cost = getTimeAttackUpgradeCost();
+        if (cost < 0) return false; // Ya está al máximo
+        
+        if (spendNekoins(cost)) {
+            int upgrades = getTimeAttackUpgrades();
+            prefs.putInteger(KEY_TIME_ATTACK_UPGRADES, upgrades + 1);
+            prefs.flush();
+            
+            float newTime = getTimeAttackTime();
+            Gdx.app.log(TAG, "Time Attack upgrade! Nuevo tiempo: " + newTime + "s");
+            return true;
+        }
+        return false;
+    }
+    
+    public int getTimeAttackBestPairs() {
+        return prefs.getInteger(KEY_TIME_ATTACK_BEST_PAIRS, 0);
+    }
+    
+    public boolean updateTimeAttackBestPairs(int pairs) {
+        int current = getTimeAttackBestPairs();
+        if (pairs > current) {
+            prefs.putInteger(KEY_TIME_ATTACK_BEST_PAIRS, pairs);
+            prefs.flush();
+            Gdx.app.log(TAG, "Nuevo récord Time Attack: " + pairs + " pares");
+            return true;
+        }
+        return false;
+    }
+    
+    public void addTimeAttackPairs(int pairs) {
+        int total = prefs.getInteger(KEY_TIME_ATTACK_TOTAL_PAIRS, 0);
+        prefs.putInteger(KEY_TIME_ATTACK_TOTAL_PAIRS, total + pairs);
+        prefs.flush();
+    }
+    
+    public int getTimeAttackTotalPairs() {
+        return prefs.getInteger(KEY_TIME_ATTACK_TOTAL_PAIRS, 0);
+    }
+    
+    public void incrementTimeAttackGamesPlayed() {
+        int games = prefs.getInteger(KEY_TIME_ATTACK_GAMES_PLAYED, 0);
+        prefs.putInteger(KEY_TIME_ATTACK_GAMES_PLAYED, games + 1);
+        prefs.flush();
+    }
+    
+    public int getTimeAttackGamesPlayed() {
+        return prefs.getInteger(KEY_TIME_ATTACK_GAMES_PLAYED, 0);
+    }
+    
+    // ==================== GACHA ====================
+    
+    public int getGachaPulls() {
+        return prefs.getInteger(KEY_GACHA_PULLS, 0);
+    }
+    
+    public int getGachaCost() {
+        int pulls = getGachaPulls();
+        int cost = Constants.GACHA_BASE_COST;
+        
+        for (int i = 0; i < pulls; i++) {
+            if (i % 2 == 0) {
+                cost += Constants.GACHA_INCREMENT_ODD;
+            } else {
+                cost += Constants.GACHA_INCREMENT_EVEN;
+            }
+        }
+        return cost;
+    }
+    
+    public void incrementGachaPulls() {
+        int pulls = getGachaPulls();
+        prefs.putInteger(KEY_GACHA_PULLS, pulls + 1);
+        prefs.flush();
+    }
+    
+    // ==================== POWER PRICES ====================
+    
+    public int getPowerPrice(int currentAmount) {
+        if (currentAmount >= Constants.MAX_POWER_STOCK) return -1;
+        if (currentAmount < 0) currentAmount = 0;
+        if (currentAmount >= Constants.POWER_PRICES.length) {
+            return Constants.POWER_PRICES[Constants.POWER_PRICES.length - 1];
+        }
+        return Constants.POWER_PRICES[currentAmount];
+    }
+    
+    public int getHintPrice() {
+        return getPowerPrice(getHintUses());
+    }
+    
+    public int getTimeFreezePrice() {
+        return getPowerPrice(getTimeFreezeUses());
     }
     
     // ==================== CARDS ====================
@@ -209,7 +362,6 @@ public class SaveManager {
         prefs.putBoolean(KEY_CARD_UNLOCKED + cardId, true);
         prefs.flush();
         
-        // Verificar logro de colección completa
         checkAchievement(Achievement.GALLERY_UNLOCK);
     }
     
@@ -317,13 +469,11 @@ public class SaveManager {
         boolean wasCompleted = isLevelCompleted(levelId);
         prefs.putBoolean(KEY_LEVEL_COMPLETED + levelId, true);
         
-        // Guardar estrellas (solo si es mejor)
         int currentStars = getLevelStars(levelId);
         if (stars > currentStars) {
             prefs.putInteger(KEY_LEVEL_STARS + levelId, stars);
         }
         
-        // Estadísticas
         if (!wasCompleted) {
             int wins = prefs.getInteger(KEY_STAT_TOTAL_WINS, 0);
             prefs.putInteger(KEY_STAT_TOTAL_WINS, wins + 1);
@@ -335,7 +485,6 @@ public class SaveManager {
         
         prefs.flush();
         
-        // Verificar logros
         if (stars == 3) {
             checkAchievement(Achievement.FIRST_3_STAR);
         }
@@ -491,20 +640,15 @@ public class SaveManager {
         prefs.putBoolean(KEY_ACHIEVEMENT + achievement.getIndex(), true);
         prefs.flush();
         
-        // Dar recompensa
         int current = getNekoins();
         prefs.putInteger(KEY_NEKOINS, current + achievement.reward);
         prefs.flush();
         
-        // Agregar a lista de nuevos
         newlyUnlocked.add(achievement);
         
         Gdx.app.log(TAG, "🏆 LOGRO DESBLOQUEADO: " + achievement.name + " (+" + achievement.reward + " Nekoins)");
     }
     
-    /**
-     * Verifica y desbloquea un logro si cumple condiciones
-     */
     public void checkAchievement(Achievement achievement) {
         if (isAchievementUnlocked(achievement)) return;
         
@@ -522,9 +666,6 @@ public class SaveManager {
                 break;
             case GALLERY_UNLOCK:
                 shouldUnlock = getUnlockedCardCount() >= TOTAL_CARDS;
-                break;
-            case FIRST_3_STAR:
-                // Se verifica en setLevelCompleted
                 break;
             default:
                 break;
@@ -643,9 +784,6 @@ public class SaveManager {
         return count;
     }
     
-    /**
-     * Obtiene y limpia la lista de logros recién desbloqueados
-     */
     public Array<Achievement> popNewlyUnlockedAchievements() {
         Array<Achievement> result = new Array<>(newlyUnlocked);
         newlyUnlocked.clear();
@@ -673,12 +811,15 @@ public class SaveManager {
         Gdx.app.log(TAG, "Pares totales: " + getTotalPairsFound());
         Gdx.app.log(TAG, "Mejor combo: " + getBestCombo());
         Gdx.app.log(TAG, "Logros: " + getUnlockedAchievementCount() + "/" + Achievement.count());
+        Gdx.app.log(TAG, "Time Attack - Mejor: " + getTimeAttackBestPairs() + " pares");
+        Gdx.app.log(TAG, "Time Attack - Tiempo: " + getTimeAttackTime() + "s");
     }
     
     public String getStats() {
         return "Nekoins:" + getNekoins() + 
                " Wins:" + getTotalWins() + 
                " Cartas:" + getUnlockedCardCount() + "/35" +
-               " Logros:" + getUnlockedAchievementCount() + "/" + Achievement.count();
+               " Logros:" + getUnlockedAchievementCount() + "/" + Achievement.count() +
+               " TA-Best:" + getTimeAttackBestPairs();
     }
-    }
+}

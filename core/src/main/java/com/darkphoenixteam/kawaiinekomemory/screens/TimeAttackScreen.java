@@ -1,0 +1,867 @@
+package com.darkphoenixteam.kawaiinekomemory.screens;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.utils.Array;
+import com.darkphoenixteam.kawaiinekomemory.KawaiiNekoMemory;
+import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
+import com.darkphoenixteam.kawaiinekomemory.config.Constants;
+import com.darkphoenixteam.kawaiinekomemory.models.Card;
+import com.darkphoenixteam.kawaiinekomemory.systems.AdController;
+import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
+import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
+import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
+
+/**
+ * Pantalla de modo Time Attack
+ * Grid 5x6 infinito, sin powers, pensado para grind de Nekoins
+ * 
+ * @author DarkphoenixTeam
+ * @version 1.0
+ */
+public class TimeAttackScreen extends BaseScreen {
+    
+    private static final String TAG = "TimeAttackScreen";
+    
+    // ==================== ESTADOS ====================
+    
+    public enum GameState {
+        STARTING,
+        PLAYING,
+        CHECKING,
+        GRID_TRANSITION,
+        GAME_OVER,
+        SHOWING_RESULTS
+    }
+    
+    private GameState gameState;
+    
+    // ==================== CONFIGURACIÓN ====================
+    
+    private static final int COLS = Constants.TIME_ATTACK_COLS;  // 5
+    private static final int ROWS = Constants.TIME_ATTACK_ROWS;  // 6
+    private static final int PAIRS = (COLS * ROWS) / 2;          // 15
+    
+    // ==================== TABLERO ====================
+    
+    private Array<Card> cards;
+    private Card firstRevealed;
+    private Card secondRevealed;
+    
+    private Texture cardBackTexture;
+    private Array<Texture> cardFrontTextures;
+    private Texture backgroundTexture;
+    
+    private float boardX, boardY;
+    private float boardWidth, boardHeight;
+    private float cardWidth, cardHeight;
+    
+    // ==================== TIMER Y PUNTUACIÓN ====================
+    
+    private float timeRemaining;
+    private float timeLimit;
+    private int pairsFoundThisGrid;
+    private int pairsFoundTotal;
+    private int gridsCompleted;
+    private int nekoinsEarned;
+    
+    // ==================== RÉCORDS ====================
+    
+    private int bestPairs;
+    private boolean isNewRecord;
+    
+    // ==================== HUD ====================
+    
+    private BitmapFont hudFont;
+    private BitmapFont titleFont;
+    private BitmapFont buttonFont;
+    private GlyphLayout layout;
+    
+    private SimpleButton pauseButton;
+    private Texture pauseIconTexture;
+    private Texture nekoinIconTexture;
+    
+    // ==================== PANELES ====================
+    
+    private Texture panelTexture;
+    private SimpleButton continueButton;
+    private SimpleButton exitButton;
+    private SimpleButton watchAdButton;
+    private Texture buttonTexture;
+    
+    private boolean adWatched;
+    private boolean showingAdOption;
+    
+    // ==================== TIMERS ====================
+    
+    private float checkDelayTimer;
+    private float gridTransitionTimer;
+    private static final float GRID_TRANSITION_DURATION = 1.0f;
+    private static final float STARTING_DURATION = 1.5f;
+    private float startingTimer;
+    
+    // ==================== AUDIO Y SAVE ====================
+    
+    private AudioManager audioManager;
+    private SaveManager saveManager;
+    private AdController adController;
+    
+    // ==================== INPUT ====================
+    
+    private final Vector2 touchPoint = new Vector2();
+    
+    // ==================== CONSTRUCTOR ====================
+    
+    public TimeAttackScreen(KawaiiNekoMemory game) {
+        this(game, null);
+    }
+    
+    public TimeAttackScreen(KawaiiNekoMemory game, AdController adController) {
+        super(game);
+        
+        this.audioManager = AudioManager.getInstance();
+        this.saveManager = SaveManager.getInstance();
+        this.adController = adController;
+        
+        this.hudFont = game.getFontManager().getButtonFont();
+        this.titleFont = game.getFontManager().getTitleFont();
+        this.buttonFont = game.getFontManager().getButtonFont();
+        this.layout = new GlyphLayout();
+        
+        this.cards = new Array<>();
+        this.cardFrontTextures = new Array<>();
+        
+        // Obtener tiempo según upgrades
+        this.timeLimit = saveManager.getTimeAttackTime();
+        this.timeRemaining = timeLimit;
+        
+        this.pairsFoundThisGrid = 0;
+        this.pairsFoundTotal = 0;
+        this.gridsCompleted = 0;
+        this.nekoinsEarned = 0;
+        
+        this.bestPairs = saveManager.getTimeAttackBestPairs();
+        this.isNewRecord = false;
+        this.adWatched = false;
+        this.showingAdOption = false;
+        
+        this.gameState = GameState.STARTING;
+        this.startingTimer = STARTING_DURATION;
+        
+        loadAssets();
+        createBoard();
+        createHUD();
+        createPanels();
+        playRandomGameMusic();
+        
+        Gdx.app.log(TAG, "=== TIME ATTACK INICIADO ===");
+        Gdx.app.log(TAG, "Tiempo límite: " + timeLimit + "s | Récord actual: " + bestPairs + " pares");
+    }
+    
+    // ==================== CARGA DE ASSETS ====================
+    
+    private void loadAssets() {
+        // Fondo (usar el de Hard por ser el más desafiante visualmente)
+        try {
+            backgroundTexture = new Texture(Gdx.files.internal(AssetPaths.BG_HARD));
+        } catch (Exception e) {
+            Gdx.app.error(TAG, "Error cargando fondo");
+        }
+        
+        try {
+            cardBackTexture = new Texture(Gdx.files.internal(AssetPaths.CARD_BACK));
+        } catch (Exception e) {
+            Gdx.app.error(TAG, "Error cargando card back");
+        }
+        
+        loadDeckTextures();
+        
+        try {
+            pauseIconTexture = new Texture(Gdx.files.internal(AssetPaths.ICON_PAUSE));
+            nekoinIconTexture = new Texture(Gdx.files.internal(AssetPaths.ICON_NEKOIN));
+        } catch (Exception e) {
+            Gdx.app.error(TAG, "Error cargando iconos");
+        }
+        
+        try {
+            panelTexture = new Texture(Gdx.files.internal(AssetPaths.PANEL_DEFEAT));
+            buttonTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_BACK));
+        } catch (Exception e) {
+            Gdx.app.error(TAG, "Error cargando paneles");
+        }
+    }
+    
+    private void loadDeckTextures() {
+        Array<Integer> activeCards = saveManager.getActiveCards();
+        
+        Gdx.app.log(TAG, "Cargando " + PAIRS + " cartas del mazo activo");
+        
+        Array<Integer> validCardIds = new Array<>();
+        for (int i = 0; i < activeCards.size; i++) {
+            int cardId = activeCards.get(i);
+            if (cardId >= 0) {
+                validCardIds.add(cardId);
+            }
+        }
+        
+        // Necesitamos 15 cartas únicas para 15 pares
+        while (validCardIds.size < PAIRS && validCardIds.size > 0) {
+            validCardIds.add(validCardIds.get(validCardIds.size % validCardIds.size));
+        }
+        
+        for (int i = 0; i < PAIRS; i++) {
+            int cardId = validCardIds.get(i);
+            int deck = SaveManager.getDeckFromCardId(cardId);
+            int cardIndex = SaveManager.getCardIndexFromCardId(cardId);
+            String path = AssetPaths.getCardPath(deck, cardIndex);
+            
+            try {
+                Texture tex = new Texture(Gdx.files.internal(path));
+                cardFrontTextures.add(tex);
+            } catch (Exception e) {
+                Gdx.app.error(TAG, "Error cargando carta: " + path);
+                cardFrontTextures.add(null);
+            }
+        }
+    }
+    
+    // ==================== CREACIÓN DEL TABLERO ====================
+    
+    private void createBoard() {
+        cards.clear();
+        
+        float hudHeight = Constants.HUD_HEIGHT;
+        float padding = Constants.GRID_PADDING;
+        float margin = Constants.CARD_MARGIN_PERCENT;
+        
+        boardWidth = Constants.VIRTUAL_WIDTH - (padding * 2);
+        boardHeight = Constants.VIRTUAL_HEIGHT - hudHeight - (padding * 2);
+        boardX = padding;
+        boardY = padding;
+        
+        float totalMarginX = boardWidth * margin * (COLS + 1);
+        float totalMarginY = boardHeight * margin * (ROWS + 1);
+        
+        cardWidth = (boardWidth - totalMarginX) / COLS;
+        cardHeight = (boardHeight - totalMarginY) / ROWS;
+        
+        float desiredRatio = 1.4f;
+        if (cardHeight > cardWidth * desiredRatio) {
+            cardHeight = cardWidth * desiredRatio;
+        } else {
+            cardWidth = cardHeight / desiredRatio;
+        }
+        
+        float actualMarginX = (boardWidth - (cardWidth * COLS)) / (COLS + 1);
+        float actualMarginY = (boardHeight - (cardHeight * ROWS)) / (ROWS + 1);
+        
+        float startX = boardX + actualMarginX;
+        float startY = boardY + actualMarginY;
+        
+        // Crear pares
+        Array<Integer> cardIds = new Array<>();
+        for (int i = 0; i < PAIRS; i++) {
+            cardIds.add(i);
+            cardIds.add(i);
+        }
+        cardIds.shuffle();
+        
+        Array<Integer> activeCardIds = saveManager.getActiveCards();
+        
+        int cardIndex = 0;
+        for (int row = 0; row < ROWS; row++) {
+            for (int col = 0; col < COLS; col++) {
+                if (cardIndex >= cardIds.size) break;
+                
+                float x = startX + col * (cardWidth + actualMarginX);
+                float y = startY + (ROWS - 1 - row) * (cardHeight + actualMarginY);
+                
+                int pairId = cardIds.get(cardIndex);
+                Texture frontTex = (pairId < cardFrontTextures.size) ? 
+                                   cardFrontTextures.get(pairId) : null;
+                
+                Card card = new Card(pairId, frontTex, cardBackTexture, x, y, cardWidth, cardHeight);
+                
+                // Asignar valor de nekoin
+                int realCardId = -1;
+                int validIndex = 0;
+                for (int i = 0; i < activeCardIds.size && validIndex <= pairId; i++) {
+                    if (activeCardIds.get(i) >= 0) {
+                        if (validIndex == pairId) {
+                            realCardId = activeCardIds.get(i);
+                            break;
+                        }
+                        validIndex++;
+                    }
+                }
+                
+                if (realCardId >= 0) {
+                    card.setDeckIndex(SaveManager.getDeckFromCardId(realCardId));
+                    card.setNekoinValue(saveManager.getCardNekoinValue(realCardId));
+                } else {
+                    card.setNekoinValue(Constants.TIME_ATTACK_NEKOIN_PER_PAIR);
+                }
+                
+                cards.add(card);
+                cardIndex++;
+            }
+        }
+        
+        pairsFoundThisGrid = 0;
+        
+        Gdx.app.log(TAG, "Grid #" + (gridsCompleted + 1) + " creado: " + COLS + "x" + ROWS);
+    }
+    
+    // ==================== HUD ====================
+    
+    private void createHUD() {
+        float hudY = Constants.VIRTUAL_HEIGHT - Constants.HUD_HEIGHT + 10f;
+        float buttonSize = 50f;
+        
+        if (pauseIconTexture != null) {
+            pauseButton = new SimpleButton(
+                pauseIconTexture, "",
+                10f, hudY,
+                buttonSize, buttonSize
+            );
+            pauseButton.setOnClick(() -> {
+                if (gameState == GameState.PLAYING) {
+                    onTimeUp();
+                }
+            });
+        }
+    }
+    
+    // ==================== PANELES ====================
+    
+    private void createPanels() {
+        float panelWidth = Constants.VIRTUAL_WIDTH * 0.85f;
+        float btnWidth = panelWidth * 0.7f;
+        float btnHeight = 55f;
+        float btnX = (Constants.VIRTUAL_WIDTH - btnWidth) / 2f;
+        float btnSpacing = 15f;
+        
+        float baseY = Constants.VIRTUAL_HEIGHT * 0.18f;
+        
+        if (buttonTexture != null) {
+            exitButton = new SimpleButton(buttonTexture, "SALIR", 
+                btnX, baseY, btnWidth, btnHeight);
+            exitButton.setOnClick(() -> {
+                audioManager.playSound(AssetPaths.SFX_BUTTON);
+                game.setScreen(new LevelSelectScreen(game));
+            });
+            
+            continueButton = new SimpleButton(buttonTexture, "REINTENTAR",
+                btnX, baseY + btnHeight + btnSpacing, btnWidth, btnHeight);
+            continueButton.setOnClick(() -> {
+                audioManager.playSound(AssetPaths.SFX_BUTTON);
+                game.setScreen(new TimeAttackScreen(game, adController));
+            });
+            
+            watchAdButton = new SimpleButton(buttonTexture, "VER AD x2.5",
+                btnX, baseY + (btnHeight + btnSpacing) * 2, btnWidth, btnHeight);
+            watchAdButton.setOnClick(this::onWatchAdClicked);
+        }
+    }
+    
+    // ==================== MÚSICA ====================
+    
+    private void playRandomGameMusic() {
+        int trackIndex = MathUtils.random(0, Constants.GAME_MUSIC_TRACKS - 1);
+        String musicPath = AssetPaths.getGameMusicPath(trackIndex);
+        audioManager.playMusic(musicPath, true);
+    }
+    
+    // ==================== UPDATE ====================
+    
+    @Override
+    protected void update(float delta) {
+        for (Card card : cards) {
+            card.update(delta);
+        }
+        
+        switch (gameState) {
+            case STARTING:
+                updateStarting(delta);
+                break;
+            case PLAYING:
+                updatePlaying(delta);
+                break;
+            case CHECKING:
+                updateChecking(delta);
+                break;
+            case GRID_TRANSITION:
+                updateGridTransition(delta);
+                break;
+            case GAME_OVER:
+            case SHOWING_RESULTS:
+                updateResults(delta);
+                break;
+        }
+    }
+    
+    private void updateStarting(float delta) {
+        startingTimer -= delta;
+        
+        if (startingTimer <= 0) {
+            gameState = GameState.PLAYING;
+            Gdx.app.log(TAG, "¡COMIENZA TIME ATTACK!");
+        }
+    }
+    
+    private void updatePlaying(float delta) {
+        // Timer regresivo
+        timeRemaining -= delta;
+        
+        if (timeRemaining <= 0) {
+            timeRemaining = 0;
+            onTimeUp();
+            return;
+        }
+        
+        if (!isInputEnabled()) return;
+        
+        if (pauseButton != null) pauseButton.update(viewport);
+        
+        if (Gdx.input.justTouched()) {
+            viewport.unproject(touchPoint.set(Gdx.input.getX(), Gdx.input.getY()));
+            handleCardTouch(touchPoint.x, touchPoint.y);
+        }
+    }
+    
+    private void updateChecking(float delta) {
+        timeRemaining -= delta;
+        
+        if (timeRemaining <= 0) {
+            timeRemaining = 0;
+            onTimeUp();
+            return;
+        }
+        
+        checkDelayTimer -= delta;
+        
+        if (checkDelayTimer <= 0) {
+            checkForMatch();
+        }
+    }
+    
+    private void updateGridTransition(float delta) {
+        gridTransitionTimer -= delta;
+        
+        if (gridTransitionTimer <= 0) {
+            createBoard();
+            gameState = GameState.PLAYING;
+            audioManager.playSound(AssetPaths.SFX_CARD_SHUFFLE);
+        }
+    }
+    
+    private void updateResults(float delta) {
+        if (!isInputEnabled()) return;
+        
+        if (continueButton != null) continueButton.update(viewport);
+        if (exitButton != null) exitButton.update(viewport);
+        
+        if (showingAdOption && watchAdButton != null && !adWatched) {
+            watchAdButton.update(viewport);
+        }
+    }
+    
+    // ==================== LÓGICA DE CARTAS ====================
+    
+    private void handleCardTouch(float x, float y) {
+        if (firstRevealed != null && secondRevealed != null) return;
+        
+        for (Card card : cards) {
+            if (card.contains(x, y) && card.canBeClicked()) {
+                onCardClicked(card);
+                break;
+            }
+        }
+    }
+    
+    private void onCardClicked(Card card) {
+        audioManager.playSound(AssetPaths.SFX_CARD_FLIP);
+        card.flip();
+        
+        if (firstRevealed == null) {
+            firstRevealed = card;
+        } else {
+            secondRevealed = card;
+            gameState = GameState.CHECKING;
+            checkDelayTimer = Constants.MATCH_CHECK_DELAY;
+        }
+    }
+    
+    private void checkForMatch() {
+        if (firstRevealed == null || secondRevealed == null) {
+            gameState = GameState.PLAYING;
+            return;
+        }
+        
+        boolean isMatch = firstRevealed.getCardId() == secondRevealed.getCardId();
+        
+        if (isMatch) {
+            audioManager.playSound(AssetPaths.SFX_MATCH);
+            firstRevealed.setMatched();
+            secondRevealed.setMatched();
+            
+            // Sumar nekoins por el par
+            int pairValue = firstRevealed.getNekoinValue();
+            nekoinsEarned += pairValue;
+            
+            pairsFoundThisGrid++;
+            pairsFoundTotal++;
+            
+            Gdx.app.log(TAG, "MATCH! Pares: " + pairsFoundThisGrid + "/" + PAIRS + 
+                             " | Total: " + pairsFoundTotal +
+                             " | Nekoins: +" + pairValue);
+            
+            firstRevealed = null;
+            secondRevealed = null;
+            
+            // Verificar si completó el grid
+            if (pairsFoundThisGrid >= PAIRS) {
+                onGridComplete();
+            } else {
+                gameState = GameState.PLAYING;
+            }
+        } else {
+            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
+            
+            firstRevealed.flipBack();
+            secondRevealed.flipBack();
+            
+            firstRevealed = null;
+            secondRevealed = null;
+            
+            gameState = GameState.PLAYING;
+        }
+    }
+    
+    private void onGridComplete() {
+        gridsCompleted++;
+        
+        Gdx.app.log(TAG, "Grid #" + gridsCompleted + " completado! Generando siguiente...");
+        
+        audioManager.playSound(AssetPaths.SFX_VICTORY);
+        
+        // Transición al siguiente grid
+        gameState = GameState.GRID_TRANSITION;
+        gridTransitionTimer = GRID_TRANSITION_DURATION;
+    }
+    
+    // ==================== FIN DEL JUEGO ====================
+    
+    private void onTimeUp() {
+        gameState = GameState.GAME_OVER;
+        audioManager.playSound(AssetPaths.SFX_DEFEAT);
+        
+        // Verificar récord
+        isNewRecord = saveManager.updateTimeAttackBestPairs(pairsFoundTotal);
+        
+        // Guardar estadísticas
+        saveManager.addTimeAttackPairs(pairsFoundTotal);
+        saveManager.incrementTimeAttackGamesPlayed();
+        saveManager.addPairsFound(pairsFoundTotal);
+        
+        // Dar nekoins
+        saveManager.addNekoins(nekoinsEarned);
+        
+        // Verificar si puede ver ad
+        showingAdOption = (adController != null && adController.isRewardedLoaded() && !adWatched);
+        
+        gameState = GameState.SHOWING_RESULTS;
+        
+        Gdx.app.log(TAG, "=== TIME ATTACK TERMINADO ===");
+        Gdx.app.log(TAG, "Pares: " + pairsFoundTotal + " | Grids: " + gridsCompleted);
+        Gdx.app.log(TAG, "Nekoins: " + nekoinsEarned + " | Nuevo récord: " + isNewRecord);
+    }
+    
+    private void onWatchAdClicked() {
+        if (adController == null || !adController.isRewardedLoaded() || adWatched) {
+            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
+            return;
+        }
+        
+        audioManager.playSound(AssetPaths.SFX_BUTTON);
+        
+        adController.showRewarded(new AdController.RewardedAdListener() {
+            @Override
+            public void onRewardEarned(String rewardType, int rewardAmount) {
+                // Bonus x2.5
+                int bonus = (int)(nekoinsEarned * (Constants.TIME_ATTACK_AD_MULTIPLIER - 1f));
+                saveManager.addNekoins(bonus);
+                nekoinsEarned += bonus;
+                adWatched = true;
+                showingAdOption = false;
+                
+                Gdx.app.log(TAG, "Ad completado! Bonus: +" + bonus + " Nekoins");
+            }
+            
+            @Override
+            public void onRewardCancelled() {
+                Gdx.app.log(TAG, "Ad cancelado");
+            }
+        });
+    }
+    
+    // ==================== DRAW ====================
+    
+    @Override
+    protected void draw() {
+        game.getBatch().begin();
+        
+        // Fondo
+        if (backgroundTexture != null) {
+            game.getBatch().draw(backgroundTexture, 0, 0, 
+                                 Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
+        }
+        
+        // Tablero
+        drawBoard();
+        
+        // HUD
+        drawHUD();
+        
+        game.getBatch().end();
+        
+        // Panel de resultados
+        if (gameState == GameState.SHOWING_RESULTS) {
+            drawResultsPanel();
+        }
+        
+        // Countdown inicial
+        if (gameState == GameState.STARTING) {
+            drawStartingCountdown();
+        }
+        
+        // Transición de grid
+        if (gameState == GameState.GRID_TRANSITION) {
+            drawGridTransition();
+        }
+    }
+    
+    private void drawBoard() {
+        for (Card card : cards) {
+            card.draw(game.getBatch());
+        }
+    }
+    
+    private void drawHUD() {
+        float hudY = Constants.VIRTUAL_HEIGHT - Constants.HUD_HEIGHT;
+        
+        // Fondo del HUD
+        game.getBatch().setColor(0, 0, 0, 0.5f);
+        game.getBatch().draw(cardBackTexture, 0, hudY, Constants.VIRTUAL_WIDTH, Constants.HUD_HEIGHT);
+        game.getBatch().setColor(1, 1, 1, 1);
+        
+        // Botón pausa (actúa como rendirse)
+        if (pauseButton != null) pauseButton.drawNoText(game.getBatch());
+        
+        // Timer
+        String timeText = formatTime(timeRemaining);
+        if (timeRemaining < 10) {
+            hudFont.setColor(Color.RED);
+        } else if (timeRemaining < 30) {
+            hudFont.setColor(Color.YELLOW);
+        } else {
+            hudFont.setColor(Color.WHITE);
+        }
+        layout.setText(hudFont, timeText);
+        float timeX = Constants.VIRTUAL_WIDTH - layout.width - 15f;
+        float timeY = hudY + (Constants.HUD_HEIGHT + layout.height) / 2f;
+        hudFont.draw(game.getBatch(), timeText, timeX, timeY);
+        hudFont.setColor(Color.WHITE);
+        
+        // Título TIME ATTACK
+        String title = "TIME ATTACK";
+        layout.setText(hudFont, title);
+        float titleX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
+        hudFont.setColor(Color.ORANGE);
+        hudFont.draw(game.getBatch(), title, titleX, timeY + 15f);
+        hudFont.setColor(Color.WHITE);
+        
+        // Contador de pares
+        String pairsText = pairsFoundTotal + " pares";
+        layout.setText(hudFont, pairsText);
+        float pairsX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
+        hudFont.draw(game.getBatch(), pairsText, pairsX, timeY - 15f);
+        
+        // Récord
+        if (bestPairs > 0) {
+            String recordText = "Récord: " + bestPairs;
+            layout.setText(hudFont, recordText);
+            hudFont.setColor(Color.GOLD);
+            hudFont.draw(game.getBatch(), recordText, 70f, timeY);
+            hudFont.setColor(Color.WHITE);
+        }
+        
+        // Nekoins ganados
+        if (nekoinIconTexture != null && nekoinsEarned > 0) {
+            String nekoinText = "+" + nekoinsEarned;
+            layout.setText(hudFont, nekoinText);
+            float iconSize = 24f;
+            float iconX = 70f;
+            float iconY = timeY - 35f;
+            
+            game.getBatch().draw(nekoinIconTexture, iconX, iconY - iconSize + 5f, iconSize, iconSize);
+            hudFont.setColor(Color.GOLD);
+            hudFont.draw(game.getBatch(), nekoinText, iconX + iconSize + 5f, iconY);
+            hudFont.setColor(Color.WHITE);
+        }
+    }
+    
+    private void drawStartingCountdown() {
+        game.getBatch().begin();
+        
+        game.getBatch().setColor(0, 0, 0, 0.6f);
+        game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
+        game.getBatch().setColor(1, 1, 1, 1);
+        
+        int countdown = (int) Math.ceil(startingTimer);
+        String text = countdown > 0 ? String.valueOf(countdown) : "¡YA!";
+        
+        titleFont.setColor(Color.WHITE);
+        layout.setText(titleFont, text);
+        titleFont.draw(game.getBatch(), text,
+                      (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
+                      (Constants.VIRTUAL_HEIGHT + layout.height) / 2f);
+        
+        game.getBatch().end();
+    }
+    
+    private void drawGridTransition() {
+        game.getBatch().begin();
+        
+        game.getBatch().setColor(0, 0, 0, 0.7f);
+        game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
+        game.getBatch().setColor(1, 1, 1, 1);
+        
+        String text = "GRID #" + (gridsCompleted + 1);
+        titleFont.setColor(Color.GREEN);
+        layout.setText(titleFont, text);
+        titleFont.draw(game.getBatch(), text,
+                      (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
+                      (Constants.VIRTUAL_HEIGHT + layout.height) / 2f);
+        titleFont.setColor(Color.WHITE);
+        
+        game.getBatch().end();
+    }
+    
+    private void drawResultsPanel() {
+        game.getBatch().begin();
+        
+        // Overlay oscuro
+        game.getBatch().setColor(0, 0, 0, 0.85f);
+        game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
+        game.getBatch().setColor(1, 1, 1, 1);
+        
+        // Panel
+        if (panelTexture != null) {
+            float panelWidth = Constants.VIRTUAL_WIDTH * 0.9f;
+            float panelHeight = panelWidth * 1.1f;
+            float panelX = (Constants.VIRTUAL_WIDTH - panelWidth) / 2f;
+            float panelY = (Constants.VIRTUAL_HEIGHT - panelHeight) / 2f;
+            game.getBatch().draw(panelTexture, panelX, panelY, panelWidth, panelHeight);
+        }
+        
+        // Título
+        String title = "¡TIEMPO AGOTADO!";
+        titleFont.setColor(Color.ORANGE);
+        layout.setText(titleFont, title);
+        titleFont.draw(game.getBatch(), title,
+                      (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
+                      Constants.VIRTUAL_HEIGHT * 0.78f);
+        titleFont.setColor(Color.WHITE);
+        
+        // Estadísticas
+        float statsY = Constants.VIRTUAL_HEIGHT * 0.65f;
+        float lineHeight = 35f;
+        
+        // Pares encontrados
+        String pairsText = "Pares: " + pairsFoundTotal;
+        layout.setText(buttonFont, pairsText);
+        buttonFont.draw(game.getBatch(), pairsText,
+                       (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY);
+        
+        // Grids completados
+        String gridsText = "Grids: " + gridsCompleted;
+        layout.setText(buttonFont, gridsText);
+        buttonFont.draw(game.getBatch(), gridsText,
+                       (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY - lineHeight);
+        
+        // Nuevo récord
+        if (isNewRecord) {
+            buttonFont.setColor(Color.GOLD);
+            String recordText = "¡NUEVO RÉCORD!";
+            layout.setText(buttonFont, recordText);
+            buttonFont.draw(game.getBatch(), recordText,
+                           (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY - lineHeight * 2);
+            buttonFont.setColor(Color.WHITE);
+        }
+        
+        // Nekoins
+        String nekoinText;
+        if (adWatched) {
+            nekoinText = "Nekoins: " + nekoinsEarned + " (x2.5!)";
+            buttonFont.setColor(Color.LIME);
+        } else {
+            nekoinText = "Nekoins: " + nekoinsEarned;
+            buttonFont.setColor(Color.GOLD);
+        }
+        layout.setText(buttonFont, nekoinText);
+        buttonFont.draw(game.getBatch(), nekoinText,
+                       (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY - lineHeight * 3);
+        buttonFont.setColor(Color.WHITE);
+        
+        // Tiempo usado
+        String timeText = "Tiempo: " + formatTime(timeLimit);
+        layout.setText(hudFont, timeText);
+        hudFont.setColor(Color.LIGHT_GRAY);
+        hudFont.draw(game.getBatch(), timeText,
+                    (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY - lineHeight * 4);
+        hudFont.setColor(Color.WHITE);
+        
+        // Botones
+        if (showingAdOption && !adWatched && watchAdButton != null) {
+            watchAdButton.draw(game.getBatch(), buttonFont);
+        }
+        if (continueButton != null) continueButton.draw(game.getBatch(), buttonFont);
+        if (exitButton != null) exitButton.draw(game.getBatch(), buttonFont);
+        
+        game.getBatch().end();
+    }
+    
+    // ==================== UTILIDADES ====================
+    
+    private String formatTime(float seconds) {
+        int mins = (int)(seconds / 60);
+        int secs = (int)(seconds % 60);
+        return String.format("%d:%02d", mins, secs);
+    }
+    
+    // ==================== DISPOSE ====================
+    
+    @Override
+    public void dispose() {
+        Gdx.app.log(TAG, "Liberando recursos...");
+        
+        if (backgroundTexture != null) backgroundTexture.dispose();
+        if (cardBackTexture != null) cardBackTexture.dispose();
+        
+        for (Texture tex : cardFrontTextures) {
+            if (tex != null) tex.dispose();
+        }
+        cardFrontTextures.clear();
+        
+        if (pauseIconTexture != null) pauseIconTexture.dispose();
+        if (nekoinIconTexture != null) nekoinIconTexture.dispose();
+        if (panelTexture != null) panelTexture.dispose();
+        if (buttonTexture != null) buttonTexture.dispose();
+    }
+}

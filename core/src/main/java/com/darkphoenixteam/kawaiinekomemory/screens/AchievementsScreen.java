@@ -12,48 +12,53 @@ import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
 import com.darkphoenixteam.kawaiinekomemory.config.Constants;
 import com.darkphoenixteam.kawaiinekomemory.models.Achievement;
 import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
+import com.darkphoenixteam.kawaiinekomemory.systems.LocaleManager;
 import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 
 /**
- * Pantalla de logros
- * Muestra todos los logros del juego con su estado
+ * Pantalla de logros con localización completa
  * 
  * @author DarkphoenixTeam
+ * @version 1.1 - Localización completa
  */
 public class AchievementsScreen extends BaseScreen {
     
     private static final String TAG = "AchievementsScreen";
     
-    // UI
+    // === FONTS ===
     private BitmapFont titleFont;
     private BitmapFont buttonFont;
     private BitmapFont smallFont;
     private GlyphLayout layout;
     
+    // === TEXTURAS ===
     private Texture patternTexture;
     private Texture nekoinIconTexture;
     
+    // === BOTONES ===
     private SimpleButton backButton;
     private SimpleButton upButton;
     private SimpleButton downButton;
     
+    // === RENDER ===
     private ShapeRenderer shapeRenderer;
     
-    // Scroll
+    // === SCROLL ===
     private float scrollOffset = 0f;
     private float maxScrollOffset = 0f;
-    private static final float SCROLL_SPEED = 300f;
     private static final float ITEM_HEIGHT = 90f;
     private static final float ITEM_MARGIN = 10f;
     
-    // Layout
+    // === LAYOUT ===
     private static final float HEADER_HEIGHT = 100f;
     private static final float FOOTER_HEIGHT = 100f;
     private static final float CONTENT_PADDING = 15f;
     
+    // === SISTEMAS ===
     private AudioManager audioManager;
     private SaveManager saveManager;
+    private LocaleManager locale;
     
     private final Vector2 touchPoint = new Vector2();
     private float lastTouchY = 0f;
@@ -71,10 +76,10 @@ public class AchievementsScreen extends BaseScreen {
         
         audioManager = AudioManager.getInstance();
         saveManager = SaveManager.getInstance();
+        locale = LocaleManager.getInstance();
         
         shapeRenderer = new ShapeRenderer();
         
-        // Calcular scroll máximo
         float contentHeight = Achievement.count() * (ITEM_HEIGHT + ITEM_MARGIN);
         float visibleHeight = Constants.VIRTUAL_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT;
         maxScrollOffset = Math.max(0, contentHeight - visibleHeight);
@@ -84,7 +89,7 @@ public class AchievementsScreen extends BaseScreen {
         loadAssets();
         createButtons();
         
-        Gdx.app.log(TAG, "Logros: " + saveManager.getUnlockedAchievementCount() + "/" + Achievement.count());
+        Gdx.app.log(TAG, "Achievements Screen inicializado");
     }
     
     private void loadAssets() {
@@ -103,12 +108,11 @@ public class AchievementsScreen extends BaseScreen {
     }
     
     private void createButtons() {
-        // Botón volver
         try {
             Texture backTex = new Texture(Gdx.files.internal(AssetPaths.BTN_BACK));
             float btnWidth = Constants.VIRTUAL_WIDTH * 0.4f;
             float btnHeight = btnWidth * 0.35f;
-            backButton = new SimpleButton(backTex, "VOLVER",
+            backButton = new SimpleButton(backTex, locale.get("common.back"),
                 (Constants.VIRTUAL_WIDTH - btnWidth) / 2f, 20f, btnWidth, btnHeight);
             backButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
@@ -118,7 +122,6 @@ public class AchievementsScreen extends BaseScreen {
             Gdx.app.error(TAG, "Error botón back");
         }
         
-        // Flechas de scroll
         float arrowSize = 50f;
         float arrowX = Constants.VIRTUAL_WIDTH - arrowSize - 10f;
         float centerY = Constants.VIRTUAL_HEIGHT / 2f;
@@ -150,7 +153,6 @@ public class AchievementsScreen extends BaseScreen {
         if (upButton != null) upButton.update(viewport);
         if (downButton != null) downButton.update(viewport);
         
-        // Scroll con arrastre
         handleScrollInput();
     }
     
@@ -175,7 +177,6 @@ public class AchievementsScreen extends BaseScreen {
     protected void draw() {
         game.getBatch().begin();
         
-        // Fondo
         if (patternTexture != null) {
             game.getBatch().setColor(1f, 1f, 1f, 0.3f);
             int tileSize = 512;
@@ -189,15 +190,12 @@ public class AchievementsScreen extends BaseScreen {
         
         game.getBatch().end();
         
-        // Dibujar items de logros
         drawAchievementList();
         
-        // Header y footer (sobre el contenido)
         game.getBatch().begin();
         drawHeader();
         drawFooter();
         
-        // Flechas de scroll
         if (upButton != null && scrollOffset > 0) {
             upButton.drawNoText(game.getBatch());
         }
@@ -211,20 +209,17 @@ public class AchievementsScreen extends BaseScreen {
     }
     
     private void drawHeader() {
-        // Fondo del header
         game.getBatch().setColor(0.95f, 0.9f, 0.85f, 0.95f);
         game.getBatch().draw(patternTexture, 0, Constants.VIRTUAL_HEIGHT - HEADER_HEIGHT, 
                             Constants.VIRTUAL_WIDTH, HEADER_HEIGHT);
         game.getBatch().setColor(1, 1, 1, 1);
         
-        // Título
-        String title = "LOGROS";
+        String title = locale.get("achievements.title");
         layout.setText(titleFont, title);
-        titleFont.draw(game.getBatch(), title, 
+        titleFont.draw(game.getBatch(), title,
                       (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
                       Constants.VIRTUAL_HEIGHT - 25f);
         
-        // Contador
         int unlocked = saveManager.getUnlockedAchievementCount();
         int total = Achievement.count();
         String count = unlocked + " / " + total;
@@ -245,7 +240,7 @@ public class AchievementsScreen extends BaseScreen {
     
     private void drawAchievementList() {
         float startY = Constants.VIRTUAL_HEIGHT - HEADER_HEIGHT - CONTENT_PADDING + scrollOffset;
-        float itemWidth = Constants.VIRTUAL_WIDTH - CONTENT_PADDING * 2 - 70f; // Espacio para flechas
+        float itemWidth = Constants.VIRTUAL_WIDTH - CONTENT_PADDING * 2 - 70f;
         
         Achievement[] achievements = Achievement.values();
         
@@ -253,27 +248,24 @@ public class AchievementsScreen extends BaseScreen {
             Achievement achievement = achievements[i];
             float itemY = startY - (i * (ITEM_HEIGHT + ITEM_MARGIN));
             
-            // Solo dibujar si es visible
             if (itemY < FOOTER_HEIGHT - ITEM_HEIGHT || itemY > Constants.VIRTUAL_HEIGHT) {
                 continue;
             }
             
             boolean isUnlocked = saveManager.isAchievementUnlocked(achievement);
             
-            // Fondo del item
             shapeRenderer.setProjectionMatrix(camera.combined);
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
             
             if (isUnlocked) {
-                shapeRenderer.setColor(0.85f, 0.95f, 0.85f, 0.9f); // Verde claro
+                shapeRenderer.setColor(0.85f, 0.95f, 0.85f, 0.9f);
             } else {
-                shapeRenderer.setColor(0.9f, 0.9f, 0.9f, 0.7f); // Gris
+                shapeRenderer.setColor(0.9f, 0.9f, 0.9f, 0.7f);
             }
             
             shapeRenderer.rect(CONTENT_PADDING, itemY - ITEM_HEIGHT, itemWidth, ITEM_HEIGHT);
             shapeRenderer.end();
             
-            // Borde
             shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
             if (isUnlocked) {
                 shapeRenderer.setColor(0.3f, 0.7f, 0.3f, 1f);
@@ -283,13 +275,10 @@ public class AchievementsScreen extends BaseScreen {
             shapeRenderer.rect(CONTENT_PADDING, itemY - ITEM_HEIGHT, itemWidth, ITEM_HEIGHT);
             shapeRenderer.end();
             
-            // Contenido
             game.getBatch().begin();
             
             float textX = CONTENT_PADDING + 15f;
-            float iconSize = 30f;
             
-            // Icono de estado
             if (isUnlocked) {
                 buttonFont.setColor(Color.GOLD);
                 buttonFont.draw(game.getBatch(), "★", textX, itemY - 10f);
@@ -300,19 +289,20 @@ public class AchievementsScreen extends BaseScreen {
             
             textX += 35f;
             
-            // Nombre del logro
+            // Usar nombre localizado del logro
+            String achievementName = getLocalizedAchievementName(achievement);
+            String achievementDesc = getLocalizedAchievementDesc(achievement);
+            
             if (isUnlocked) {
                 buttonFont.setColor(Color.DARK_GRAY);
             } else {
                 buttonFont.setColor(Color.GRAY);
             }
-            buttonFont.draw(game.getBatch(), achievement.name, textX, itemY - 12f);
+            buttonFont.draw(game.getBatch(), achievementName, textX, itemY - 12f);
             
-            // Descripción
             smallFont.setColor(isUnlocked ? Color.DARK_GRAY : Color.GRAY);
-            smallFont.draw(game.getBatch(), achievement.description, textX, itemY - 40f);
+            smallFont.draw(game.getBatch(), achievementDesc, textX, itemY - 40f);
             
-            // Recompensa
             if (nekoinIconTexture != null) {
                 float rewardX = CONTENT_PADDING + itemWidth - 80f;
                 float rewardY = itemY - ITEM_HEIGHT + 15f;
@@ -331,6 +321,32 @@ public class AchievementsScreen extends BaseScreen {
             
             game.getBatch().end();
         }
+    }
+    
+    /**
+     * Obtiene el nombre localizado del logro
+     */
+    private String getLocalizedAchievementName(Achievement achievement) {
+        String key = "achievement." + achievement.name().toLowerCase() + ".name";
+        String localized = locale.get(key);
+        // Si no hay traducción, usar el nombre del enum
+        if (localized.startsWith("[")) {
+            return achievement.name;
+        }
+        return localized;
+    }
+    
+    /**
+     * Obtiene la descripción localizada del logro
+     */
+    private String getLocalizedAchievementDesc(Achievement achievement) {
+        String key = "achievement." + achievement.name().toLowerCase() + ".desc";
+        String localized = locale.get(key);
+        // Si no hay traducción, usar la descripción del enum
+        if (localized.startsWith("[")) {
+            return achievement.description;
+        }
+        return localized;
     }
     
     @Override

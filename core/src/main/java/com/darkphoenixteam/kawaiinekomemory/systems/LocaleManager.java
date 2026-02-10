@@ -8,15 +8,21 @@ import java.util.Locale;
 
 /**
  * Gestor de idiomas del juego
+ * - Detecta automáticamente el idioma del dispositivo en primera ejecución
+ * - Guarda preferencia del usuario
+ * - Fallback a inglés si no hay soporte
+ * 
  * Soporta: EN, ES, RU, PT, ZH, JA, KO, FR, DE, IT
  * 
  * @author DarkphoenixTeam
+ * @version 2.0 - Detección automática mejorada
  */
 public class LocaleManager {
     
     private static final String TAG = "LocaleManager";
     private static final String PREFS_NAME = "KawaiiNekoSettings";
     private static final String KEY_LANGUAGE = "language";
+    private static final String KEY_FIRST_RUN = "first_run_language";
     
     /**
      * Idiomas soportados
@@ -52,13 +58,16 @@ public class LocaleManager {
             return EN; // Default
         }
         
-        /**
-         * Siguiente idioma en la lista (para cycling)
-         */
         public Language next() {
             Language[] values = values();
             int nextIndex = (ordinal() + 1) % values.length;
             return values[nextIndex];
+        }
+        
+        public Language previous() {
+            Language[] values = values();
+            int prevIndex = (ordinal() - 1 + values.length) % values.length;
+            return values[prevIndex];
         }
     }
     
@@ -66,20 +75,28 @@ public class LocaleManager {
     private Preferences prefs;
     private I18NBundle bundle;
     private Language currentLanguage;
+    private boolean isFirstRun;
     
     private LocaleManager() {
         prefs = Gdx.app.getPreferences(PREFS_NAME);
         
-        // Cargar idioma guardado o detectar del sistema
+        // Verificar si es primera ejecución
+        isFirstRun = !prefs.getBoolean(KEY_FIRST_RUN, false);
+        
         String savedCode = prefs.getString(KEY_LANGUAGE, "");
         
         if (savedCode.isEmpty()) {
-            // Detectar idioma del dispositivo
+            // Primera ejecución o no guardado: detectar del sistema
             currentLanguage = detectDeviceLanguage();
-            Gdx.app.log(TAG, "Idioma detectado del dispositivo: " + currentLanguage.displayName);
+            Gdx.app.log(TAG, "Idioma detectado automáticamente: " + currentLanguage.displayName);
+            
+            // Guardar para futuras ejecuciones
+            prefs.putString(KEY_LANGUAGE, currentLanguage.code);
+            prefs.putBoolean(KEY_FIRST_RUN, true);
+            prefs.flush();
         } else {
             currentLanguage = Language.fromCode(savedCode);
-            Gdx.app.log(TAG, "Idioma cargado de prefs: " + currentLanguage.displayName);
+            Gdx.app.log(TAG, "Idioma cargado de preferencias: " + currentLanguage.displayName);
         }
         
         loadBundle();
@@ -99,10 +116,10 @@ public class LocaleManager {
                 }
             }
         } catch (Exception e) {
-            Gdx.app.error(TAG, "Error detectando idioma del dispositivo");
+            Gdx.app.error(TAG, "Error detectando idioma del dispositivo: " + e.getMessage());
         }
         
-        return Language.EN; // Default
+        return Language.EN; // Default a inglés
     }
     
     /**
@@ -118,14 +135,18 @@ public class LocaleManager {
                         " (" + currentLanguage.displayName + ")");
         } catch (Exception e) {
             Gdx.app.error(TAG, "Error cargando bundle para " + currentLanguage.code + 
-                          ". Usando inglés por defecto.");
+                          ": " + e.getMessage());
             
             // Fallback a inglés
             try {
                 FileHandle baseFileHandle = Gdx.files.internal("i18n/strings");
                 bundle = I18NBundle.createBundle(baseFileHandle, new Locale("en"), "UTF-8");
+                currentLanguage = Language.EN;
+                Gdx.app.log(TAG, "Fallback a inglés");
             } catch (Exception e2) {
-                Gdx.app.error(TAG, "Error fatal cargando bundle de inglés");
+                Gdx.app.error(TAG, "Error fatal cargando bundle de inglés: " + e2.getMessage());
+                // Crear bundle vacío para evitar crashes
+                bundle = null;
             }
         }
     }
@@ -141,6 +162,9 @@ public class LocaleManager {
      * Obtiene un string localizado por su key
      */
     public String get(String key) {
+        if (bundle == null) {
+            return "[" + key + "]";
+        }
         try {
             return bundle.get(key);
         } catch (Exception e) {
@@ -151,9 +175,12 @@ public class LocaleManager {
     
     /**
      * Obtiene un string localizado con formato (parámetros)
-     * Ejemplo: get("game.pairs.format", 5, 10) → "Pares: 5/10"
+     * Ejemplo: format("game.pairs", 5) → "5 pairs" o "5 pares"
      */
     public String format(String key, Object... args) {
+        if (bundle == null) {
+            return "[" + key + "]";
+        }
         try {
             return bundle.format(key, args);
         } catch (Exception e) {
@@ -164,8 +191,6 @@ public class LocaleManager {
     
     /**
      * Cambia el idioma del juego
-     * NOTA: Requiere regenerar las fuentes si cambia entre CJK y no-CJK
-     * 
      * @return true si cambió de grupo de fuentes (requiere regenerar FontManager)
      */
     public boolean setLanguage(Language language) {
@@ -193,12 +218,30 @@ public class LocaleManager {
         return setLanguage(currentLanguage.next());
     }
     
+    /**
+     * Retrocede al idioma anterior en la lista
+     * @return true si necesita regenerar fuentes
+     */
+    public boolean cyclePreviousLanguage() {
+        return setLanguage(currentLanguage.previous());
+    }
+    
     public Language getCurrentLanguage() {
         return currentLanguage;
     }
     
     public boolean isCJK() {
         return currentLanguage.isCJK;
+    }
+    
+    public boolean isFirstRun() {
+        return isFirstRun;
+    }
+    
+    public void markFirstRunComplete() {
+        isFirstRun = false;
+        prefs.putBoolean(KEY_FIRST_RUN, true);
+        prefs.flush();
     }
     
     /**
@@ -209,7 +252,7 @@ public class LocaleManager {
     }
     
     /**
-     * Fuerza recarga (útil después de cambiar idioma)
+     * Fuerza recarga del singleton
      */
     public static void reload() {
         instance = null;

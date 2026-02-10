@@ -13,15 +13,15 @@ import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
 import com.darkphoenixteam.kawaiinekomemory.config.Constants;
 import com.darkphoenixteam.kawaiinekomemory.models.Achievement;
 import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
+import com.darkphoenixteam.kawaiinekomemory.systems.LocaleManager;
 import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 
 /**
- * Pantalla principal del menú
- * Incluye logo clickeable para logro secreto y acceso a Rankings
+ * Pantalla principal del menú con localización
  * 
  * @author DarkphoenixTeam
- * @version 2.0 - Logo clickeable + Rankings
+ * @version 2.1 - Localización completa
  */
 public class HomeScreen extends BaseScreen {
     
@@ -64,6 +64,7 @@ public class HomeScreen extends BaseScreen {
     // === SISTEMAS ===
     private AudioManager audioManager;
     private SaveManager saveManager;
+    private LocaleManager locale;
     
     // === INPUT ===
     private final Vector2 touchPoint = new Vector2();
@@ -81,11 +82,10 @@ public class HomeScreen extends BaseScreen {
         
         audioManager = AudioManager.getInstance();
         saveManager = SaveManager.getInstance();
+        locale = LocaleManager.getInstance();
         
-        // Verificar si el logro ya fue desbloqueado
         achievementUnlocked = saveManager.isAchievementUnlocked(Achievement.CLICKER_CAT);
         
-        // SIEMPRE iniciar música del menú al entrar
         audioManager.playMusic(AssetPaths.MUSIC_MENU, true);
         
         calculateButtonDimensions();
@@ -94,7 +94,7 @@ public class HomeScreen extends BaseScreen {
         createRankingsButton();
         createLogoBounds();
         
-        Gdx.app.log(TAG, "Inicializado | Nekoins: " + saveManager.getNekoins());
+        Gdx.app.log(TAG, "Inicializado | Idioma: " + locale.getCurrentLanguage().displayName);
     }
     
     private void calculateButtonDimensions() {
@@ -107,7 +107,6 @@ public class HomeScreen extends BaseScreen {
         float heightForButtons = availableHeight - totalSpacing;
         float maxButtonHeight = heightForButtons / BUTTON_COUNT;
         
-        // Usar aspect ratio de los botones (512x256 = 0.5)
         float widthFromHeight = maxButtonHeight / AssetPaths.BTN_ASPECT_RATIO;
         float maxWidth = viewportWidth * MAX_BUTTON_WIDTH_PERCENT;
         
@@ -145,24 +144,26 @@ public class HomeScreen extends BaseScreen {
         float startY = viewportHeight - titleZoneHeight - buttonHeight;
         float currentY = startY;
         
+        // Datos de botones: [textura, key de localización, acción]
         String[][] buttonData = {
-            {AssetPaths.BTN_PLAY, "JUGAR"},
-            {AssetPaths.BTN_DECK, "MAZO"},
-            {AssetPaths.BTN_BAZAAR, "BAZAAR"},
-            {AssetPaths.BTN_ACHIEVEMENTS, "LOGROS"},
-            {AssetPaths.BTN_SETTINGS, "AJUSTES"}
+            {AssetPaths.BTN_PLAY, "home.play", "PLAY"},
+            {AssetPaths.BTN_DECK, "home.deck", "DECK"},
+            {AssetPaths.BTN_BAZAAR, "home.bazaar", "BAZAAR"},
+            {AssetPaths.BTN_ACHIEVEMENTS, "home.achievements", "ACHIEVEMENTS"},
+            {AssetPaths.BTN_SETTINGS, "home.settings", "SETTINGS"}
         };
         
         for (int i = 0; i < buttonData.length; i++) {
             String texturePath = buttonData[i][0];
-            String buttonText = buttonData[i][1];
+            String localeKey = buttonData[i][1];
+            String action = buttonData[i][2];
+            
+            String buttonText = locale.get(localeKey);
             
             SimpleButton btn = createButton(texturePath, buttonText, buttonX, currentY);
             if (btn != null) {
-                final String logText = buttonText;
-                btn.setOnClick(() -> {
-                    handleButtonClick(logText);
-                });
+                final String actionName = action;
+                btn.setOnClick(() -> handleButtonClick(actionName));
                 buttons.add(btn);
             }
             
@@ -172,7 +173,6 @@ public class HomeScreen extends BaseScreen {
     
     private void createRankingsButton() {
         try {
-            // Botón pequeño en la esquina superior derecha
             Texture btnTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_EMPTY));
             float btnSize = 50f;
             float btnX = Constants.VIRTUAL_WIDTH - btnSize - 10f;
@@ -198,7 +198,6 @@ public class HomeScreen extends BaseScreen {
             
             logoBounds = new Rectangle(logoX, logoY, logoWidth, logoHeight);
         } else {
-            // Bounds para el texto del título si no hay logo
             logoBounds = new Rectangle(
                 Constants.VIRTUAL_WIDTH * 0.1f,
                 Constants.VIRTUAL_HEIGHT - Constants.VIRTUAL_HEIGHT * TITLE_ZONE_PERCENT,
@@ -218,23 +217,23 @@ public class HomeScreen extends BaseScreen {
         }
     }
     
-    private void handleButtonClick(String buttonName) {
+    private void handleButtonClick(String action) {
         audioManager.playSound(AssetPaths.SFX_BUTTON);
         
-        switch (buttonName) {
-            case "JUGAR":
+        switch (action) {
+            case "PLAY":
                 game.setScreen(new LevelSelectScreen(game));
                 break;
-            case "MAZO":
+            case "DECK":
                 game.setScreen(new DeckEditorScreen(game));
                 break;
             case "BAZAAR":
                 game.setScreen(new BazaarScreen(game));
                 break;
-            case "LOGROS":
+            case "ACHIEVEMENTS":
                 game.setScreen(new AchievementsScreen(game));
                 break;
-            case "AJUSTES":
+            case "SETTINGS":
                 game.setScreen(new SettingsScreen(game));
                 break;
         }
@@ -242,7 +241,6 @@ public class HomeScreen extends BaseScreen {
     
     private void handleLogoClick() {
         if (achievementUnlocked) {
-            // Ya desbloqueado, solo reproducir sonido
             audioManager.playSound(AssetPaths.SFX_BUTTON);
             return;
         }
@@ -252,14 +250,10 @@ public class HomeScreen extends BaseScreen {
         
         audioManager.playSound(AssetPaths.SFX_CARD_FLIP);
         
-        Gdx.app.log(TAG, "Logo click: " + logoClickCount + "/" + CLICKS_FOR_ACHIEVEMENT);
-        
         if (logoClickCount >= CLICKS_FOR_ACHIEVEMENT) {
-            // Desbloquear logro secreto
             saveManager.unlockAchievement(Achievement.CLICKER_CAT);
             achievementUnlocked = true;
             audioManager.playSound(AssetPaths.SFX_VICTORY);
-            Gdx.app.log(TAG, "🏆 ¡LOGRO SECRETO DESBLOQUEADO: Curioso!");
         }
     }
     
@@ -267,7 +261,6 @@ public class HomeScreen extends BaseScreen {
     protected void update(float delta) {
         animTimer += delta;
         
-        // Resetear contador de clicks si pasa el tiempo
         if (logoClickResetTimer > 0) {
             logoClickResetTimer -= delta;
             if (logoClickResetTimer <= 0) {
@@ -277,7 +270,6 @@ public class HomeScreen extends BaseScreen {
         
         if (!isInputEnabled()) return;
         
-        // Actualizar botones
         for (SimpleButton button : buttons) {
             button.update(viewport);
         }
@@ -286,7 +278,6 @@ public class HomeScreen extends BaseScreen {
             rankingsButton.update(viewport);
         }
         
-        // Detectar click en logo
         if (Gdx.input.justTouched()) {
             viewport.unproject(touchPoint.set(Gdx.input.getX(), Gdx.input.getY()));
             
@@ -300,7 +291,7 @@ public class HomeScreen extends BaseScreen {
     protected void draw() {
         game.getBatch().begin();
         
-        // Fondo con patrón
+        // Fondo
         if (patternTexture != null) {
             game.getBatch().setColor(1f, 1f, 1f, 0.3f);
             int tileSize = 512;
@@ -312,31 +303,30 @@ public class HomeScreen extends BaseScreen {
             game.getBatch().setColor(1f, 1f, 1f, 1f);
         }
         
-        // Header con nekoins
+        // Header
         drawHeader();
         
         // Logo o título
         drawLogoOrTitle();
         
-        // Botones del menú
+        // Botones
         for (SimpleButton button : buttons) {
             button.draw(game.getBatch(), buttonFont);
         }
         
-        // Botón de rankings
+        // Rankings
         if (rankingsButton != null) {
             rankingsButton.draw(game.getBatch(), buttonFont);
         }
         
         // Versión
-        String version = "v1.0.0 - DarkphoenixTeam";
+        String version = locale.get("game.version");
         layout.setText(smallFont, version);
-        float verX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
         smallFont.setColor(Color.GRAY);
-        smallFont.draw(game.getBatch(), version, verX, 20f);
+        smallFont.draw(game.getBatch(), version, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, 20f);
         smallFont.setColor(Color.WHITE);
         
-        // Indicador de clicks (solo si está progresando)
+        // Progreso de clicks
         if (logoClickCount > 0 && !achievementUnlocked) {
             drawClickProgress();
         }
@@ -345,7 +335,6 @@ public class HomeScreen extends BaseScreen {
     }
     
     private void drawHeader() {
-        // Mostrar nekoins en la esquina superior izquierda
         if (nekoinIconTexture != null) {
             float iconSize = 28f;
             float iconX = 10f;
@@ -364,14 +353,12 @@ public class HomeScreen extends BaseScreen {
         float titleZoneCenter = Constants.VIRTUAL_HEIGHT - (Constants.VIRTUAL_HEIGHT * TITLE_ZONE_PERCENT / 2f);
         
         if (logoTexture != null) {
-            // Dibujar logo con efecto de escala sutil
             float scale = 1f + (float) Math.sin(animTimer * 2f) * 0.02f;
             float logoWidth = logoBounds.width * scale;
             float logoHeight = logoBounds.height * scale;
             float logoX = (Constants.VIRTUAL_WIDTH - logoWidth) / 2f;
             float logoY = titleZoneCenter - (logoHeight / 2f) + 20f;
             
-            // Efecto de brillo si está progresando el logro
             if (logoClickCount > 0 && !achievementUnlocked) {
                 float alpha = 0.5f + (logoClickCount / (float) CLICKS_FOR_ACHIEVEMENT) * 0.5f;
                 game.getBatch().setColor(1f, 1f, alpha, 1f);
@@ -380,8 +367,7 @@ public class HomeScreen extends BaseScreen {
             game.getBatch().draw(logoTexture, logoX, logoY, logoWidth, logoHeight);
             game.getBatch().setColor(1f, 1f, 1f, 1f);
         } else {
-            // Fallback: dibujar texto
-            String title = "Kawaii Neko Memory";
+            String title = locale.get("game.title");
             layout.setText(titleFont, title);
             float titleX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
             float titleY = titleZoneCenter + (layout.height / 2f);
@@ -390,22 +376,16 @@ public class HomeScreen extends BaseScreen {
     }
     
     private void drawClickProgress() {
-        // Mostrar progreso discreto debajo del logo
         float progressY = logoBounds.y - 15f;
         
-        String dots = "";
-        for (int i = 0; i < logoClickCount; i++) {
-            dots += "●";
-        }
-        for (int i = logoClickCount; i < CLICKS_FOR_ACHIEVEMENT; i++) {
-            dots += "○";
-        }
+        StringBuilder dots = new StringBuilder();
+        for (int i = 0; i < logoClickCount; i++) dots.append("●");
+        for (int i = logoClickCount; i < CLICKS_FOR_ACHIEVEMENT; i++) dots.append("○");
         
         smallFont.setColor(Color.PINK);
-        layout.setText(smallFont, dots);
-        smallFont.draw(game.getBatch(), dots, 
-                      (Constants.VIRTUAL_WIDTH - layout.width) / 2f, 
-                      progressY);
+        layout.setText(smallFont, dots.toString());
+        smallFont.draw(game.getBatch(), dots.toString(), 
+                      (Constants.VIRTUAL_WIDTH - layout.width) / 2f, progressY);
         smallFont.setColor(Color.WHITE);
     }
     
@@ -421,4 +401,4 @@ public class HomeScreen extends BaseScreen {
         
         if (rankingsButton != null) rankingsButton.dispose();
     }
-}
+    }

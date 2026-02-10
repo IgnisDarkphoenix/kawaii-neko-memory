@@ -14,15 +14,15 @@ import com.darkphoenixteam.kawaiinekomemory.config.Constants;
 import com.darkphoenixteam.kawaiinekomemory.models.Card;
 import com.darkphoenixteam.kawaiinekomemory.systems.AdController;
 import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
+import com.darkphoenixteam.kawaiinekomemory.systems.LocaleManager;
 import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 
 /**
- * Pantalla de modo Time Attack
- * Grid 5x6 infinito, sin powers, pensado para grind de Nekoins
+ * Pantalla de modo Time Attack con localización
  * 
  * @author DarkphoenixTeam
- * @version 1.0
+ * @version 1.1 - Localización completa
  */
 public class TimeAttackScreen extends BaseScreen {
     
@@ -31,21 +31,16 @@ public class TimeAttackScreen extends BaseScreen {
     // ==================== ESTADOS ====================
     
     public enum GameState {
-        STARTING,
-        PLAYING,
-        CHECKING,
-        GRID_TRANSITION,
-        GAME_OVER,
-        SHOWING_RESULTS
+        STARTING, PLAYING, CHECKING, GRID_TRANSITION, GAME_OVER, SHOWING_RESULTS
     }
     
     private GameState gameState;
     
     // ==================== CONFIGURACIÓN ====================
     
-    private static final int COLS = Constants.TIME_ATTACK_COLS;  // 5
-    private static final int ROWS = Constants.TIME_ATTACK_ROWS;  // 6
-    private static final int PAIRS = (COLS * ROWS) / 2;          // 15
+    private static final int COLS = Constants.TIME_ATTACK_COLS;
+    private static final int ROWS = Constants.TIME_ATTACK_ROWS;
+    private static final int PAIRS = (COLS * ROWS) / 2;
     
     // ==================== TABLERO ====================
     
@@ -80,6 +75,7 @@ public class TimeAttackScreen extends BaseScreen {
     private BitmapFont hudFont;
     private BitmapFont titleFont;
     private BitmapFont buttonFont;
+    private BitmapFont smallFont;
     private GlyphLayout layout;
     
     private SimpleButton pauseButton;
@@ -105,13 +101,12 @@ public class TimeAttackScreen extends BaseScreen {
     private static final float STARTING_DURATION = 1.5f;
     private float startingTimer;
     
-    // ==================== AUDIO Y SAVE ====================
+    // ==================== SISTEMAS ====================
     
     private AudioManager audioManager;
     private SaveManager saveManager;
+    private LocaleManager locale;
     private AdController adController;
-    
-    // ==================== INPUT ====================
     
     private final Vector2 touchPoint = new Vector2();
     
@@ -126,17 +121,18 @@ public class TimeAttackScreen extends BaseScreen {
         
         this.audioManager = AudioManager.getInstance();
         this.saveManager = SaveManager.getInstance();
+        this.locale = LocaleManager.getInstance();
         this.adController = adController;
         
         this.hudFont = game.getFontManager().getButtonFont();
         this.titleFont = game.getFontManager().getTitleFont();
         this.buttonFont = game.getFontManager().getButtonFont();
+        this.smallFont = game.getFontManager().getSmallFont();
         this.layout = new GlyphLayout();
         
         this.cards = new Array<>();
         this.cardFrontTextures = new Array<>();
         
-        // Obtener tiempo según upgrades
         this.timeLimit = saveManager.getTimeAttackTime();
         this.timeRemaining = timeLimit;
         
@@ -159,14 +155,13 @@ public class TimeAttackScreen extends BaseScreen {
         createPanels();
         playRandomGameMusic();
         
-        Gdx.app.log(TAG, "=== TIME ATTACK INICIADO ===");
-        Gdx.app.log(TAG, "Tiempo límite: " + timeLimit + "s | Récord actual: " + bestPairs + " pares");
+        Gdx.app.log(TAG, "=== TIME ATTACK ===");
+        Gdx.app.log(TAG, "Tiempo: " + timeLimit + "s | Récord: " + bestPairs);
     }
     
-    // ==================== CARGA DE ASSETS ====================
+    // ==================== ASSETS ====================
     
     private void loadAssets() {
-        // Fondo (usar el de Hard por ser el más desafiante visualmente)
         try {
             backgroundTexture = new Texture(Gdx.files.internal(AssetPaths.BG_HARD));
         } catch (Exception e) {
@@ -199,17 +194,12 @@ public class TimeAttackScreen extends BaseScreen {
     private void loadDeckTextures() {
         Array<Integer> activeCards = saveManager.getActiveCards();
         
-        Gdx.app.log(TAG, "Cargando " + PAIRS + " cartas del mazo activo");
-        
         Array<Integer> validCardIds = new Array<>();
         for (int i = 0; i < activeCards.size; i++) {
             int cardId = activeCards.get(i);
-            if (cardId >= 0) {
-                validCardIds.add(cardId);
-            }
+            if (cardId >= 0) validCardIds.add(cardId);
         }
         
-        // Necesitamos 15 cartas únicas para 15 pares
         while (validCardIds.size < PAIRS && validCardIds.size > 0) {
             validCardIds.add(validCardIds.get(validCardIds.size % validCardIds.size));
         }
@@ -224,13 +214,12 @@ public class TimeAttackScreen extends BaseScreen {
                 Texture tex = new Texture(Gdx.files.internal(path));
                 cardFrontTextures.add(tex);
             } catch (Exception e) {
-                Gdx.app.error(TAG, "Error cargando carta: " + path);
                 cardFrontTextures.add(null);
             }
         }
     }
     
-    // ==================== CREACIÓN DEL TABLERO ====================
+    // ==================== TABLERO ====================
     
     private void createBoard() {
         cards.clear();
@@ -263,7 +252,6 @@ public class TimeAttackScreen extends BaseScreen {
         float startX = boardX + actualMarginX;
         float startY = boardY + actualMarginY;
         
-        // Crear pares
         Array<Integer> cardIds = new Array<>();
         for (int i = 0; i < PAIRS; i++) {
             cardIds.add(i);
@@ -287,7 +275,6 @@ public class TimeAttackScreen extends BaseScreen {
                 
                 Card card = new Card(pairId, frontTex, cardBackTexture, x, y, cardWidth, cardHeight);
                 
-                // Asignar valor de nekoin
                 int realCardId = -1;
                 int validIndex = 0;
                 for (int i = 0; i < activeCardIds.size && validIndex <= pairId; i++) {
@@ -313,8 +300,6 @@ public class TimeAttackScreen extends BaseScreen {
         }
         
         pairsFoundThisGrid = 0;
-        
-        Gdx.app.log(TAG, "Grid #" + (gridsCompleted + 1) + " creado: " + COLS + "x" + ROWS);
     }
     
     // ==================== HUD ====================
@@ -324,15 +309,9 @@ public class TimeAttackScreen extends BaseScreen {
         float buttonSize = 50f;
         
         if (pauseIconTexture != null) {
-            pauseButton = new SimpleButton(
-                pauseIconTexture, "",
-                10f, hudY,
-                buttonSize, buttonSize
-            );
+            pauseButton = new SimpleButton(pauseIconTexture, "", 10f, hudY, buttonSize, buttonSize);
             pauseButton.setOnClick(() -> {
-                if (gameState == GameState.PLAYING) {
-                    onTimeUp();
-                }
+                if (gameState == GameState.PLAYING) onTimeUp();
             });
         }
     }
@@ -345,25 +324,24 @@ public class TimeAttackScreen extends BaseScreen {
         float btnHeight = 55f;
         float btnX = (Constants.VIRTUAL_WIDTH - btnWidth) / 2f;
         float btnSpacing = 15f;
-        
         float baseY = Constants.VIRTUAL_HEIGHT * 0.18f;
         
         if (buttonTexture != null) {
-            exitButton = new SimpleButton(buttonTexture, "SALIR", 
+            exitButton = new SimpleButton(buttonTexture, locale.get("game.btn.exit"), 
                 btnX, baseY, btnWidth, btnHeight);
             exitButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 game.setScreen(new LevelSelectScreen(game));
             });
             
-            continueButton = new SimpleButton(buttonTexture, "REINTENTAR",
+            continueButton = new SimpleButton(buttonTexture, locale.get("game.btn.restart"),
                 btnX, baseY + btnHeight + btnSpacing, btnWidth, btnHeight);
             continueButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 game.setScreen(new TimeAttackScreen(game, adController));
             });
             
-            watchAdButton = new SimpleButton(buttonTexture, "VER AD x2.5",
+            watchAdButton = new SimpleButton(buttonTexture, locale.get("game.btn.watchad"),
                 btnX, baseY + (btnHeight + btnSpacing) * 2, btnWidth, btnHeight);
             watchAdButton.setOnClick(this::onWatchAdClicked);
         }
@@ -386,36 +364,23 @@ public class TimeAttackScreen extends BaseScreen {
         }
         
         switch (gameState) {
-            case STARTING:
-                updateStarting(delta);
-                break;
-            case PLAYING:
-                updatePlaying(delta);
-                break;
-            case CHECKING:
-                updateChecking(delta);
-                break;
-            case GRID_TRANSITION:
-                updateGridTransition(delta);
-                break;
+            case STARTING: updateStarting(delta); break;
+            case PLAYING: updatePlaying(delta); break;
+            case CHECKING: updateChecking(delta); break;
+            case GRID_TRANSITION: updateGridTransition(delta); break;
             case GAME_OVER:
-            case SHOWING_RESULTS:
-                updateResults(delta);
-                break;
+            case SHOWING_RESULTS: updateResults(delta); break;
         }
     }
     
     private void updateStarting(float delta) {
         startingTimer -= delta;
-        
         if (startingTimer <= 0) {
             gameState = GameState.PLAYING;
-            Gdx.app.log(TAG, "¡COMIENZA TIME ATTACK!");
         }
     }
     
     private void updatePlaying(float delta) {
-        // Timer regresivo
         timeRemaining -= delta;
         
         if (timeRemaining <= 0) {
@@ -444,10 +409,7 @@ public class TimeAttackScreen extends BaseScreen {
         }
         
         checkDelayTimer -= delta;
-        
-        if (checkDelayTimer <= 0) {
-            checkForMatch();
-        }
+        if (checkDelayTimer <= 0) checkForMatch();
     }
     
     private void updateGridTransition(float delta) {
@@ -510,21 +472,15 @@ public class TimeAttackScreen extends BaseScreen {
             firstRevealed.setMatched();
             secondRevealed.setMatched();
             
-            // Sumar nekoins por el par
             int pairValue = firstRevealed.getNekoinValue();
             nekoinsEarned += pairValue;
             
             pairsFoundThisGrid++;
             pairsFoundTotal++;
             
-            Gdx.app.log(TAG, "MATCH! Pares: " + pairsFoundThisGrid + "/" + PAIRS + 
-                             " | Total: " + pairsFoundTotal +
-                             " | Nekoins: +" + pairValue);
-            
             firstRevealed = null;
             secondRevealed = null;
             
-            // Verificar si completó el grid
             if (pairsFoundThisGrid >= PAIRS) {
                 onGridComplete();
             } else {
@@ -545,12 +501,8 @@ public class TimeAttackScreen extends BaseScreen {
     
     private void onGridComplete() {
         gridsCompleted++;
-        
-        Gdx.app.log(TAG, "Grid #" + gridsCompleted + " completado! Generando siguiente...");
-        
         audioManager.playSound(AssetPaths.SFX_VICTORY);
         
-        // Transición al siguiente grid
         gameState = GameState.GRID_TRANSITION;
         gridTransitionTimer = GRID_TRANSITION_DURATION;
     }
@@ -561,25 +513,16 @@ public class TimeAttackScreen extends BaseScreen {
         gameState = GameState.GAME_OVER;
         audioManager.playSound(AssetPaths.SFX_DEFEAT);
         
-        // Verificar récord
         isNewRecord = saveManager.updateTimeAttackBestPairs(pairsFoundTotal);
         
-        // Guardar estadísticas
         saveManager.addTimeAttackPairs(pairsFoundTotal);
         saveManager.incrementTimeAttackGamesPlayed();
         saveManager.addPairsFound(pairsFoundTotal);
-        
-        // Dar nekoins
         saveManager.addNekoins(nekoinsEarned);
         
-        // Verificar si puede ver ad
         showingAdOption = (adController != null && adController.isRewardedLoaded() && !adWatched);
         
         gameState = GameState.SHOWING_RESULTS;
-        
-        Gdx.app.log(TAG, "=== TIME ATTACK TERMINADO ===");
-        Gdx.app.log(TAG, "Pares: " + pairsFoundTotal + " | Grids: " + gridsCompleted);
-        Gdx.app.log(TAG, "Nekoins: " + nekoinsEarned + " | Nuevo récord: " + isNewRecord);
     }
     
     private void onWatchAdClicked() {
@@ -593,20 +536,15 @@ public class TimeAttackScreen extends BaseScreen {
         adController.showRewarded(new AdController.RewardedAdListener() {
             @Override
             public void onRewardEarned(String rewardType, int rewardAmount) {
-                // Bonus x2.5
                 int bonus = (int)(nekoinsEarned * (Constants.TIME_ATTACK_AD_MULTIPLIER - 1f));
                 saveManager.addNekoins(bonus);
                 nekoinsEarned += bonus;
                 adWatched = true;
                 showingAdOption = false;
-                
-                Gdx.app.log(TAG, "Ad completado! Bonus: +" + bonus + " Nekoins");
             }
             
             @Override
-            public void onRewardCancelled() {
-                Gdx.app.log(TAG, "Ad cancelado");
-            }
+            public void onRewardCancelled() {}
         });
     }
     
@@ -616,34 +554,19 @@ public class TimeAttackScreen extends BaseScreen {
     protected void draw() {
         game.getBatch().begin();
         
-        // Fondo
         if (backgroundTexture != null) {
             game.getBatch().draw(backgroundTexture, 0, 0, 
                                  Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
         }
         
-        // Tablero
         drawBoard();
-        
-        // HUD
         drawHUD();
         
         game.getBatch().end();
         
-        // Panel de resultados
-        if (gameState == GameState.SHOWING_RESULTS) {
-            drawResultsPanel();
-        }
-        
-        // Countdown inicial
-        if (gameState == GameState.STARTING) {
-            drawStartingCountdown();
-        }
-        
-        // Transición de grid
-        if (gameState == GameState.GRID_TRANSITION) {
-            drawGridTransition();
-        }
+        if (gameState == GameState.SHOWING_RESULTS) drawResultsPanel();
+        if (gameState == GameState.STARTING) drawStartingCountdown();
+        if (gameState == GameState.GRID_TRANSITION) drawGridTransition();
     }
     
     private void drawBoard() {
@@ -655,12 +578,10 @@ public class TimeAttackScreen extends BaseScreen {
     private void drawHUD() {
         float hudY = Constants.VIRTUAL_HEIGHT - Constants.HUD_HEIGHT;
         
-        // Fondo del HUD
         game.getBatch().setColor(0, 0, 0, 0.5f);
         game.getBatch().draw(cardBackTexture, 0, hudY, Constants.VIRTUAL_WIDTH, Constants.HUD_HEIGHT);
         game.getBatch().setColor(1, 1, 1, 1);
         
-        // Botón pausa (actúa como rendirse)
         if (pauseButton != null) pauseButton.drawNoText(game.getBatch());
         
         // Timer
@@ -678,30 +599,30 @@ public class TimeAttackScreen extends BaseScreen {
         hudFont.draw(game.getBatch(), timeText, timeX, timeY);
         hudFont.setColor(Color.WHITE);
         
-        // Título TIME ATTACK
-        String title = "TIME ATTACK";
+        // Título
+        String title = locale.get("timeattack.title");
         layout.setText(hudFont, title);
         float titleX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
         hudFont.setColor(Color.ORANGE);
         hudFont.draw(game.getBatch(), title, titleX, timeY + 15f);
         hudFont.setColor(Color.WHITE);
         
-        // Contador de pares
-        String pairsText = pairsFoundTotal + " pares";
+        // Pares
+        String pairsText = locale.format("game.pairs", pairsFoundTotal);
         layout.setText(hudFont, pairsText);
         float pairsX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
         hudFont.draw(game.getBatch(), pairsText, pairsX, timeY - 15f);
         
         // Récord
         if (bestPairs > 0) {
-            String recordText = "Récord: " + bestPairs;
+            String recordText = locale.format("rankings.best", bestPairs);
             layout.setText(hudFont, recordText);
             hudFont.setColor(Color.GOLD);
             hudFont.draw(game.getBatch(), recordText, 70f, timeY);
             hudFont.setColor(Color.WHITE);
         }
         
-        // Nekoins ganados
+        // Nekoins
         if (nekoinIconTexture != null && nekoinsEarned > 0) {
             String nekoinText = "+" + nekoinsEarned;
             layout.setText(hudFont, nekoinText);
@@ -724,7 +645,7 @@ public class TimeAttackScreen extends BaseScreen {
         game.getBatch().setColor(1, 1, 1, 1);
         
         int countdown = (int) Math.ceil(startingTimer);
-        String text = countdown > 0 ? String.valueOf(countdown) : "¡YA!";
+        String text = countdown > 0 ? String.valueOf(countdown) : locale.get("timeattack.go");
         
         titleFont.setColor(Color.WHITE);
         layout.setText(titleFont, text);
@@ -742,7 +663,7 @@ public class TimeAttackScreen extends BaseScreen {
         game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
         game.getBatch().setColor(1, 1, 1, 1);
         
-        String text = "GRID #" + (gridsCompleted + 1);
+        String text = locale.format("timeattack.grid", gridsCompleted + 1);
         titleFont.setColor(Color.GREEN);
         layout.setText(titleFont, text);
         titleFont.draw(game.getBatch(), text,
@@ -756,12 +677,10 @@ public class TimeAttackScreen extends BaseScreen {
     private void drawResultsPanel() {
         game.getBatch().begin();
         
-        // Overlay oscuro
         game.getBatch().setColor(0, 0, 0, 0.85f);
         game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
         game.getBatch().setColor(1, 1, 1, 1);
         
-        // Panel
         if (panelTexture != null) {
             float panelWidth = Constants.VIRTUAL_WIDTH * 0.9f;
             float panelHeight = panelWidth * 1.1f;
@@ -771,7 +690,7 @@ public class TimeAttackScreen extends BaseScreen {
         }
         
         // Título
-        String title = "¡TIEMPO AGOTADO!";
+        String title = locale.get("game.defeat");
         titleFont.setColor(Color.ORANGE);
         layout.setText(titleFont, title);
         titleFont.draw(game.getBatch(), title,
@@ -779,18 +698,17 @@ public class TimeAttackScreen extends BaseScreen {
                       Constants.VIRTUAL_HEIGHT * 0.78f);
         titleFont.setColor(Color.WHITE);
         
-        // Estadísticas
         float statsY = Constants.VIRTUAL_HEIGHT * 0.65f;
         float lineHeight = 35f;
         
-        // Pares encontrados
-        String pairsText = "Pares: " + pairsFoundTotal;
+        // Pares
+        String pairsText = locale.format("game.pairs", pairsFoundTotal);
         layout.setText(buttonFont, pairsText);
         buttonFont.draw(game.getBatch(), pairsText,
                        (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY);
         
-        // Grids completados
-        String gridsText = "Grids: " + gridsCompleted;
+        // Grids
+        String gridsText = locale.format("game.grids", gridsCompleted);
         layout.setText(buttonFont, gridsText);
         buttonFont.draw(game.getBatch(), gridsText,
                        (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY - lineHeight);
@@ -798,7 +716,7 @@ public class TimeAttackScreen extends BaseScreen {
         // Nuevo récord
         if (isNewRecord) {
             buttonFont.setColor(Color.GOLD);
-            String recordText = "¡NUEVO RÉCORD!";
+            String recordText = locale.get("game.newrecord");
             layout.setText(buttonFont, recordText);
             buttonFont.draw(game.getBatch(), recordText,
                            (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY - lineHeight * 2);
@@ -808,10 +726,10 @@ public class TimeAttackScreen extends BaseScreen {
         // Nekoins
         String nekoinText;
         if (adWatched) {
-            nekoinText = "Nekoins: " + nekoinsEarned + " (x2.5!)";
+            nekoinText = locale.get("common.nekoins") + ": " + nekoinsEarned + " (x2.5!)";
             buttonFont.setColor(Color.LIME);
         } else {
-            nekoinText = "Nekoins: " + nekoinsEarned;
+            nekoinText = locale.get("common.nekoins") + ": " + nekoinsEarned;
             buttonFont.setColor(Color.GOLD);
         }
         layout.setText(buttonFont, nekoinText);
@@ -819,8 +737,8 @@ public class TimeAttackScreen extends BaseScreen {
                        (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY - lineHeight * 3);
         buttonFont.setColor(Color.WHITE);
         
-        // Tiempo usado
-        String timeText = "Tiempo: " + formatTime(timeLimit);
+        // Tiempo
+        String timeText = locale.format("game.time", formatTime(timeLimit));
         layout.setText(hudFont, timeText);
         hudFont.setColor(Color.LIGHT_GRAY);
         hudFont.draw(game.getBatch(), timeText,
@@ -849,8 +767,6 @@ public class TimeAttackScreen extends BaseScreen {
     
     @Override
     public void dispose() {
-        Gdx.app.log(TAG, "Liberando recursos...");
-        
         if (backgroundTexture != null) backgroundTexture.dispose();
         if (cardBackTexture != null) cardBackTexture.dispose();
         
@@ -864,4 +780,4 @@ public class TimeAttackScreen extends BaseScreen {
         if (panelTexture != null) panelTexture.dispose();
         if (buttonTexture != null) buttonTexture.dispose();
     }
-}
+            }

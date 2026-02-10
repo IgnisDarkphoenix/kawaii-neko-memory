@@ -13,9 +13,16 @@ import com.darkphoenixteam.kawaiinekomemory.KawaiiNekoMemory;
 import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
 import com.darkphoenixteam.kawaiinekomemory.config.Constants;
 import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
+import com.darkphoenixteam.kawaiinekomemory.systems.LocaleManager;
 import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 
+/**
+ * Editor de mazo con localización completa
+ * 
+ * @author DarkphoenixTeam
+ * @version 1.1 - Localización completa
+ */
 public class DeckEditorScreen extends BaseScreen {
     
     private static final String TAG = "DeckEditorScreen";
@@ -23,6 +30,7 @@ public class DeckEditorScreen extends BaseScreen {
     private static final float TAP_COOLDOWN = 0.25f;
     private float tapTimer = 0f;
     
+    // === LAYOUT ===
     private static final int ACTIVE_COLS = 5;
     private static final int ACTIVE_ROWS = 3;
     private static final float ACTIVE_CARD_SIZE = 70f;
@@ -33,6 +41,7 @@ public class DeckEditorScreen extends BaseScreen {
     private static final float AVAILABLE_CARD_SIZE = 55f;
     private static final float AVAILABLE_SPACING = 6f;
     
+    // === COLORES ===
     private static final Color COLOR_EASY = new Color(0.3f, 0.85f, 0.3f, 1f);
     private static final Color COLOR_NORMAL = new Color(1f, 0.85f, 0.2f, 1f);
     private static final Color COLOR_ADVANCED = new Color(1f, 0.5f, 0.1f, 1f);
@@ -40,26 +49,33 @@ public class DeckEditorScreen extends BaseScreen {
     private static final Color COLOR_SELECTED = new Color(0.3f, 0.7f, 1f, 1f);
     private static final Color COLOR_LOCKED = new Color(0.15f, 0.15f, 0.15f, 1f);
     
+    // === FONTS ===
     private BitmapFont titleFont;
     private BitmapFont buttonFont;
     private BitmapFont smallFont;
     private GlyphLayout layout;
     
+    // === TEXTURAS ===
     private Texture patternTexture;
     private Texture cardBackTexture;
     private Texture nekoinIconTexture;
     private Array<Texture> allCardTextures;
     
+    // === BOTONES ===
     private SimpleButton backButton;
     
+    // === BOUNDS ===
     private Array<Rectangle> activeSlotBounds;
     private Array<Rectangle> availableCardBounds;
     
     private int selectedSlot = -1;
     
+    // === SISTEMAS ===
     private AudioManager audioManager;
     private SaveManager saveManager;
+    private LocaleManager locale;
     private ShapeRenderer shapeRenderer;
+    
     private final Vector2 touchPoint = new Vector2();
     
     private float activeGridX, activeGridY;
@@ -77,6 +93,7 @@ public class DeckEditorScreen extends BaseScreen {
         
         audioManager = AudioManager.getInstance();
         saveManager = SaveManager.getInstance();
+        locale = LocaleManager.getInstance();
         shapeRenderer = new ShapeRenderer();
         
         allCardTextures = new Array<>();
@@ -90,7 +107,7 @@ public class DeckEditorScreen extends BaseScreen {
         createBounds();
         createButtons();
         
-        Gdx.app.log(TAG, "Desbloqueadas: " + saveManager.getUnlockedCardCount() + "/35");
+        Gdx.app.log(TAG, "Deck Editor inicializado");
     }
     
     private void loadAssets() {
@@ -117,8 +134,7 @@ public class DeckEditorScreen extends BaseScreen {
             for (int card = 0; card < AssetPaths.CARDS_PER_DECK; card++) {
                 String path = AssetPaths.getCardPath(deck, card);
                 try {
-                    Texture tex = new Texture(Gdx.files.internal(path));
-                    allCardTextures.add(tex);
+                    allCardTextures.add(new Texture(Gdx.files.internal(path)));
                 } catch (Exception e) {
                     allCardTextures.add(null);
                 }
@@ -162,7 +178,7 @@ public class DeckEditorScreen extends BaseScreen {
             float btnX = (Constants.VIRTUAL_WIDTH - btnWidth) / 2f;
             float btnY = 15f;
             
-            backButton = new SimpleButton(backTex, "VOLVER", btnX, btnY, btnWidth, btnHeight);
+            backButton = new SimpleButton(backTex, locale.get("common.back"), btnX, btnY, btnWidth, btnHeight);
             backButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 game.setScreen(new HomeScreen(game));
@@ -174,9 +190,7 @@ public class DeckEditorScreen extends BaseScreen {
     
     @Override
     protected void update(float delta) {
-        if (tapTimer > 0) {
-            tapTimer -= delta;
-        }
+        if (tapTimer > 0) tapTimer -= delta;
         
         if (!isInputEnabled()) return;
         
@@ -214,8 +228,6 @@ public class DeckEditorScreen extends BaseScreen {
         Array<Integer> activeCards = saveManager.getActiveCards();
         int cardInSlot = (slotIndex < activeCards.size) ? activeCards.get(slotIndex) : -1;
         
-        Gdx.app.log(TAG, "Active slot " + slotIndex + " clicked, card=" + cardInSlot);
-        
         if (selectedSlot == slotIndex) {
             selectedSlot = -1;
             audioManager.playSound(AssetPaths.SFX_BUTTON);
@@ -233,25 +245,20 @@ public class DeckEditorScreen extends BaseScreen {
         boolean unlocked = saveManager.isCardUnlocked(cardId);
         boolean active = saveManager.isCardActive(cardId);
         
-        Gdx.app.log(TAG, "Card " + cardId + " clicked: unlocked=" + unlocked + ", active=" + active);
-        
         if (!unlocked) {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
-            Gdx.app.log(TAG, "Carta " + cardId + " BLOQUEADA");
             return;
         }
         
         if (active) {
             saveManager.removeActiveCard(cardId);
             audioManager.playSound(AssetPaths.SFX_BUTTON);
-            Gdx.app.log(TAG, "Carta " + cardId + " removida");
             return;
         }
         
         if (selectedSlot >= 0) {
             if (saveManager.setActiveCardSlot(selectedSlot, cardId)) {
                 audioManager.playSound(AssetPaths.SFX_MATCH);
-                Gdx.app.log(TAG, "Carta " + cardId + " puesta en slot " + selectedSlot);
                 selectedSlot = -1;
             } else {
                 audioManager.playSound(AssetPaths.SFX_NO_MATCH);
@@ -260,10 +267,8 @@ public class DeckEditorScreen extends BaseScreen {
             int slot = saveManager.addActiveCard(cardId);
             if (slot >= 0) {
                 audioManager.playSound(AssetPaths.SFX_MATCH);
-                Gdx.app.log(TAG, "Carta " + cardId + " agregada en slot " + slot);
             } else {
                 audioManager.playSound(AssetPaths.SFX_NO_MATCH);
-                Gdx.app.log(TAG, "No hay slots vacios");
             }
         }
     }
@@ -298,7 +303,7 @@ public class DeckEditorScreen extends BaseScreen {
     }
     
     private void drawHeader() {
-        String title = "CARTAS ACTIVAS";
+        String title = locale.get("deck.title");
         layout.setText(titleFont, title);
         titleFont.draw(game.getBatch(), title, 
                       (Constants.VIRTUAL_WIDTH - layout.width) / 2f, 
@@ -331,8 +336,7 @@ public class DeckEditorScreen extends BaseScreen {
             
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
             shapeRenderer.setColor(borderColor);
-            shapeRenderer.rect(bounds.x - 4f, bounds.y - 4f, 
-                              bounds.width + 8f, bounds.height + 8f);
+            shapeRenderer.rect(bounds.x - 4f, bounds.y - 4f, bounds.width + 8f, bounds.height + 8f);
             shapeRenderer.end();
             
             game.getBatch().begin();
@@ -363,7 +367,7 @@ public class DeckEditorScreen extends BaseScreen {
     
     private void drawAvailableGrid() {
         game.getBatch().begin();
-        String sectionTitle = "Cartas Disponibles (" + saveManager.getUnlockedCardCount() + "/35)";
+        String sectionTitle = locale.format("deck.available", saveManager.getUnlockedCardCount());
         layout.setText(smallFont, sectionTitle);
         smallFont.draw(game.getBatch(), sectionTitle, 
                       (Constants.VIRTUAL_WIDTH - layout.width) / 2f, 
@@ -386,8 +390,7 @@ public class DeckEditorScreen extends BaseScreen {
                 int deck = SaveManager.getDeckFromCardId(cardId);
                 shapeRenderer.setColor(getDeckColor(deck));
             }
-            shapeRenderer.rect(bounds.x - 3f, bounds.y - 3f, 
-                              bounds.width + 6f, bounds.height + 6f);
+            shapeRenderer.rect(bounds.x - 3f, bounds.y - 3f, bounds.width + 6f, bounds.height + 6f);
             shapeRenderer.end();
             
             game.getBatch().begin();
@@ -429,7 +432,7 @@ public class DeckEditorScreen extends BaseScreen {
         float infoY = 85f;
         
         int activeCount = saveManager.getActiveCardCount();
-        String countText = "Activas: " + activeCount + "/15";
+        String countText = locale.format("deck.active", activeCount);
         
         if (activeCount < 15) {
             smallFont.setColor(Color.RED);
@@ -438,17 +441,13 @@ public class DeckEditorScreen extends BaseScreen {
         }
         
         layout.setText(smallFont, countText);
-        smallFont.draw(game.getBatch(), countText, 
-                      (Constants.VIRTUAL_WIDTH - layout.width) / 2f, infoY);
+        smallFont.draw(game.getBatch(), countText, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, infoY);
         smallFont.setColor(Color.WHITE);
         
-        String hint = selectedSlot >= 0 ? 
-                      "Toca carta para colocar" : 
-                      "Toca slot o carta";
+        String hint = selectedSlot >= 0 ? locale.get("deck.hint.place") : locale.get("deck.hint.select");
         layout.setText(smallFont, hint);
         smallFont.setColor(Color.GRAY);
-        smallFont.draw(game.getBatch(), hint, 
-                      (Constants.VIRTUAL_WIDTH - layout.width) / 2f, infoY - 20f);
+        smallFont.draw(game.getBatch(), hint, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, infoY - 20f);
         smallFont.setColor(Color.WHITE);
     }
     

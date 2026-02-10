@@ -13,19 +13,21 @@ import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
 import com.darkphoenixteam.kawaiinekomemory.config.Constants;
 import com.darkphoenixteam.kawaiinekomemory.models.LevelData;
 import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
+import com.darkphoenixteam.kawaiinekomemory.systems.LocaleManager;
 import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 
 /**
- * Pantalla de selección de nivel con acceso a Time Attack
+ * Pantalla de selección de nivel con localización
  * 
  * @author DarkphoenixTeam
- * @version 2.0 - Time Attack integrado
+ * @version 2.1 - Localización completa
  */
 public class LevelSelectScreen extends BaseScreen {
     
     private static final String TAG = "LevelSelectScreen";
     
+    // === LAYOUT ===
     private static final float HEADER_HEIGHT = 120f;
     private static final float FOOTER_HEIGHT = 120f;
     private static final float TAB_HEIGHT = 50f;
@@ -35,40 +37,46 @@ public class LevelSelectScreen extends BaseScreen {
     private static final float GRID_MARGIN_BOTTOM = FOOTER_HEIGHT + 10f;
     
     private static final int GRID_COLS = 5;
-    private static final int GRID_ROWS = 10;
     private static final float LEVEL_BUTTON_SIZE = 60f;
     private static final float LEVEL_BUTTON_SPACING = 8f;
-    
     private static final float ARROW_BUTTON_SIZE = 60f;
     
+    // === FONTS ===
     private BitmapFont titleFont;
     private BitmapFont tabFont;
     private BitmapFont levelFont;
     private BitmapFont smallFont;
     private GlyphLayout layout;
     
+    // === TEXTURAS ===
     private Texture patternTexture;
     
+    // === TABS ===
     private Array<SimpleButton> tabButtons;
     private LevelData.Difficulty currentDifficulty;
     
+    // === NIVELES ===
     private Array<LevelData> currentLevels;
     
+    // === NAVEGACIÓN ===
     private SimpleButton arrowUpButton;
     private SimpleButton arrowDownButton;
     private int currentPage = 0;
     private int maxPages = 1;
     
+    // === BOTONES ===
     private SimpleButton backButton;
-    
-    // === TIME ATTACK ===
     private SimpleButton timeAttackButton;
     
+    // === RENDER ===
     private ShapeRenderer shapeRenderer;
     
+    // === SISTEMAS ===
     private AudioManager audioManager;
     private SaveManager saveManager;
+    private LocaleManager locale;
     
+    // === INPUT ===
     private final Vector2 touchPoint = new Vector2();
     
     public LevelSelectScreen(KawaiiNekoMemory game) {
@@ -84,6 +92,7 @@ public class LevelSelectScreen extends BaseScreen {
         
         audioManager = AudioManager.getInstance();
         saveManager = SaveManager.getInstance();
+        locale = LocaleManager.getInstance();
         
         shapeRenderer = new ShapeRenderer();
         
@@ -122,7 +131,13 @@ public class LevelSelectScreen extends BaseScreen {
             AssetPaths.TAB_HARD
         };
         
-        String[] tabLabels = {"FACIL", "NORMAL", "AVANZADO", "DIFICIL"};
+        // Keys de localización para cada tab
+        String[] tabKeys = {
+            "levels.tab.easy",
+            "levels.tab.normal",
+            "levels.tab.advanced",
+            "levels.tab.hard"
+        };
         
         for (int i = 0; i < 4; i++) {
             final int index = i;
@@ -130,9 +145,11 @@ public class LevelSelectScreen extends BaseScreen {
             
             try {
                 Texture tabTexture = new Texture(Gdx.files.internal(tabPaths[i]));
+                String tabLabel = locale.get(tabKeys[i]);
+                
                 SimpleButton tab = new SimpleButton(
                     tabTexture,
-                    tabLabels[i],
+                    tabLabel,
                     tabX,
                     TAB_Y,
                     tabWidth - 4f,
@@ -154,14 +171,8 @@ public class LevelSelectScreen extends BaseScreen {
         
         try {
             Texture upTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_ARROW_UP));
-            arrowUpButton = new SimpleButton(
-                upTexture,
-                "",
-                arrowX,
-                gridCenterY + 10f,
-                ARROW_BUTTON_SIZE,
-                ARROW_BUTTON_SIZE
-            );
+            arrowUpButton = new SimpleButton(upTexture, "", arrowX, gridCenterY + 10f,
+                ARROW_BUTTON_SIZE, ARROW_BUTTON_SIZE);
             arrowUpButton.setOnClick(() -> changePage(-1));
         } catch (Exception e) {
             Gdx.app.error(TAG, "Error cargando flecha arriba");
@@ -169,14 +180,8 @@ public class LevelSelectScreen extends BaseScreen {
         
         try {
             Texture downTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_ARROW_DOWN));
-            arrowDownButton = new SimpleButton(
-                downTexture,
-                "",
-                arrowX,
-                gridCenterY - ARROW_BUTTON_SIZE - 10f,
-                ARROW_BUTTON_SIZE,
-                ARROW_BUTTON_SIZE
-            );
+            arrowDownButton = new SimpleButton(downTexture, "", arrowX, 
+                gridCenterY - ARROW_BUTTON_SIZE - 10f, ARROW_BUTTON_SIZE, ARROW_BUTTON_SIZE);
             arrowDownButton.setOnClick(() -> changePage(1));
         } catch (Exception e) {
             Gdx.app.error(TAG, "Error cargando flecha abajo");
@@ -189,14 +194,12 @@ public class LevelSelectScreen extends BaseScreen {
             float buttonWidth = Constants.VIRTUAL_WIDTH * 0.35f;
             float aspectRatio = (float) buttonTexture.getHeight() / buttonTexture.getWidth();
             float buttonHeight = buttonWidth * aspectRatio;
-            float buttonX = 10f;
-            float buttonY = 20f;
             
             backButton = new SimpleButton(
                 buttonTexture,
-                "VOLVER",
-                buttonX,
-                buttonY,
+                locale.get("common.back"),
+                10f,
+                20f,
                 buttonWidth,
                 buttonHeight
             );
@@ -216,14 +219,12 @@ public class LevelSelectScreen extends BaseScreen {
             float buttonWidth = Constants.VIRTUAL_WIDTH * 0.35f;
             float aspectRatio = (float) buttonTexture.getHeight() / buttonTexture.getWidth();
             float buttonHeight = buttonWidth * aspectRatio;
-            float buttonX = Constants.VIRTUAL_WIDTH - buttonWidth - 10f;
-            float buttonY = 20f;
             
             timeAttackButton = new SimpleButton(
                 buttonTexture,
-                "TIME ATTACK",
-                buttonX,
-                buttonY,
+                locale.get("levels.timeattack"),
+                Constants.VIRTUAL_WIDTH - buttonWidth - 10f,
+                20f,
                 buttonWidth,
                 buttonHeight
             );
@@ -281,28 +282,16 @@ public class LevelSelectScreen extends BaseScreen {
     
     @Override
     protected void update(float delta) {
-        if (!isInputEnabled()) {
-            return;
-        }
+        if (!isInputEnabled()) return;
         
         for (SimpleButton tab : tabButtons) {
             tab.update(viewport);
         }
         
-        if (arrowUpButton != null) {
-            arrowUpButton.update(viewport);
-        }
-        if (arrowDownButton != null) {
-            arrowDownButton.update(viewport);
-        }
-        
-        if (backButton != null) {
-            backButton.update(viewport);
-        }
-        
-        if (timeAttackButton != null) {
-            timeAttackButton.update(viewport);
-        }
+        if (arrowUpButton != null) arrowUpButton.update(viewport);
+        if (arrowDownButton != null) arrowDownButton.update(viewport);
+        if (backButton != null) backButton.update(viewport);
+        if (timeAttackButton != null) timeAttackButton.update(viewport);
         
         if (Gdx.input.justTouched()) {
             checkLevelClick();
@@ -310,9 +299,7 @@ public class LevelSelectScreen extends BaseScreen {
     }
     
     private void checkLevelClick() {
-        float touchX = Gdx.input.getX();
-        float touchY = Gdx.input.getY();
-        viewport.unproject(touchPoint.set(touchX, touchY));
+        viewport.unproject(touchPoint.set(Gdx.input.getX(), Gdx.input.getY()));
         
         float gridWidth = GRID_COLS * (LEVEL_BUTTON_SIZE + LEVEL_BUTTON_SPACING);
         float gridStartX = (Constants.VIRTUAL_WIDTH - gridWidth) / 2f;
@@ -337,6 +324,7 @@ public class LevelSelectScreen extends BaseScreen {
     protected void draw() {
         game.getBatch().begin();
         
+        // Fondo
         if (patternTexture != null) {
             game.getBatch().setColor(1f, 1f, 1f, 0.3f);
             int tileSize = 512;
@@ -348,7 +336,8 @@ public class LevelSelectScreen extends BaseScreen {
             game.getBatch().setColor(1f, 1f, 1f, 1f);
         }
         
-        String title = "SELECCIONA NIVEL";
+        // Título
+        String title = locale.get("levels.title");
         layout.setText(titleFont, title);
         titleFont.draw(game.getBatch(), title, 
                       (Constants.VIRTUAL_WIDTH - layout.width) / 2f, 
@@ -356,34 +345,25 @@ public class LevelSelectScreen extends BaseScreen {
         
         game.getBatch().end();
         
+        // Tabs
         drawTabs();
         
+        // Grid de niveles
         game.getBatch().begin();
         drawLevelGrid();
         game.getBatch().end();
         
+        // Flechas
         game.getBatch().begin();
-        if (arrowUpButton != null) {
-            arrowUpButton.drawNoText(game.getBatch());
-        }
-        if (arrowDownButton != null) {
-            arrowDownButton.drawNoText(game.getBatch());
-        }
+        if (arrowUpButton != null) arrowUpButton.drawNoText(game.getBatch());
+        if (arrowDownButton != null) arrowDownButton.drawNoText(game.getBatch());
         game.getBatch().end();
         
+        // Botones inferiores
         game.getBatch().begin();
-        
-        if (backButton != null) {
-            backButton.draw(game.getBatch(), tabFont);
-        }
-        
-        if (timeAttackButton != null) {
-            timeAttackButton.draw(game.getBatch(), tabFont);
-        }
-        
-        // Info de Time Attack
+        if (backButton != null) backButton.draw(game.getBatch(), tabFont);
+        if (timeAttackButton != null) timeAttackButton.draw(game.getBatch(), tabFont);
         drawTimeAttackInfo();
-        
         game.getBatch().end();
     }
     
@@ -459,15 +439,13 @@ public class LevelSelectScreen extends BaseScreen {
     }
     
     private void drawTimeAttackInfo() {
-        // Mostrar récord de Time Attack debajo del botón
         int bestPairs = saveManager.getTimeAttackBestPairs();
         if (bestPairs > 0) {
-            String recordText = "Récord: " + bestPairs + " pares";
+            String recordText = locale.format("levels.record", bestPairs);
             smallFont.setColor(Color.GOLD);
             layout.setText(smallFont, recordText);
-            float textX = Constants.VIRTUAL_WIDTH - layout.width - 15f;
-            float textY = 15f;
-            smallFont.draw(game.getBatch(), recordText, textX, textY);
+            smallFont.draw(game.getBatch(), recordText,
+                          Constants.VIRTUAL_WIDTH - layout.width - 15f, 15f);
             smallFont.setColor(Color.WHITE);
         }
     }
@@ -486,4 +464,4 @@ public class LevelSelectScreen extends BaseScreen {
         if (timeAttackButton != null) timeAttackButton.dispose();
         if (shapeRenderer != null) shapeRenderer.dispose();
     }
-}
+    }

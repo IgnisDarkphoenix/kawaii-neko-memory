@@ -16,6 +16,12 @@ import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
 import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 
+/**
+ * Pantalla de selección de nivel con acceso a Time Attack
+ * 
+ * @author DarkphoenixTeam
+ * @version 2.0 - Time Attack integrado
+ */
 public class LevelSelectScreen extends BaseScreen {
     
     private static final String TAG = "LevelSelectScreen";
@@ -38,6 +44,7 @@ public class LevelSelectScreen extends BaseScreen {
     private BitmapFont titleFont;
     private BitmapFont tabFont;
     private BitmapFont levelFont;
+    private BitmapFont smallFont;
     private GlyphLayout layout;
     
     private Texture patternTexture;
@@ -54,6 +61,9 @@ public class LevelSelectScreen extends BaseScreen {
     
     private SimpleButton backButton;
     
+    // === TIME ATTACK ===
+    private SimpleButton timeAttackButton;
+    
     private ShapeRenderer shapeRenderer;
     
     private AudioManager audioManager;
@@ -69,6 +79,7 @@ public class LevelSelectScreen extends BaseScreen {
         titleFont = game.getFontManager().getTitleFont();
         tabFont = game.getFontManager().getButtonFont();
         levelFont = game.getFontManager().getButtonFont();
+        smallFont = game.getFontManager().getSmallFont();
         layout = new GlyphLayout();
         
         audioManager = AudioManager.getInstance();
@@ -84,6 +95,7 @@ public class LevelSelectScreen extends BaseScreen {
         createTabs();
         createNavigationButtons();
         createBackButton();
+        createTimeAttackButton();
         loadLevelsForCurrentDifficulty();
         
         Gdx.app.log(TAG, "Inicializado");
@@ -174,10 +186,10 @@ public class LevelSelectScreen extends BaseScreen {
     private void createBackButton() {
         try {
             Texture buttonTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_BACK));
-            float buttonWidth = Constants.VIRTUAL_WIDTH * 0.4f;
+            float buttonWidth = Constants.VIRTUAL_WIDTH * 0.35f;
             float aspectRatio = (float) buttonTexture.getHeight() / buttonTexture.getWidth();
             float buttonHeight = buttonWidth * aspectRatio;
-            float buttonX = (Constants.VIRTUAL_WIDTH - buttonWidth) / 2f;
+            float buttonX = 10f;
             float buttonY = 20f;
             
             backButton = new SimpleButton(
@@ -195,6 +207,33 @@ public class LevelSelectScreen extends BaseScreen {
             });
         } catch (Exception e) {
             Gdx.app.error(TAG, "Error cargando boton back");
+        }
+    }
+    
+    private void createTimeAttackButton() {
+        try {
+            Texture buttonTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_PLAY));
+            float buttonWidth = Constants.VIRTUAL_WIDTH * 0.35f;
+            float aspectRatio = (float) buttonTexture.getHeight() / buttonTexture.getWidth();
+            float buttonHeight = buttonWidth * aspectRatio;
+            float buttonX = Constants.VIRTUAL_WIDTH - buttonWidth - 10f;
+            float buttonY = 20f;
+            
+            timeAttackButton = new SimpleButton(
+                buttonTexture,
+                "TIME ATTACK",
+                buttonX,
+                buttonY,
+                buttonWidth,
+                buttonHeight
+            );
+            
+            timeAttackButton.setOnClick(() -> {
+                audioManager.playSound(AssetPaths.SFX_BUTTON);
+                game.setScreen(new TimeAttackScreen(game));
+            });
+        } catch (Exception e) {
+            Gdx.app.error(TAG, "Error cargando boton Time Attack");
         }
     }
     
@@ -259,6 +298,10 @@ public class LevelSelectScreen extends BaseScreen {
         
         if (backButton != null) {
             backButton.update(viewport);
+        }
+        
+        if (timeAttackButton != null) {
+            timeAttackButton.update(viewport);
         }
         
         if (Gdx.input.justTouched()) {
@@ -329,9 +372,18 @@ public class LevelSelectScreen extends BaseScreen {
         game.getBatch().end();
         
         game.getBatch().begin();
+        
         if (backButton != null) {
             backButton.draw(game.getBatch(), tabFont);
         }
+        
+        if (timeAttackButton != null) {
+            timeAttackButton.draw(game.getBatch(), tabFont);
+        }
+        
+        // Info de Time Attack
+        drawTimeAttackInfo();
+        
         game.getBatch().end();
     }
     
@@ -375,7 +427,14 @@ public class LevelSelectScreen extends BaseScreen {
             
             if (level.isUnlocked()) {
                 if (level.isCompleted()) {
-                    shapeRenderer.setColor(Color.GREEN);
+                    int stars = saveManager.getLevelStars(level.getGlobalId());
+                    if (stars >= 3) {
+                        shapeRenderer.setColor(Color.GOLD);
+                    } else if (stars >= 2) {
+                        shapeRenderer.setColor(Color.YELLOW);
+                    } else {
+                        shapeRenderer.setColor(Color.GREEN);
+                    }
                 } else {
                     shapeRenderer.setColor(Color.WHITE);
                 }
@@ -399,6 +458,20 @@ public class LevelSelectScreen extends BaseScreen {
         }
     }
     
+    private void drawTimeAttackInfo() {
+        // Mostrar récord de Time Attack debajo del botón
+        int bestPairs = saveManager.getTimeAttackBestPairs();
+        if (bestPairs > 0) {
+            String recordText = "Récord: " + bestPairs + " pares";
+            smallFont.setColor(Color.GOLD);
+            layout.setText(smallFont, recordText);
+            float textX = Constants.VIRTUAL_WIDTH - layout.width - 15f;
+            float textY = 15f;
+            smallFont.draw(game.getBatch(), recordText, textX, textY);
+            smallFont.setColor(Color.WHITE);
+        }
+    }
+    
     @Override
     public void dispose() {
         if (patternTexture != null) patternTexture.dispose();
@@ -410,6 +483,7 @@ public class LevelSelectScreen extends BaseScreen {
         if (arrowUpButton != null) arrowUpButton.dispose();
         if (arrowDownButton != null) arrowDownButton.dispose();
         if (backButton != null) backButton.dispose();
+        if (timeAttackButton != null) timeAttackButton.dispose();
         if (shapeRenderer != null) shapeRenderer.dispose();
     }
 }

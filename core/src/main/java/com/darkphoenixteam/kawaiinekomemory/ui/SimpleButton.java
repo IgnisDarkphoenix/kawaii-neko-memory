@@ -14,7 +14,13 @@ import com.badlogic.gdx.utils.viewport.Viewport;
  * Botón simple con detección de toques y sistema de debounce
  * Previene múltiples clicks accidentales
  * 
+ * FIX v2.1:
+ * - dispose() ya NO destruye la textura (la textura es propiedad del caller)
+ * - Color reutilizable para evitar GC pressure
+ * - Texto mutable para cambiar dinámicamente
+ * 
  * @author DarkphoenixTeam
+ * @version 2.1
  */
 public class SimpleButton {
     
@@ -40,13 +46,19 @@ public class SimpleButton {
     // Vector reutilizable
     private final Vector2 touchPoint = new Vector2();
     
-    // Colores para estados
+    // Color reutilizable (evita crear objetos cada frame)
+    private final Color savedColor = new Color();
+    
+    // Colores para estados (estáticos, compartidos entre todas las instancias)
     private static final Color COLOR_NORMAL = new Color(1f, 1f, 1f, 1f);
     private static final Color COLOR_PRESSED = new Color(0.85f, 0.85f, 0.85f, 1f);
     private static final Color COLOR_COOLDOWN = new Color(0.7f, 0.7f, 0.7f, 0.8f);
     
     // Offset visual al presionar
     private static final float PRESS_OFFSET_Y = -4f;
+    
+    // Control de propiedad de textura
+    private boolean ownsTexture = false;
     
     /**
      * Constructor con aspect ratio automático
@@ -111,7 +123,9 @@ public class SimpleButton {
     public void draw(SpriteBatch batch, BitmapFont font) {
         float offsetY = isPressed ? PRESS_OFFSET_Y : 0f;
         
-        Color oldColor = batch.getColor().cpy();
+        // Guardar color original sin crear nuevo objeto
+        savedColor.set(batch.getColor());
+        
         if (cooldownTimer > 0) {
             batch.setColor(COLOR_COOLDOWN);
         } else if (isPressed) {
@@ -130,7 +144,8 @@ public class SimpleButton {
             );
         }
         
-        batch.setColor(oldColor);
+        // Restaurar color
+        batch.setColor(savedColor);
         
         if (text != null && font != null && !text.isEmpty()) {
             layout.setText(font, text);
@@ -146,7 +161,8 @@ public class SimpleButton {
     public void drawNoText(SpriteBatch batch) {
         float offsetY = isPressed ? PRESS_OFFSET_Y : 0f;
         
-        Color oldColor = batch.getColor().cpy();
+        savedColor.set(batch.getColor());
+        
         if (cooldownTimer > 0) {
             batch.setColor(COLOR_COOLDOWN);
         } else if (isPressed) {
@@ -165,7 +181,7 @@ public class SimpleButton {
             );
         }
         
-        batch.setColor(oldColor);
+        batch.setColor(savedColor);
     }
     
     /**
@@ -180,9 +196,6 @@ public class SimpleButton {
      */
     private void triggerClick() {
         cooldownTimer = DEFAULT_COOLDOWN;
-        
-        Gdx.app.log(TAG, "Click: " + (text != null && !text.isEmpty() ? text : "botón") + 
-                         " (cooldown " + (int)(DEFAULT_COOLDOWN * 1000) + "ms)");
         
         if (onClick != null) {
             onClick.run();
@@ -208,6 +221,20 @@ public class SimpleButton {
      */
     public void setCooldown(float seconds) {
         cooldownTimer = seconds;
+    }
+    
+    /**
+     * Cambia el texto del botón dinámicamente
+     */
+    public void setText(String newText) {
+        this.text = newText;
+    }
+    
+    /**
+     * Marca que este botón es dueño de la textura y debe hacer dispose
+     */
+    public void setOwnsTexture(boolean owns) {
+        this.ownsTexture = owns;
     }
     
     // === GETTERS ===
@@ -240,9 +267,19 @@ public class SimpleButton {
         return cooldownTimer;
     }
     
+    public String getText() {
+        return text;
+    }
+    
+    /**
+     * Libera la textura SOLO si este botón es su dueño.
+     * Por defecto NO libera la textura para evitar double-dispose
+     * cuando múltiples botones comparten la misma textura.
+     */
     public void dispose() {
-        if (texture != null) {
+        if (ownsTexture && texture != null) {
             texture.dispose();
+            texture = null;
         }
     }
 }

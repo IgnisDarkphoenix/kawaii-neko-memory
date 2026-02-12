@@ -13,15 +13,19 @@ import com.badlogic.gdx.math.Vector2;
  * Usa 3 texturas: fondo, relleno, y knob
  * Respeta aspect ratio de las texturas automáticamente
  * 
+ * FIX v2.1:
+ * - Rectangle del touch area reutilizable (evita GC)
+ * - Log reducido (solo en inicio/fin de drag)
+ * 
  * @author DarkphoenixTeam
+ * @version 2.1
  */
 public class SimpleSlider {
     
     private static final String TAG = "SimpleSlider";
     
     // === KNOB SIZE CONFIG ===
-    // Multiplicador del tamaño del knob respecto a la altura del slider
-    private static final float KNOB_SIZE_MULTIPLIER = 0.9f;  // Era 1.8f, ahora la mitad
+    private static final float KNOB_SIZE_MULTIPLIER = 0.9f;
     
     // Texturas
     private Texture backgroundTexture;
@@ -31,6 +35,9 @@ public class SimpleSlider {
     
     // Bounds de la barra
     private Rectangle bounds;
+    
+    // Área de toque reutilizable (evita crear nueva cada frame)
+    private final Rectangle touchArea = new Rectangle();
     
     // Dimensiones del knob
     private float knobSize;
@@ -51,13 +58,6 @@ public class SimpleSlider {
     
     /**
      * Constructor con cálculo automático de dimensiones
-     * @param background Textura de la barra vacía (fondo)
-     * @param fill Textura de la barra llena (se recorta según valor)
-     * @param knob Textura del botón deslizante
-     * @param x Posición X de la barra
-     * @param y Posición Y de la barra
-     * @param width Ancho deseado de la barra
-     * @param maxHeight Altura máxima permitida
      */
     public SimpleSlider(Texture background, Texture fill, Texture knob,
                         float x, float y, float width, float maxHeight) {
@@ -71,12 +71,6 @@ public class SimpleSlider {
             float textureRatio = (float) background.getHeight() / (float) background.getWidth();
             float idealHeight = width * textureRatio;
             height = Math.min(idealHeight, maxHeight);
-            
-            Gdx.app.log(TAG, String.format(
-                "Slider: textura %dx%d, ratio=%.3f, altura=%.1f",
-                background.getWidth(), background.getHeight(), 
-                textureRatio, height
-            ));
         }
         
         this.bounds = new Rectangle(x, y, width, height);
@@ -92,23 +86,16 @@ public class SimpleSlider {
         // Valor inicial: máximo
         this.value = 1.0f;
         this.isDragging = false;
-        
-        Gdx.app.log(TAG, String.format(
-            "Creado: pos=(%.0f,%.0f) size=%.0fx%.0f knob=%.0f",
-            x, y, bounds.width, bounds.height, knobSize
-        ));
     }
     
     /**
      * Actualiza el estado del slider
-     * @param touchPoint Coordenadas del mundo (ya convertidas con unproject)
-     * @param isTouched Si el usuario está tocando la pantalla
      */
     public void update(Vector2 touchPoint, boolean isTouched) {
         if (isTouched) {
-            // Área de detección (incluye margen para el knob)
+            // Área de detección (incluye margen para el knob) — reutiliza el objeto
             float touchPadding = knobSize * 0.5f;
-            Rectangle touchArea = new Rectangle(
+            touchArea.set(
                 bounds.x - touchPadding,
                 bounds.y - touchPadding,
                 bounds.width + (touchPadding * 2f),
@@ -116,9 +103,6 @@ public class SimpleSlider {
             );
             
             if (touchArea.contains(touchPoint.x, touchPoint.y) || isDragging) {
-                if (!isDragging) {
-                    Gdx.app.log(TAG, "Iniciando arrastre");
-                }
                 isDragging = true;
                 
                 // Calcular nuevo valor

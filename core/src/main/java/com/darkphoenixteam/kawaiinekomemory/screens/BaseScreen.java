@@ -2,6 +2,7 @@ package com.darkphoenixteam.kawaiinekomemory.screens;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.utils.viewport.FitViewport;
@@ -10,9 +11,11 @@ import com.darkphoenixteam.kawaiinekomemory.KawaiiNekoMemory;
 import com.darkphoenixteam.kawaiinekomemory.config.Constants;
 
 /**
- * Pantalla base con sistema de input delay y debounce global
+ * Pantalla base con sistema de input delay, debounce global
+ * y Color reutilizable (evita GC pressure)
  * 
  * @author DarkphoenixTeam
+ * @version 2.1 - Optimización GC + Color reusable
  */
 public abstract class BaseScreen implements Screen {
     
@@ -32,6 +35,10 @@ public abstract class BaseScreen implements Screen {
     protected final KawaiiNekoMemory game;
     protected final OrthographicCamera camera;
     protected final Viewport viewport;
+    
+    // === COLOR REUTILIZABLE ===
+    // Usar este en lugar de batch.getColor().cpy() para evitar crear objetos cada frame
+    protected final Color tempColor = new Color();
     
     // Color de fondo
     protected float bgRed = 0.98f;
@@ -164,6 +171,22 @@ public abstract class BaseScreen implements Screen {
         this.bgRed = r;
         this.bgGreen = g;
         this.bgBlue = b;
+    }
+    
+    /**
+     * Guarda el color actual del batch en tempColor para restaurarlo después.
+     * Uso: saveColor(); batch.setColor(...); ... batch.setColor(tempColor);
+     * Evita crear nuevos objetos Color cada frame.
+     */
+    protected void saveColor() {
+        tempColor.set(game.getBatch().getColor());
+    }
+    
+    /**
+     * Restaura el color guardado con saveColor()
+     */
+    protected void restoreColor() {
+        game.getBatch().setColor(tempColor);
     }
     
     public Viewport getViewport() {

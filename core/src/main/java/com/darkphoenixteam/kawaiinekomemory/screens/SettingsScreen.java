@@ -17,8 +17,13 @@ import com.darkphoenixteam.kawaiinekomemory.ui.SimpleSlider;
 /**
  * Pantalla de ajustes con sliders de volumen y selector de idioma
  * 
+ * FIX v2.1:
+ * - recreateUI() ya no crea nueva instancia (evita memory leak)
+ * - Texturas compartidas manejadas correctamente
+ * - Usa saveColor()/restoreColor() de BaseScreen
+ * 
  * @author DarkphoenixTeam
- * @version 2.0 - Selector de idioma
+ * @version 2.1
  */
 public class SettingsScreen extends BaseScreen {
     
@@ -62,15 +67,19 @@ public class SettingsScreen extends BaseScreen {
     private static final float SECTION_SPACING = 90f;
     private static final float BUTTON_WIDTH_PERCENT = 0.50f;
     
+    // === POSICIONES CALCULADAS (para recreateUI) ===
+    private float sliderX;
+    private float sliderWidth;
+    private float musicSliderY;
+    private float soundSliderY;
+    private float langButtonY;
+    
     public SettingsScreen(KawaiiNekoMemory game) {
         super(game);
         
         setBackgroundColor(1f, 0.92f, 0.95f);
         
-        titleFont = game.getFontManager().getTitleFont();
-        labelFont = game.getFontManager().getButtonFont();
-        buttonFont = game.getFontManager().getButtonFont();
-        smallFont = game.getFontManager().getSmallFont();
+        refreshFontReferences();
         layout = new GlyphLayout();
         
         audioManager = AudioManager.getInstance();
@@ -79,9 +88,40 @@ public class SettingsScreen extends BaseScreen {
         audioManager.playMusic(AssetPaths.MUSIC_MENU, true);
         
         loadAssets();
+        calculateLayout();
         createUI();
         
         Gdx.app.log(TAG, "Inicializado - Idioma: " + localeManager.getCurrentLanguage().displayName);
+    }
+    
+    /**
+     * Actualiza las referencias de fuentes desde FontManager
+     */
+    private void refreshFontReferences() {
+        titleFont = game.getFontManager().getTitleFont();
+        labelFont = game.getFontManager().getButtonFont();
+        buttonFont = game.getFontManager().getButtonFont();
+        smallFont = game.getFontManager().getSmallFont();
+    }
+    
+    /**
+     * Pre-calcula posiciones del layout
+     */
+    private void calculateLayout() {
+        float centerX = Constants.VIRTUAL_WIDTH / 2f;
+        sliderWidth = Constants.VIRTUAL_WIDTH * SLIDER_WIDTH_PERCENT;
+        sliderX = centerX - (sliderWidth / 2f);
+        musicSliderY = Constants.VIRTUAL_HEIGHT * 0.62f;
+        
+        float sliderHeight = SLIDER_MAX_HEIGHT;
+        if (sliderBgTexture != null) {
+            float textureRatio = (float) sliderBgTexture.getHeight() / (float) sliderBgTexture.getWidth();
+            float idealHeight = sliderWidth * textureRatio;
+            sliderHeight = Math.min(idealHeight, SLIDER_MAX_HEIGHT);
+        }
+        
+        soundSliderY = musicSliderY - SECTION_SPACING - sliderHeight;
+        langButtonY = soundSliderY - SECTION_SPACING - 20f;
     }
     
     private void loadAssets() {
@@ -108,9 +148,6 @@ public class SettingsScreen extends BaseScreen {
         
         try {
             langButtonTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_EMPTY));
-            if (langButtonTexture == null) {
-                langButtonTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_PLAY));
-            }
         } catch (Exception e) {
             try {
                 langButtonTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_PLAY));
@@ -122,44 +159,23 @@ public class SettingsScreen extends BaseScreen {
     
     private void createUI() {
         float centerX = Constants.VIRTUAL_WIDTH / 2f;
-        float sliderWidth = Constants.VIRTUAL_WIDTH * SLIDER_WIDTH_PERCENT;
-        float sliderX = centerX - (sliderWidth / 2f);
         
         // === SLIDER DE MÚSICA ===
-        float musicSliderY = Constants.VIRTUAL_HEIGHT * 0.62f;
-        
         if (sliderBgTexture != null) {
             musicSlider = new SimpleSlider(
-                sliderBgTexture,
-                sliderFillTexture,
-                sliderKnobTexture,
-                sliderX,
-                musicSliderY,
-                sliderWidth,
-                SLIDER_MAX_HEIGHT
+                sliderBgTexture, sliderFillTexture, sliderKnobTexture,
+                sliderX, musicSliderY, sliderWidth, SLIDER_MAX_HEIGHT
             );
-            
             musicSlider.setValue(audioManager.getMusicVolume());
-            musicSlider.setOnValueChanged(volume -> {
-                audioManager.setMusicVolume(volume);
-            });
+            musicSlider.setOnValueChanged(volume -> audioManager.setMusicVolume(volume));
         }
         
         // === SLIDER DE EFECTOS ===
-        float sliderHeight = (musicSlider != null) ? musicSlider.getBounds().height : SLIDER_MAX_HEIGHT;
-        float soundSliderY = musicSliderY - SECTION_SPACING - sliderHeight;
-        
         if (sliderBgTexture != null) {
             soundSlider = new SimpleSlider(
-                sliderBgTexture,
-                sliderFillTexture,
-                sliderKnobTexture,
-                sliderX,
-                soundSliderY,
-                sliderWidth,
-                SLIDER_MAX_HEIGHT
+                sliderBgTexture, sliderFillTexture, sliderKnobTexture,
+                sliderX, soundSliderY, sliderWidth, SLIDER_MAX_HEIGHT
             );
-            
             soundSlider.setValue(audioManager.getSoundVolume());
             soundSlider.setOnValueChanged(volume -> {
                 audioManager.setSoundVolume(volume);
@@ -170,7 +186,6 @@ public class SettingsScreen extends BaseScreen {
         }
         
         // === BOTÓN DE IDIOMA ===
-        float langButtonY = soundSliderY - SECTION_SPACING - 20f;
         float langButtonWidth = Constants.VIRTUAL_WIDTH * BUTTON_WIDTH_PERCENT;
         float langButtonHeight = 50f;
         
@@ -183,7 +198,6 @@ public class SettingsScreen extends BaseScreen {
                 langButtonWidth,
                 langButtonHeight
             );
-            
             languageButton.setOnClick(this::cycleLanguage);
         }
         
@@ -198,14 +212,9 @@ public class SettingsScreen extends BaseScreen {
             backButton = new SimpleButton(
                 backButtonTexture,
                 localeManager.get("common.back"),
-                buttonX,
-                buttonY,
-                buttonWidth,
-                buttonHeight
+                buttonX, buttonY, buttonWidth, buttonHeight
             );
-            
             backButton.setOnClick(() -> {
-                Gdx.app.log(TAG, "Volviendo al menu principal");
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 game.setScreen(new HomeScreen(game));
             });
@@ -220,24 +229,33 @@ public class SettingsScreen extends BaseScreen {
         Gdx.app.log(TAG, "Idioma cambiado a: " + localeManager.getCurrentLanguage().displayName);
         
         if (needsFontReload) {
-            // Regenerar fuentes para el nuevo tipo de idioma (CJK vs Latin)
             game.getFontManager().regenerateForLanguage(localeManager.isCJK());
-            
-            // Actualizar referencias de fuentes
-            titleFont = game.getFontManager().getTitleFont();
-            labelFont = game.getFontManager().getButtonFont();
-            buttonFont = game.getFontManager().getButtonFont();
-            smallFont = game.getFontManager().getSmallFont();
         }
         
-        // Recrear UI con nuevos textos
+        // Actualizar referencias de fuentes (podrían haber cambiado)
+        refreshFontReferences();
+        
+        // Actualizar textos de botones existentes SIN recrear la pantalla
         recreateUI();
     }
     
+    /**
+     * Recrea solo los componentes de UI con nuevos textos.
+     * NO crea una nueva pantalla — evita memory leak.
+     * Las texturas ya están cargadas, solo se recrean los botones.
+     */
     private void recreateUI() {
-        // Actualizar textos de los botones existentes
-        // Para simplificar, recreamos la pantalla
-        game.setScreen(new SettingsScreen(game));
+        // Actualizar texto del botón de idioma
+        if (languageButton != null) {
+            languageButton.setText(localeManager.getCurrentLanguage().displayName);
+        }
+        
+        // Actualizar texto del botón back
+        if (backButton != null) {
+            backButton.setText(localeManager.get("common.back"));
+        }
+        
+        Gdx.app.log(TAG, "UI actualizada para: " + localeManager.getCurrentLanguage().displayName);
     }
     
     @Override
@@ -275,6 +293,7 @@ public class SettingsScreen extends BaseScreen {
         
         // Fondo
         if (patternTexture != null) {
+            saveColor();
             game.getBatch().setColor(1f, 1f, 1f, 0.3f);
             int tileSize = 512;
             for (int x = 0; x < Constants.VIRTUAL_WIDTH; x += tileSize) {
@@ -282,7 +301,7 @@ public class SettingsScreen extends BaseScreen {
                     game.getBatch().draw(patternTexture, x, y, tileSize, tileSize);
                 }
             }
-            game.getBatch().setColor(1f, 1f, 1f, 1f);
+            restoreColor();
         }
         
         // Título
@@ -363,6 +382,7 @@ public class SettingsScreen extends BaseScreen {
     public void dispose() {
         Gdx.app.log(TAG, "Liberando recursos...");
         
+        // Texturas cargadas por esta pantalla — SÍ hacer dispose
         if (patternTexture != null) patternTexture.dispose();
         if (sliderBgTexture != null) sliderBgTexture.dispose();
         if (sliderFillTexture != null) sliderFillTexture.dispose();
@@ -370,7 +390,7 @@ public class SettingsScreen extends BaseScreen {
         if (backButtonTexture != null) backButtonTexture.dispose();
         if (langButtonTexture != null) langButtonTexture.dispose();
         
-        if (backButton != null) backButton.dispose();
-        if (languageButton != null) languageButton.dispose();
+        // Los botones NO disponen sus texturas (ya las limpiamos arriba)
+        // Solo limpiamos si tuvieran estado interno
     }
-            }
+}

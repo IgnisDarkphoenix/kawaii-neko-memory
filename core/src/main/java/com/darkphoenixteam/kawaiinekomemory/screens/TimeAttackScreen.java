@@ -19,14 +19,35 @@ import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 
 /**
- * Pantalla de modo Time Attack con localización
+ * Pantalla de modo Time Attack con dos modos:
+ * - MODE_12: Grid 3x4 (6 pares) - requiere 6 cartas activas
+ * - MODE_30: Grid 5x6 (15 pares) - requiere 15 cartas activas
  * 
  * @author DarkphoenixTeam
- * @version 1.1 - Localización completa
+ * @version 2.0 - Dual mode support
  */
 public class TimeAttackScreen extends BaseScreen {
     
     private static final String TAG = "TimeAttackScreen";
+    
+    // ==================== MODOS ====================
+    
+    public enum Mode {
+        MODE_12(Constants.TIME_ATTACK_12_COLS, Constants.TIME_ATTACK_12_ROWS, Constants.TIME_ATTACK_12_PAIRS),
+        MODE_30(Constants.TIME_ATTACK_30_COLS, Constants.TIME_ATTACK_30_ROWS, Constants.TIME_ATTACK_30_PAIRS);
+        
+        public final int cols;
+        public final int rows;
+        public final int pairs;
+        
+        Mode(int cols, int rows, int pairs) {
+            this.cols = cols;
+            this.rows = rows;
+            this.pairs = pairs;
+        }
+    }
+    
+    private Mode currentMode;
     
     // ==================== ESTADOS ====================
     
@@ -38,9 +59,9 @@ public class TimeAttackScreen extends BaseScreen {
     
     // ==================== CONFIGURACIÓN ====================
     
-    private static final int COLS = Constants.TIME_ATTACK_COLS;
-    private static final int ROWS = Constants.TIME_ATTACK_ROWS;
-    private static final int PAIRS = (COLS * ROWS) / 2;
+    private int cols;
+    private int rows;
+    private int pairs;
     
     // ==================== TABLERO ====================
     
@@ -110,14 +131,32 @@ public class TimeAttackScreen extends BaseScreen {
     
     private final Vector2 touchPoint = new Vector2();
     
-    // ==================== CONSTRUCTOR ====================
+    // ==================== CONSTRUCTORES ====================
     
+    /**
+     * Constructor por defecto - usa MODE_30 para compatibilidad
+     */
     public TimeAttackScreen(KawaiiNekoMemory game) {
-        this(game, null);
+        this(game, Mode.MODE_30, null);
     }
     
-    public TimeAttackScreen(KawaiiNekoMemory game, AdController adController) {
+    /**
+     * Constructor con modo específico
+     */
+    public TimeAttackScreen(KawaiiNekoMemory game, Mode mode) {
+        this(game, mode, null);
+    }
+    
+    /**
+     * Constructor completo con modo y AdController
+     */
+    public TimeAttackScreen(KawaiiNekoMemory game, Mode mode, AdController adController) {
         super(game);
+        
+        this.currentMode = mode;
+        this.cols = mode.cols;
+        this.rows = mode.rows;
+        this.pairs = mode.pairs;
         
         this.audioManager = AudioManager.getInstance();
         this.saveManager = SaveManager.getInstance();
@@ -155,7 +194,8 @@ public class TimeAttackScreen extends BaseScreen {
         createPanels();
         playRandomGameMusic();
         
-        Gdx.app.log(TAG, "=== TIME ATTACK ===");
+        Gdx.app.log(TAG, "=== TIME ATTACK " + (mode == Mode.MODE_12 ? "12" : "30") + " ===");
+        Gdx.app.log(TAG, "Grid: " + cols + "x" + rows + " = " + pairs + " pares");
         Gdx.app.log(TAG, "Tiempo: " + timeLimit + "s | Récord: " + bestPairs);
     }
     
@@ -200,11 +240,14 @@ public class TimeAttackScreen extends BaseScreen {
             if (cardId >= 0) validCardIds.add(cardId);
         }
         
-        while (validCardIds.size < PAIRS && validCardIds.size > 0) {
+        // Solo repetir cartas si es absolutamente necesario
+        // (esto no debería pasar si el bloqueo funciona correctamente)
+        while (validCardIds.size < pairs && validCardIds.size > 0) {
             validCardIds.add(validCardIds.get(validCardIds.size % validCardIds.size));
+            Gdx.app.log(TAG, "WARN: Repitiendo carta por falta de cartas activas");
         }
         
-        for (int i = 0; i < PAIRS; i++) {
+        for (int i = 0; i < pairs; i++) {
             int cardId = validCardIds.get(i);
             int deck = SaveManager.getDeckFromCardId(cardId);
             int cardIndex = SaveManager.getCardIndexFromCardId(cardId);
@@ -217,6 +260,8 @@ public class TimeAttackScreen extends BaseScreen {
                 cardFrontTextures.add(null);
             }
         }
+        
+        Gdx.app.log(TAG, "Cartas cargadas: " + cardFrontTextures.size + "/" + pairs);
     }
     
     // ==================== TABLERO ====================
@@ -233,11 +278,11 @@ public class TimeAttackScreen extends BaseScreen {
         boardX = padding;
         boardY = padding;
         
-        float totalMarginX = boardWidth * margin * (COLS + 1);
-        float totalMarginY = boardHeight * margin * (ROWS + 1);
+        float totalMarginX = boardWidth * margin * (cols + 1);
+        float totalMarginY = boardHeight * margin * (rows + 1);
         
-        cardWidth = (boardWidth - totalMarginX) / COLS;
-        cardHeight = (boardHeight - totalMarginY) / ROWS;
+        cardWidth = (boardWidth - totalMarginX) / cols;
+        cardHeight = (boardHeight - totalMarginY) / rows;
         
         float desiredRatio = 1.4f;
         if (cardHeight > cardWidth * desiredRatio) {
@@ -246,14 +291,14 @@ public class TimeAttackScreen extends BaseScreen {
             cardWidth = cardHeight / desiredRatio;
         }
         
-        float actualMarginX = (boardWidth - (cardWidth * COLS)) / (COLS + 1);
-        float actualMarginY = (boardHeight - (cardHeight * ROWS)) / (ROWS + 1);
+        float actualMarginX = (boardWidth - (cardWidth * cols)) / (cols + 1);
+        float actualMarginY = (boardHeight - (cardHeight * rows)) / (rows + 1);
         
         float startX = boardX + actualMarginX;
         float startY = boardY + actualMarginY;
         
         Array<Integer> cardIds = new Array<>();
-        for (int i = 0; i < PAIRS; i++) {
+        for (int i = 0; i < pairs; i++) {
             cardIds.add(i);
             cardIds.add(i);
         }
@@ -262,12 +307,12 @@ public class TimeAttackScreen extends BaseScreen {
         Array<Integer> activeCardIds = saveManager.getActiveCards();
         
         int cardIndex = 0;
-        for (int row = 0; row < ROWS; row++) {
-            for (int col = 0; col < COLS; col++) {
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
                 if (cardIndex >= cardIds.size) break;
                 
                 float x = startX + col * (cardWidth + actualMarginX);
-                float y = startY + (ROWS - 1 - row) * (cardHeight + actualMarginY);
+                float y = startY + (rows - 1 - row) * (cardHeight + actualMarginY);
                 
                 int pairId = cardIds.get(cardIndex);
                 Texture frontTex = (pairId < cardFrontTextures.size) ? 
@@ -338,7 +383,7 @@ public class TimeAttackScreen extends BaseScreen {
                 btnX, baseY + btnHeight + btnSpacing, btnWidth, btnHeight);
             continueButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
-                game.setScreen(new TimeAttackScreen(game, adController));
+                game.setScreen(new TimeAttackScreen(game, currentMode, adController));
             });
             
             watchAdButton = new SimpleButton(buttonTexture, locale.get("game.btn.watchad"),
@@ -481,7 +526,7 @@ public class TimeAttackScreen extends BaseScreen {
             firstRevealed = null;
             secondRevealed = null;
             
-            if (pairsFoundThisGrid >= PAIRS) {
+            if (pairsFoundThisGrid >= pairs) {
                 onGridComplete();
             } else {
                 gameState = GameState.PLAYING;
@@ -599,8 +644,9 @@ public class TimeAttackScreen extends BaseScreen {
         hudFont.draw(game.getBatch(), timeText, timeX, timeY);
         hudFont.setColor(Color.WHITE);
         
-        // Título
-        String title = locale.get("timeattack.title");
+        // Título con modo
+        String modeText = currentMode == Mode.MODE_12 ? "12" : "30";
+        String title = locale.get("timeattack.title") + " " + modeText;
         layout.setText(hudFont, title);
         float titleX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
         hudFont.setColor(Color.ORANGE);
@@ -701,6 +747,14 @@ public class TimeAttackScreen extends BaseScreen {
         float statsY = Constants.VIRTUAL_HEIGHT * 0.65f;
         float lineHeight = 35f;
         
+        // Modo
+        String modeText = "Mode: " + (currentMode == Mode.MODE_12 ? "12" : "30");
+        layout.setText(buttonFont, modeText);
+        buttonFont.setColor(Color.ORANGE);
+        buttonFont.draw(game.getBatch(), modeText,
+                       (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY + lineHeight);
+        buttonFont.setColor(Color.WHITE);
+        
         // Pares
         String pairsText = locale.format("game.pairs", pairsFoundTotal);
         layout.setText(buttonFont, pairsText);
@@ -780,4 +834,4 @@ public class TimeAttackScreen extends BaseScreen {
         if (panelTexture != null) panelTexture.dispose();
         if (buttonTexture != null) buttonTexture.dispose();
     }
-            }
+}

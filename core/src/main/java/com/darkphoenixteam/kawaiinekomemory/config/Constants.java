@@ -4,7 +4,7 @@ package com.darkphoenixteam.kawaiinekomemory.config;
  * Constantes globales del juego
  * 
  * @author DarkphoenixTeam
- * @version 2.0 - Time Attack + Nuevos precios
+ * @version 2.1 - Time Attack Dual Mode + Card requirements
  */
 public final class Constants {
     
@@ -31,9 +31,26 @@ public final class Constants {
     public static final int HARD_COLS = 5;
     public static final int HARD_ROWS = 6;
     
+    // === CARTAS MÍNIMAS REQUERIDAS POR DIFICULTAD ===
+    public static final int MIN_CARDS_EASY = 6;      // 3x4 = 12 cartas = 6 pares
+    public static final int MIN_CARDS_NORMAL = 8;    // 4x4 = 16 cartas = 8 pares
+    public static final int MIN_CARDS_ADVANCED = 10; // 4x5 = 20 cartas = 10 pares
+    public static final int MIN_CARDS_HARD = 15;     // 5x6 = 30 cartas = 15 pares
+    
     // === TIME ATTACK MODE ===
-    public static final int TIME_ATTACK_COLS = 5;
-    public static final int TIME_ATTACK_ROWS = 6;
+    // Modo 12 (3x4 grid)
+    public static final int TIME_ATTACK_12_COLS = 3;
+    public static final int TIME_ATTACK_12_ROWS = 4;
+    public static final int TIME_ATTACK_12_PAIRS = 6;
+    public static final int MIN_CARDS_TIME_ATTACK_12 = 6;
+    
+    // Modo 30 (5x6 grid)
+    public static final int TIME_ATTACK_30_COLS = 5;
+    public static final int TIME_ATTACK_30_ROWS = 6;
+    public static final int TIME_ATTACK_30_PAIRS = 15;
+    public static final int MIN_CARDS_TIME_ATTACK_30 = 15;
+    
+    // Configuración común Time Attack
     public static final float TIME_ATTACK_BASE_TIME = 60f;          // 1:00 inicial
     public static final float TIME_ATTACK_MAX_TIME = 300f;          // 5:00 máximo
     public static final float TIME_ATTACK_UPGRADE_AMOUNT = 5f;      // +5 seg por mejora
@@ -156,4 +173,19 @@ public final class Constants {
     
     // === RANKINGS ===
     public static final int RANKINGS_MAX_ENTRIES = 100;
+    
+    // === MÉTODOS HELPER ===
+    
+    /**
+     * Obtiene el mínimo de cartas activas requeridas para una dificultad
+     */
+    public static int getMinCardsForDifficulty(int difficultyIndex) {
+        switch (difficultyIndex) {
+            case 0: return MIN_CARDS_EASY;
+            case 1: return MIN_CARDS_NORMAL;
+            case 2: return MIN_CARDS_ADVANCED;
+            case 3: return MIN_CARDS_HARD;
+            default: return MIN_CARDS_EASY;
+        }
+    }
 }

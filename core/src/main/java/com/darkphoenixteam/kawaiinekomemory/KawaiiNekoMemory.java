@@ -7,11 +7,13 @@ import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
 import com.darkphoenixteam.kawaiinekomemory.screens.SplashScreen;
 import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
 import com.darkphoenixteam.kawaiinekomemory.systems.FontManager;
+import com.darkphoenixteam.kawaiinekomemory.systems.SharedAssetManager;
 
 /**
  * Clase principal del juego Kawaii Neko Memory
  * 
  * @author DarkphoenixTeam
+ * @version 1.1 - SharedAssetManager integrado
  */
 public class KawaiiNekoMemory extends Game {
     
@@ -33,6 +35,11 @@ public class KawaiiNekoMemory extends Game {
         
         // Inicializar FontManager
         fontManager = new FontManager();
+        
+        // === INICIALIZAR SHARED ASSET MANAGER ===
+        SharedAssetManager sharedAssets = SharedAssetManager.getInstance();
+        sharedAssets.preloadCommon();
+        Gdx.app.log(TAG, "SharedAssetManager inicializado - " + sharedAssets.getMemoryUsage());
         
         // === INICIALIZAR AUDIO ===
         AudioManager audioManager = AudioManager.getInstance();
@@ -87,9 +94,14 @@ public class KawaiiNekoMemory extends Game {
         // Liberar recursos de audio
         AudioManager.getInstance().dispose();
         
+        // Liberar SharedAssetManager
+        SharedAssetManager.getInstance().dispose();
+        
         if (getScreen() != null) {
             getScreen().dispose();
         }
+        
+        Gdx.app.log(TAG, "Recursos liberados correctamente");
     }
     
     public SpriteBatch getBatch() {

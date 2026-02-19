@@ -7,10 +7,12 @@ import com.darkphoenixteam.kawaiinekomemory.config.Constants;
 import com.darkphoenixteam.kawaiinekomemory.models.Achievement;
 
 /**
- * Gestor de guardado con sistema de logros, estadísticas y Time Attack
+ * Gestor de guardado OPTIMIZADO
+ * - Batch flush para reducir escrituras a disco
+ * - Métodos de guardado diferido
  * 
  * @author DarkphoenixTeam
- * @version 3.0 - Time Attack + Gacha dinámico
+ * @version 3.1 - Batch flush optimization
  */
 public class SaveManager {
     
@@ -61,6 +63,11 @@ public class SaveManager {
     
     private Array<Achievement> newlyUnlocked;
     
+    // === BATCH FLUSH CONTROL ===
+    private boolean pendingFlush = false;
+    private int pendingOperations = 0;
+    private static final int FLUSH_THRESHOLD = 5; // Flush después de 5 operaciones
+    
     private SaveManager() {
         prefs = Gdx.app.getPreferences(PREFS_NAME);
         activeCards = new Array<>();
@@ -79,9 +86,42 @@ public class SaveManager {
         debugPrintStats();
     }
     
+    // ==================== BATCH FLUSH ====================
+    
+    /**
+     * Marca que hay cambios pendientes de guardar
+     */
+    private void markDirty() {
+        pendingFlush = true;
+        pendingOperations++;
+        
+        if (pendingOperations >= FLUSH_THRESHOLD) {
+            flushNow();
+        }
+    }
+    
+    /**
+     * Fuerza el guardado inmediato
+     */
+    public void flushNow() {
+        if (pendingFlush) {
+            prefs.flush();
+            pendingFlush = false;
+            pendingOperations = 0;
+        }
+    }
+    
+    /**
+     * Guarda diferido - útil para operaciones en lote
+     */
+    private void deferredFlush() {
+        markDirty();
+    }
+    
+    // ==================== MIGRATION ====================
+    
     private void migrateData(int oldVersion) {
         if (oldVersion >= 4) {
-            // Migración desde v4: solo agregar nuevas keys
             if (!prefs.contains(KEY_TIME_ATTACK_UPGRADES)) {
                 prefs.putInteger(KEY_TIME_ATTACK_UPGRADES, 0);
             }
@@ -111,7 +151,6 @@ public class SaveManager {
     
     private void resetAndInitialize() {
         prefs.clear();
-        prefs.flush();
         activeCards.clear();
         
         prefs.putInteger(KEY_SAVE_VERSION, CURRENT_VERSION);
@@ -184,7 +223,7 @@ public class SaveManager {
         return instance;
     }
     
-    // ==================== NEKOINS ====================
+    // ==================== NEKOINS (OPTIMIZADO) ====================
     
     public int getNekoins() {
         return prefs.getInteger(KEY_NEKOINS, 0);
@@ -197,7 +236,7 @@ public class SaveManager {
         int totalEarned = prefs.getInteger(KEY_STAT_TOTAL_EARNED, 0);
         prefs.putInteger(KEY_STAT_TOTAL_EARNED, totalEarned + amount);
         
-        prefs.flush();
+        deferredFlush(); // Diferido en lugar de inmediato
         
         checkAchievement(Achievement.RICH_NEKO);
     }
@@ -213,7 +252,7 @@ public class SaveManager {
             int purchases = prefs.getInteger(KEY_STAT_PURCHASES, 0);
             prefs.putInteger(KEY_STAT_PURCHASES, purchases + 1);
             
-            prefs.flush();
+            deferredFlush(); // Diferido
             
             if (purchases == 0) {
                 unlockAchievement(Achievement.FIRST_SHOP);
@@ -239,7 +278,7 @@ public class SaveManager {
     public int getTimeAttackUpgradeCost() {
         int upgrades = getTimeAttackUpgrades();
         if (upgrades >= Constants.TIME_ATTACK_MAX_UPGRADES) {
-            return -1; // Ya está al máximo
+            return -1;
         }
         
         int cost = Constants.TIME_ATTACK_UPGRADE_BASE_COST;
@@ -255,12 +294,12 @@ public class SaveManager {
     
     public boolean purchaseTimeAttackUpgrade() {
         int cost = getTimeAttackUpgradeCost();
-        if (cost < 0) return false; // Ya está al máximo
+        if (cost < 0) return false;
         
         if (spendNekoins(cost)) {
             int upgrades = getTimeAttackUpgrades();
             prefs.putInteger(KEY_TIME_ATTACK_UPGRADES, upgrades + 1);
-            prefs.flush();
+            deferredFlush();
             
             float newTime = getTimeAttackTime();
             Gdx.app.log(TAG, "Time Attack upgrade! Nuevo tiempo: " + newTime + "s");
@@ -277,7 +316,7 @@ public class SaveManager {
         int current = getTimeAttackBestPairs();
         if (pairs > current) {
             prefs.putInteger(KEY_TIME_ATTACK_BEST_PAIRS, pairs);
-            prefs.flush();
+            deferredFlush();
             Gdx.app.log(TAG, "Nuevo récord Time Attack: " + pairs + " pares");
             return true;
         }
@@ -287,7 +326,7 @@ public class SaveManager {
     public void addTimeAttackPairs(int pairs) {
         int total = prefs.getInteger(KEY_TIME_ATTACK_TOTAL_PAIRS, 0);
         prefs.putInteger(KEY_TIME_ATTACK_TOTAL_PAIRS, total + pairs);
-        prefs.flush();
+        deferredFlush();
     }
     
     public int getTimeAttackTotalPairs() {
@@ -297,7 +336,7 @@ public class SaveManager {
     public void incrementTimeAttackGamesPlayed() {
         int games = prefs.getInteger(KEY_TIME_ATTACK_GAMES_PLAYED, 0);
         prefs.putInteger(KEY_TIME_ATTACK_GAMES_PLAYED, games + 1);
-        prefs.flush();
+        deferredFlush();
     }
     
     public int getTimeAttackGamesPlayed() {
@@ -327,7 +366,7 @@ public class SaveManager {
     public void incrementGachaPulls() {
         int pulls = getGachaPulls();
         prefs.putInteger(KEY_GACHA_PULLS, pulls + 1);
-        prefs.flush();
+        deferredFlush();
     }
     
     // ==================== POWER PRICES ====================
@@ -360,7 +399,7 @@ public class SaveManager {
         if (cardId < 0 || cardId >= TOTAL_CARDS) return;
         
         prefs.putBoolean(KEY_CARD_UNLOCKED + cardId, true);
-        prefs.flush();
+        deferredFlush();
         
         checkAchievement(Achievement.GALLERY_UNLOCK);
     }
@@ -444,7 +483,7 @@ public class SaveManager {
             sb.append(activeCards.get(i));
         }
         prefs.putString(KEY_ACTIVE_CARDS, sb.toString());
-        prefs.flush();
+        deferredFlush();
     }
     
     // ==================== CARD ID UTILS ====================
@@ -483,7 +522,7 @@ public class SaveManager {
             }
         }
         
-        prefs.flush();
+        deferredFlush();
         
         if (stars == 3) {
             checkAchievement(Achievement.FIRST_3_STAR);
@@ -526,7 +565,7 @@ public class SaveManager {
     public void addHintUses(int amount) {
         int current = getHintUses();
         prefs.putInteger(KEY_HINT_USES, current + amount);
-        prefs.flush();
+        deferredFlush();
     }
     
     public void decrementHintUses() {
@@ -534,7 +573,7 @@ public class SaveManager {
         if (current > 0) {
             prefs.putInteger(KEY_HINT_USES, current - 1);
             incrementPowersUsed();
-            prefs.flush();
+            deferredFlush();
         }
     }
     
@@ -545,7 +584,7 @@ public class SaveManager {
     public void addTimeFreezeUses(int amount) {
         int current = getTimeFreezeUses();
         prefs.putInteger(KEY_TIMEFREEZE_USES, current + amount);
-        prefs.flush();
+        deferredFlush();
     }
     
     public void decrementTimeFreezeUses() {
@@ -553,7 +592,7 @@ public class SaveManager {
         if (current > 0) {
             prefs.putInteger(KEY_TIMEFREEZE_USES, current - 1);
             incrementPowersUsed();
-            prefs.flush();
+            deferredFlush();
         }
     }
     
@@ -570,7 +609,7 @@ public class SaveManager {
     public void addPairsFound(int pairs) {
         int total = prefs.getInteger(KEY_STAT_TOTAL_PAIRS, 0);
         prefs.putInteger(KEY_STAT_TOTAL_PAIRS, total + pairs);
-        prefs.flush();
+        deferredFlush();
         
         checkAchievement(Achievement.PERSISTENT);
     }
@@ -583,7 +622,7 @@ public class SaveManager {
         int best = prefs.getInteger(KEY_STAT_BEST_COMBO, 0);
         if (combo > best) {
             prefs.putInteger(KEY_STAT_BEST_COMBO, combo);
-            prefs.flush();
+            deferredFlush();
         }
         
         if (combo >= 5) {
@@ -601,7 +640,7 @@ public class SaveManager {
             unlockAchievement(Achievement.FIRST_FAIL);
         }
         prefs.putInteger(KEY_STAT_TOTAL_LOSSES, losses + 1);
-        prefs.flush();
+        deferredFlush();
     }
     
     public int getTotalWins() {
@@ -638,11 +677,11 @@ public class SaveManager {
         if (isAchievementUnlocked(achievement)) return;
         
         prefs.putBoolean(KEY_ACHIEVEMENT + achievement.getIndex(), true);
-        prefs.flush();
         
         int current = getNekoins();
         prefs.putInteger(KEY_NEKOINS, current + achievement.reward);
-        prefs.flush();
+        
+        deferredFlush();
         
         newlyUnlocked.add(achievement);
         
@@ -813,12 +852,14 @@ public class SaveManager {
         Gdx.app.log(TAG, "Logros: " + getUnlockedAchievementCount() + "/" + Achievement.count());
         Gdx.app.log(TAG, "Time Attack - Mejor: " + getTimeAttackBestPairs() + " pares");
         Gdx.app.log(TAG, "Time Attack - Tiempo: " + getTimeAttackTime() + "s");
+        Gdx.app.log(TAG, "Cartas activas: " + getActiveCardCount());
     }
     
     public String getStats() {
         return "Nekoins:" + getNekoins() + 
                " Wins:" + getTotalWins() + 
                " Cartas:" + getUnlockedCardCount() + "/35" +
+               " Activas:" + getActiveCardCount() +
                " Logros:" + getUnlockedAchievementCount() + "/" + Achievement.count() +
                " TA-Best:" + getTimeAttackBestPairs();
     }

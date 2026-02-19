@@ -1,5 +1,3 @@
-// core/src/main/java/com/darkphoenixteam/kawaiinekomemory/systems/SharedAssetManager.java
-
 package com.darkphoenixteam.kawaiinekomemory.systems;
 
 import com.badlogic.gdx.Gdx;
@@ -13,9 +11,9 @@ import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
  * Implementa conteo de referencias para evitar duplicados
  * 
  * Uso:
- * - get(path): Obtiene textura (carga si no existe)
+ * - get(path): Obtiene textura (carga si no existe, incrementa ref)
  * - release(path): Decrementa referencia (libera si llega a 0)
- * - preload(): Carga assets frecuentes al inicio
+ * - preloadCommon(): Carga assets frecuentes al inicio
  * 
  * @author DarkphoenixTeam
  * @version 1.0
@@ -93,7 +91,7 @@ public class SharedAssetManager implements Disposable {
     }
     
     /**
-     * Obtiene textura sin incrementar referencia (para uso temporal)
+     * Obtiene textura sin incrementar referencia (para verificación)
      */
     public Texture peek(String path) {
         if (textureCache.containsKey(path)) {
@@ -188,6 +186,15 @@ public class SharedAssetManager implements Disposable {
         release(path);
     }
     
+    /**
+     * Obtiene el path de una carta por su ID
+     */
+    public String getCardPath(int cardId) {
+        int deck = cardId / AssetPaths.CARDS_PER_DECK;
+        int index = cardId % AssetPaths.CARDS_PER_DECK;
+        return AssetPaths.getCardPath(deck, index);
+    }
+    
     // ==================== BATCH OPERATIONS ====================
     
     /**
@@ -235,17 +242,24 @@ public class SharedAssetManager implements Disposable {
     }
     
     /**
-     * Obtiene memoria estimada usada
+     * Obtiene memoria estimada usada (en formato legible)
      */
     public String getMemoryUsage() {
         long bytes = 0;
         for (TextureEntry entry : textureCache.values()) {
             if (entry.texture != null) {
-                bytes += entry.texture.getWidth() * entry.texture.getHeight() * 4; // RGBA
+                bytes += (long) entry.texture.getWidth() * entry.texture.getHeight() * 4; // RGBA
             }
         }
         float mb = bytes / (1024f * 1024f);
         return String.format("%.2f MB (%d texturas)", mb, textureCache.size);
+    }
+    
+    /**
+     * Obtiene el número total de texturas cargadas
+     */
+    public int getLoadedCount() {
+        return textureCache.size;
     }
     
     // ==================== LIFECYCLE ====================
@@ -265,7 +279,7 @@ public class SharedAssetManager implements Disposable {
     }
     
     /**
-     * Reinicia el singleton (para testing)
+     * Reinicia el singleton (para testing o cambio de contexto)
      */
     public static void reset() {
         if (instance != null) {

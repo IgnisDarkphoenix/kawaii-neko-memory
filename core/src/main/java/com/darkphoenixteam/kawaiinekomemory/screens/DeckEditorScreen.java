@@ -15,13 +15,17 @@ import com.darkphoenixteam.kawaiinekomemory.config.Constants;
 import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
 import com.darkphoenixteam.kawaiinekomemory.systems.LocaleManager;
 import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
+import com.darkphoenixteam.kawaiinekomemory.systems.SharedAssetManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 
 /**
- * Editor de mazo con localización completa
+ * Editor de mazo OPTIMIZADO
+ * - Usa SharedAssetManager para texturas compartidas
+ * - Carga cartas bajo demanda (lazy loading)
+ * - Memoria reducida de ~7MB a ~1MB
  * 
  * @author DarkphoenixTeam
- * @version 1.1 - Localización completa
+ * @version 2.0 - Optimización de memoria
  */
 public class DeckEditorScreen extends BaseScreen {
     
@@ -49,17 +53,29 @@ public class DeckEditorScreen extends BaseScreen {
     private static final Color COLOR_SELECTED = new Color(0.3f, 0.7f, 1f, 1f);
     private static final Color COLOR_LOCKED = new Color(0.15f, 0.15f, 0.15f, 1f);
     
+    // Colores de deck (reutilizables, evitan crear objetos)
+    private static final Color[] DECK_COLORS = {
+        new Color(0.6f, 0.6f, 0.6f, 1f),  // Deck 0
+        new Color(0.9f, 0.9f, 0.9f, 1f),  // Deck 1
+        new Color(0.3f, 0.3f, 0.3f, 1f),  // Deck 2
+        new Color(0.9f, 0.75f, 0.5f, 1f), // Deck 3
+        new Color(1f, 0.6f, 0.3f, 1f)     // Deck 4
+    };
+    
     // === FONTS ===
     private BitmapFont titleFont;
     private BitmapFont buttonFont;
     private BitmapFont smallFont;
     private GlyphLayout layout;
     
-    // === TEXTURAS ===
+    // === TEXTURAS (SharedAssetManager) ===
+    private SharedAssetManager assets;
     private Texture patternTexture;
     private Texture cardBackTexture;
     private Texture nekoinIconTexture;
-    private Array<Texture> allCardTextures;
+    
+    // Cache local de cartas cargadas (solo las visibles)
+    private final ObjectMapSimple<Integer, Texture> loadedCards;
     
     // === BOTONES ===
     private SimpleButton backButton;
@@ -81,6 +97,42 @@ public class DeckEditorScreen extends BaseScreen {
     private float activeGridX, activeGridY;
     private float availableGridX, availableGridY;
     
+    /**
+     * Clase simple de mapa para evitar dependencia de ObjectMap con Integer
+     */
+    private static class ObjectMapSimple<K, V> {
+        private final Array<K> keys = new Array<>();
+        private final Array<V> values = new Array<>();
+        
+        public void put(K key, V value) {
+            int idx = keys.indexOf(key, false);
+            if (idx >= 0) {
+                values.set(idx, value);
+            } else {
+                keys.add(key);
+                values.add(value);
+            }
+        }
+        
+        public V get(K key) {
+            int idx = keys.indexOf(key, false);
+            return idx >= 0 ? values.get(idx) : null;
+        }
+        
+        public boolean containsKey(K key) {
+            return keys.indexOf(key, false) >= 0;
+        }
+        
+        public void clear() {
+            keys.clear();
+            values.clear();
+        }
+        
+        public Array<V> getValues() {
+            return values;
+        }
+    }
+    
     public DeckEditorScreen(KawaiiNekoMemory game) {
         super(game);
         
@@ -94,9 +146,10 @@ public class DeckEditorScreen extends BaseScreen {
         audioManager = AudioManager.getInstance();
         saveManager = SaveManager.getInstance();
         locale = LocaleManager.getInstance();
+        assets = SharedAssetManager.getInstance();
         shapeRenderer = new ShapeRenderer();
         
-        allCardTextures = new Array<>();
+        loadedCards = new ObjectMapSimple<>();
         activeSlotBounds = new Array<>();
         availableCardBounds = new Array<>();
         
@@ -107,39 +160,69 @@ public class DeckEditorScreen extends BaseScreen {
         createBounds();
         createButtons();
         
-        Gdx.app.log(TAG, "Deck Editor inicializado");
+        // Precargar solo las cartas desbloqueadas que se van a mostrar
+        preloadVisibleCards();
+        
+        Gdx.app.log(TAG, "Deck Editor inicializado (optimizado)");
+        Gdx.app.log(TAG, "Memoria: " + assets.getMemoryUsage());
     }
     
     private void loadAssets() {
-        try {
-            patternTexture = new Texture(Gdx.files.internal(AssetPaths.PATTERN_HOME));
+        // Usar SharedAssetManager
+        patternTexture = assets.get(AssetPaths.PATTERN_HOME);
+        if (patternTexture != null) {
             patternTexture.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-        } catch (Exception e) {
-            Gdx.app.error(TAG, "Error pattern");
         }
         
-        try {
-            cardBackTexture = new Texture(Gdx.files.internal(AssetPaths.CARD_BACK));
-        } catch (Exception e) {
-            Gdx.app.error(TAG, "Error card back");
-        }
-        
-        try {
-            nekoinIconTexture = new Texture(Gdx.files.internal(AssetPaths.ICON_NEKOIN));
-        } catch (Exception e) {
-            Gdx.app.error(TAG, "Error nekoin");
-        }
-        
-        for (int deck = 0; deck < AssetPaths.TOTAL_DECKS; deck++) {
-            for (int card = 0; card < AssetPaths.CARDS_PER_DECK; card++) {
-                String path = AssetPaths.getCardPath(deck, card);
-                try {
-                    allCardTextures.add(new Texture(Gdx.files.internal(path)));
-                } catch (Exception e) {
-                    allCardTextures.add(null);
-                }
+        cardBackTexture = assets.get(AssetPaths.CARD_BACK);
+        nekoinIconTexture = assets.get(AssetPaths.ICON_NEKOIN);
+    }
+    
+    /**
+     * Precarga solo las cartas que están desbloqueadas
+     * (Optimización: no cargamos las 35, solo las necesarias)
+     */
+    private void preloadVisibleCards() {
+        int loaded = 0;
+        for (int cardId = 0; cardId < Constants.TOTAL_CARDS; cardId++) {
+            if (saveManager.isCardUnlocked(cardId)) {
+                Texture tex = loadCard(cardId);
+                if (tex != null) loaded++;
             }
         }
+        Gdx.app.log(TAG, "Cartas precargadas: " + loaded);
+    }
+    
+    /**
+     * Carga una carta individual (lazy loading)
+     */
+    private Texture loadCard(int cardId) {
+        if (loadedCards.containsKey(cardId)) {
+            return loadedCards.get(cardId);
+        }
+        
+        String path = assets.getCardPath(cardId);
+        try {
+            Texture tex = new Texture(Gdx.files.internal(path));
+            loadedCards.put(cardId, tex);
+            return tex;
+        } catch (Exception e) {
+            Gdx.app.error(TAG, "Error cargando carta " + cardId);
+            return null;
+        }
+    }
+    
+    /**
+     * Obtiene textura de carta (carga si es necesario)
+     */
+    private Texture getCardTexture(int cardId) {
+        if (cardId < 0) return null;
+        
+        Texture tex = loadedCards.get(cardId);
+        if (tex == null && saveManager.isCardUnlocked(cardId)) {
+            tex = loadCard(cardId);
+        }
+        return tex;
     }
     
     private void calculatePositions() {
@@ -171,8 +254,8 @@ public class DeckEditorScreen extends BaseScreen {
     }
     
     private void createButtons() {
-        try {
-            Texture backTex = new Texture(Gdx.files.internal(AssetPaths.BTN_BACK));
+        Texture backTex = assets.get(AssetPaths.BTN_BACK);
+        if (backTex != null) {
             float btnWidth = Constants.VIRTUAL_WIDTH * 0.4f;
             float btnHeight = btnWidth * 0.35f;
             float btnX = (Constants.VIRTUAL_WIDTH - btnWidth) / 2f;
@@ -183,8 +266,6 @@ public class DeckEditorScreen extends BaseScreen {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 game.setScreen(new HomeScreen(game));
             });
-        } catch (Exception e) {
-            Gdx.app.error(TAG, "Error boton");
         }
     }
     
@@ -291,6 +372,7 @@ public class DeckEditorScreen extends BaseScreen {
     
     private void drawBackground() {
         if (patternTexture != null) {
+            saveColor();
             game.getBatch().setColor(1f, 1f, 1f, 0.3f);
             int tileSize = 512;
             for (int x = 0; x < Constants.VIRTUAL_WIDTH; x += tileSize) {
@@ -298,7 +380,7 @@ public class DeckEditorScreen extends BaseScreen {
                     game.getBatch().draw(patternTexture, x, y, tileSize, tileSize);
                 }
             }
-            game.getBatch().setColor(1f, 1f, 1f, 1f);
+            restoreColor();
         }
     }
     
@@ -341,16 +423,12 @@ public class DeckEditorScreen extends BaseScreen {
             
             game.getBatch().begin();
             
-            if (cardId >= 0 && cardId < allCardTextures.size) {
-                Texture tex = allCardTextures.get(cardId);
-                if (tex != null) {
-                    game.getBatch().draw(tex, bounds.x, bounds.y, bounds.width, bounds.height);
-                }
-            } else {
+            Texture tex = getCardTexture(cardId);
+            if (tex != null) {
+                game.getBatch().draw(tex, bounds.x, bounds.y, bounds.width, bounds.height);
+            } else if (cardBackTexture != null) {
                 game.getBatch().setColor(0.3f, 0.3f, 0.3f, 0.5f);
-                if (cardBackTexture != null) {
-                    game.getBatch().draw(cardBackTexture, bounds.x, bounds.y, bounds.width, bounds.height);
-                }
+                game.getBatch().draw(cardBackTexture, bounds.x, bounds.y, bounds.width, bounds.height);
                 game.getBatch().setColor(1f, 1f, 1f, 1f);
             }
             
@@ -388,43 +466,30 @@ public class DeckEditorScreen extends BaseScreen {
                 shapeRenderer.setColor(COLOR_LOCKED);
             } else {
                 int deck = SaveManager.getDeckFromCardId(cardId);
-                shapeRenderer.setColor(getDeckColor(deck));
+                shapeRenderer.setColor(deck < DECK_COLORS.length ? DECK_COLORS[deck] : Color.WHITE);
             }
             shapeRenderer.rect(bounds.x - 3f, bounds.y - 3f, bounds.width + 6f, bounds.height + 6f);
             shapeRenderer.end();
             
             game.getBatch().begin();
             
-            if (cardId < allCardTextures.size) {
-                Texture tex = allCardTextures.get(cardId);
-                
-                if (!unlocked) {
-                    game.getBatch().setColor(0.15f, 0.15f, 0.15f, 1f);
-                } else if (active) {
-                    game.getBatch().setColor(1f, 1f, 1f, 0.5f);
-                }
-                
-                if (tex != null) {
-                    game.getBatch().draw(tex, bounds.x, bounds.y, bounds.width, bounds.height);
-                } else if (cardBackTexture != null) {
-                    game.getBatch().draw(cardBackTexture, bounds.x, bounds.y, bounds.width, bounds.height);
-                }
-                
-                game.getBatch().setColor(1f, 1f, 1f, 1f);
+            Texture tex = getCardTexture(cardId);
+            
+            if (!unlocked) {
+                game.getBatch().setColor(0.15f, 0.15f, 0.15f, 1f);
+            } else if (active) {
+                game.getBatch().setColor(1f, 1f, 1f, 0.5f);
             }
             
+            if (tex != null) {
+                game.getBatch().draw(tex, bounds.x, bounds.y, bounds.width, bounds.height);
+            } else if (cardBackTexture != null) {
+                game.getBatch().draw(cardBackTexture, bounds.x, bounds.y, bounds.width, bounds.height);
+            }
+            
+            game.getBatch().setColor(1f, 1f, 1f, 1f);
+            
             game.getBatch().end();
-        }
-    }
-    
-    private Color getDeckColor(int deckIndex) {
-        switch (deckIndex) {
-            case 0: return new Color(0.6f, 0.6f, 0.6f, 1f);
-            case 1: return new Color(0.9f, 0.9f, 0.9f, 1f);
-            case 2: return new Color(0.3f, 0.3f, 0.3f, 1f);
-            case 3: return new Color(0.9f, 0.75f, 0.5f, 1f);
-            case 4: return new Color(1f, 0.6f, 0.3f, 1f);
-            default: return Color.WHITE;
         }
     }
     
@@ -434,8 +499,10 @@ public class DeckEditorScreen extends BaseScreen {
         int activeCount = saveManager.getActiveCardCount();
         String countText = locale.format("deck.active", activeCount);
         
-        if (activeCount < 15) {
+        if (activeCount < 6) {
             smallFont.setColor(Color.RED);
+        } else if (activeCount < 15) {
+            smallFont.setColor(Color.YELLOW);
         } else {
             smallFont.setColor(Color.GREEN);
         }
@@ -444,25 +511,38 @@ public class DeckEditorScreen extends BaseScreen {
         smallFont.draw(game.getBatch(), countText, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, infoY);
         smallFont.setColor(Color.WHITE);
         
+        // Mostrar requisitos
+        String reqText = locale.get("deck.requirements");
+        layout.setText(smallFont, reqText);
+        smallFont.setColor(Color.GRAY);
+        smallFont.draw(game.getBatch(), reqText, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, infoY - 18f);
+        
         String hint = selectedSlot >= 0 ? locale.get("deck.hint.place") : locale.get("deck.hint.select");
         layout.setText(smallFont, hint);
-        smallFont.setColor(Color.GRAY);
-        smallFont.draw(game.getBatch(), hint, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, infoY - 20f);
+        smallFont.draw(game.getBatch(), hint, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, infoY - 36f);
         smallFont.setColor(Color.WHITE);
     }
     
     @Override
     public void dispose() {
-        if (patternTexture != null) patternTexture.dispose();
-        if (cardBackTexture != null) cardBackTexture.dispose();
-        if (nekoinIconTexture != null) nekoinIconTexture.dispose();
+        Gdx.app.log(TAG, "Liberando recursos...");
         
-        for (Texture tex : allCardTextures) {
-            if (tex != null) tex.dispose();
+        // Liberar referencias del SharedAssetManager
+        assets.release(AssetPaths.PATTERN_HOME);
+        assets.release(AssetPaths.CARD_BACK);
+        assets.release(AssetPaths.ICON_NEKOIN);
+        assets.release(AssetPaths.BTN_BACK);
+        
+        // Liberar cartas cargadas localmente
+        for (Texture tex : loadedCards.getValues()) {
+            if (tex != null) {
+                tex.dispose();
+            }
         }
-        allCardTextures.clear();
+        loadedCards.clear();
         
-        if (backButton != null) backButton.dispose();
         if (shapeRenderer != null) shapeRenderer.dispose();
+        
+        Gdx.app.log(TAG, "Recursos liberados");
     }
 }

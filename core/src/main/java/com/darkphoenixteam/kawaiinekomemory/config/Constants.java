@@ -4,7 +4,7 @@ package com.darkphoenixteam.kawaiinekomemory.config;
  * Constantes globales del juego
  * 
  * @author DarkphoenixTeam
- * @version 2.1 - Time Attack Dual Mode + Card requirements
+ * @version 2.2 - Music expansion + Time Attack Dual Mode
  */
 public final class Constants {
     
@@ -21,6 +21,9 @@ public final class Constants {
     public static final float MATCH_CHECK_DELAY = 0.3f;
     public static final float SHUFFLE_DURATION = 0.5f;
     
+    // === NO MATCH FEEDBACK ===
+    public static final float NO_MATCH_SHAKE_DURATION = 0.4f;
+    
     // === DIFICULTADES (columnas x filas) ===
     public static final int EASY_COLS = 3;
     public static final int EASY_ROWS = 4;
@@ -32,10 +35,10 @@ public final class Constants {
     public static final int HARD_ROWS = 6;
     
     // === CARTAS MÍNIMAS REQUERIDAS POR DIFICULTAD ===
-    public static final int MIN_CARDS_EASY = 6;      // 3x4 = 12 cartas = 6 pares
-    public static final int MIN_CARDS_NORMAL = 8;    // 4x4 = 16 cartas = 8 pares
-    public static final int MIN_CARDS_ADVANCED = 10; // 4x5 = 20 cartas = 10 pares
-    public static final int MIN_CARDS_HARD = 15;     // 5x6 = 30 cartas = 15 pares
+    public static final int MIN_CARDS_EASY = 6;
+    public static final int MIN_CARDS_NORMAL = 8;
+    public static final int MIN_CARDS_ADVANCED = 10;
+    public static final int MIN_CARDS_HARD = 15;
     
     // === TIME ATTACK MODE ===
     // Modo 12 (3x4 grid)
@@ -51,17 +54,15 @@ public final class Constants {
     public static final int MIN_CARDS_TIME_ATTACK_30 = 15;
     
     // Configuración común Time Attack
-    public static final float TIME_ATTACK_BASE_TIME = 60f;          // 1:00 inicial
-    public static final float TIME_ATTACK_MAX_TIME = 300f;          // 5:00 máximo
-    public static final float TIME_ATTACK_UPGRADE_AMOUNT = 5f;      // +5 seg por mejora
-    public static final int TIME_ATTACK_MAX_UPGRADES = 48;          // (300-60)/5 = 48 mejoras
+    public static final float TIME_ATTACK_BASE_TIME = 60f;
+    public static final float TIME_ATTACK_MAX_TIME = 300f;
+    public static final float TIME_ATTACK_UPGRADE_AMOUNT = 5f;
+    public static final int TIME_ATTACK_MAX_UPGRADES = 48;
     
-    // Costo de mejora Time Attack: 500 +250/+500/+250/+500...
     public static final int TIME_ATTACK_UPGRADE_BASE_COST = 500;
-    public static final int TIME_ATTACK_UPGRADE_INCREMENT_ODD = 250;   // Mejoras impares
-    public static final int TIME_ATTACK_UPGRADE_INCREMENT_EVEN = 500;  // Mejoras pares
+    public static final int TIME_ATTACK_UPGRADE_INCREMENT_ODD = 250;
+    public static final int TIME_ATTACK_UPGRADE_INCREMENT_EVEN = 500;
     
-    // Nekoins por par en Time Attack
     public static final int TIME_ATTACK_NEKOIN_PER_PAIR = 5;
     public static final float TIME_ATTACK_AD_MULTIPLIER = 2.5f;
     
@@ -108,7 +109,6 @@ public final class Constants {
     public static final int TOTAL_CARDS = 35;
     public static final int ACTIVE_DECK_SIZE = 15;
     
-    // Distribución de cartas por dificultad
     public static final int CARDS_FOR_EASY = 6;
     public static final int CARDS_FOR_NORMAL = 2;
     public static final int CARDS_FOR_ADVANCED = 2;
@@ -134,25 +134,21 @@ public final class Constants {
     public static final float STARS_3_THRESHOLD = 0.50f;
     public static final float STARS_2_THRESHOLD = 0.25f;
     
-    // === POWERS - NUEVOS PRECIOS ===
-    // Índice = cantidad actual, valor = precio
+    // === POWERS ===
     public static final int[] POWER_PRICES = {500, 1000, 2000, 2500, 3500};
     public static final int MAX_POWER_STOCK = 5;
     
-    // Límites por partida
     public static final int MAX_HINTS_PER_GAME = 5;
     public static final int MAX_TIMEFREEZE_PER_GAME = 5;
     public static final int MAX_HINT_ADS_PER_GAME = 2;
     public static final int MAX_TIME_ADS_PER_GAME = 3;
     
-    // Efectos de powers
     public static final float TIMEFREEZE_DURATION = 5.0f;
     public static final float HINT_SHAKE_DURATION = 1.5f;
     public static final int HINT_CARDS_EASY = 3;
     public static final int HINT_CARDS_HARD = 5;
     
-    // === GACHA - NUEVOS PRECIOS ===
-    // Precio: 1000 + 500/1000/500/1000... alternando
+    // === GACHA ===
     public static final int GACHA_BASE_COST = 1000;
     public static final int GACHA_INCREMENT_ODD = 500;
     public static final int GACHA_INCREMENT_EVEN = 1000;
@@ -169,16 +165,14 @@ public final class Constants {
     public static final float GRID_PADDING = 10f;
     
     // === MÚSICA ===
-    public static final int GAME_MUSIC_TRACKS = 5;
+    public static final int GAME_MUSIC_TRACKS = 10;
+    public static final int TIME_ATTACK_MUSIC_TRACKS = 10;
     
     // === RANKINGS ===
     public static final int RANKINGS_MAX_ENTRIES = 100;
     
     // === MÉTODOS HELPER ===
     
-    /**
-     * Obtiene el mínimo de cartas activas requeridas para una dificultad
-     */
     public static int getMinCardsForDifficulty(int difficultyIndex) {
         switch (difficultyIndex) {
             case 0: return MIN_CARDS_EASY;

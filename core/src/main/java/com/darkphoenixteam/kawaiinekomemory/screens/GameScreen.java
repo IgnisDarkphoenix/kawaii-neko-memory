@@ -497,7 +497,7 @@ public class GameScreen extends BaseScreen {
     // ==================== MÚSICA ====================
     
     private void playRandomGameMusic() {
-        int trackIndex = MathUtils.random(0, Constants.GAME_MUSIC_TRACKS - 1);
+        int trackIndex = MathUtils.random(0, Constants.GAME_MUSIC_TRACKS - 10);
         String musicPath = AssetPaths.getGameMusicPath(trackIndex);
         audioManager.playMusic(musicPath, true);
         Gdx.app.log(TAG, "Música: " + musicPath);
@@ -1367,4 +1367,4 @@ public class GameScreen extends BaseScreen {
         
         if (buttonTexture != null) buttonTexture.dispose();
     }
-                                               }
+                                             }

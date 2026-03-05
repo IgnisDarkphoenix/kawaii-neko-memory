@@ -5,6 +5,7 @@ package com.darkphoenixteam.kawaiinekomemory.config;
  * Formato: PNG para imágenes, OGG para audio
  * 
  * @author DarkphoenixTeam
+ * @version 1.1 - Music expansion
  */
 public final class AssetPaths {
     
@@ -35,16 +36,13 @@ public final class AssetPaths {
     public static final String BTN_CONFIRM = "images/ui/buttons/btn_confirm.png";
     public static final String BTN_CANCEL = "images/ui/buttons/btn_cancel.png";
     
-    // Aspect ratio para botones 512x256
-    public static final float BTN_ASPECT_RATIO = 256f / 512f;  // 0.5
+    public static final float BTN_ASPECT_RATIO = 256f / 512f;
     
-    // Botones de navegación (flechas)
     public static final String BTN_ARROW_UP = "images/ui/buttons/btn_arrow_up.png";
     public static final String BTN_ARROW_DOWN = "images/ui/buttons/btn_arrow_down.png";
     public static final String BTN_ARROW_LEFT = "images/ui/buttons/btn_arrow_left.png";
     public static final String BTN_ARROW_RIGHT = "images/ui/buttons/btn_arrow_right.png";
     
-    // Tabs de dificultad
     public static final String TAB_EASY = "images/ui/buttons/tab_easy.png";
     public static final String TAB_NORMAL = "images/ui/buttons/tab_normal.png";
     public static final String TAB_ADVANCED = "images/ui/buttons/tab_advanced.png";
@@ -92,8 +90,26 @@ public final class AssetPaths {
     public static final String MUSIC_MENU = "audio/music/menu_theme.ogg";
     public static final String MUSIC_BAZAAR = "audio/music/bazaar_theme.ogg";
     
+    /**
+     * Obtiene ruta de música para modo campaña (GameScreen)
+     * Archivos: game_track_01.ogg a game_track_10.ogg
+     * 
+     * @param trackIndex Índice 0-9
+     * @return Ruta del archivo de audio
+     */
     public static String getGameMusicPath(int trackIndex) {
-        return "audio/music/game_track_0" + (trackIndex + 1) + ".ogg";
+        return "audio/music/game_track_" + String.format("%02d", trackIndex + 1) + ".ogg";
+    }
+    
+    /**
+     * Obtiene ruta de música para modo Time Attack
+     * Archivos: timeattack_track_01.ogg a timeattack_track_10.ogg
+     * 
+     * @param trackIndex Índice 0-9
+     * @return Ruta del archivo de audio
+     */
+    public static String getTimeAttackMusicPath(int trackIndex) {
+        return "audio/music/timeattack_track_" + String.format("%02d", trackIndex + 1) + ".ogg";
     }
     
     // === SFX (OGG) ===

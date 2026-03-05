@@ -19,12 +19,13 @@ import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 
 /**
- * Pantalla de modo Time Attack con dos modos:
- * - MODE_12: Grid 3x4 (6 pares) - requiere 6 cartas activas
- * - MODE_30: Grid 5x6 (15 pares) - requiere 15 cartas activas
+ * Pantalla de modo Time Attack con:
+ * - Dos modos: MODE_12 (3x4) y MODE_30 (5x6)
+ * - Fix: No-match shake delay (igual que GameScreen)
+ * - Música aleatoria exclusiva de Time Attack
  * 
  * @author DarkphoenixTeam
- * @version 2.0 - Dual mode support
+ * @version 2.1 - No-match fix + Separate music
  */
 public class TimeAttackScreen extends BaseScreen {
     
@@ -52,7 +53,13 @@ public class TimeAttackScreen extends BaseScreen {
     // ==================== ESTADOS ====================
     
     public enum GameState {
-        STARTING, PLAYING, CHECKING, GRID_TRANSITION, GAME_OVER, SHOWING_RESULTS
+        STARTING,
+        PLAYING,
+        CHECKING,
+        NO_MATCH_SHAKE,
+        GRID_TRANSITION,
+        GAME_OVER,
+        SHOWING_RESULTS
     }
     
     private GameState gameState;
@@ -90,6 +97,12 @@ public class TimeAttackScreen extends BaseScreen {
     
     private int bestPairs;
     private boolean isNewRecord;
+    
+    // ==================== NO MATCH FEEDBACK ====================
+    
+    private float noMatchShakeTimer;
+    private Card noMatchCard1;
+    private Card noMatchCard2;
     
     // ==================== HUD ====================
     
@@ -133,23 +146,14 @@ public class TimeAttackScreen extends BaseScreen {
     
     // ==================== CONSTRUCTORES ====================
     
-    /**
-     * Constructor por defecto - usa MODE_30 para compatibilidad
-     */
     public TimeAttackScreen(KawaiiNekoMemory game) {
         this(game, Mode.MODE_30, null);
     }
     
-    /**
-     * Constructor con modo específico
-     */
     public TimeAttackScreen(KawaiiNekoMemory game, Mode mode) {
         this(game, mode, null);
     }
     
-    /**
-     * Constructor completo con modo y AdController
-     */
     public TimeAttackScreen(KawaiiNekoMemory game, Mode mode, AdController adController) {
         super(game);
         
@@ -185,6 +189,11 @@ public class TimeAttackScreen extends BaseScreen {
         this.adWatched = false;
         this.showingAdOption = false;
         
+        // No match shake init
+        this.noMatchShakeTimer = 0f;
+        this.noMatchCard1 = null;
+        this.noMatchCard2 = null;
+        
         this.gameState = GameState.STARTING;
         this.startingTimer = STARTING_DURATION;
         
@@ -192,7 +201,7 @@ public class TimeAttackScreen extends BaseScreen {
         createBoard();
         createHUD();
         createPanels();
-        playRandomGameMusic();
+        playRandomTimeAttackMusic();
         
         Gdx.app.log(TAG, "=== TIME ATTACK " + (mode == Mode.MODE_12 ? "12" : "30") + " ===");
         Gdx.app.log(TAG, "Grid: " + cols + "x" + rows + " = " + pairs + " pares");
@@ -240,8 +249,6 @@ public class TimeAttackScreen extends BaseScreen {
             if (cardId >= 0) validCardIds.add(cardId);
         }
         
-        // Solo repetir cartas si es absolutamente necesario
-        // (esto no debería pasar si el bloqueo funciona correctamente)
         while (validCardIds.size < pairs && validCardIds.size > 0) {
             validCardIds.add(validCardIds.get(validCardIds.size % validCardIds.size));
             Gdx.app.log(TAG, "WARN: Repitiendo carta por falta de cartas activas");
@@ -394,10 +401,37 @@ public class TimeAttackScreen extends BaseScreen {
     
     // ==================== MÚSICA ====================
     
-    private void playRandomGameMusic() {
+    /**
+     * Reproduce una canción aleatoria del pool exclusivo de Time Attack
+     */
+    private void playRandomTimeAttackMusic() {
+        int trackIndex = MathUtils.random(0, Constants.TIME_ATTACK_MUSIC_TRACKS - 1);
+        String musicPath = AssetPaths.getTimeAttackMusicPath(trackIndex);
+        
+        // Verificar si existe, fallback a game music si no
+        try {
+            if (Gdx.files.internal(musicPath).exists()) {
+                audioManager.playMusic(musicPath, true);
+                Gdx.app.log(TAG, "Música Time Attack: " + musicPath);
+            } else {
+                // Fallback a música de juego si no existe la de Time Attack
+                Gdx.app.log(TAG, "Música TA no encontrada: " + musicPath + " - usando game music");
+                playFallbackGameMusic();
+            }
+        } catch (Exception e) {
+            Gdx.app.error(TAG, "Error cargando música TA: " + e.getMessage());
+            playFallbackGameMusic();
+        }
+    }
+    
+    /**
+     * Fallback: reproduce música de GameScreen si no hay música de Time Attack
+     */
+    private void playFallbackGameMusic() {
         int trackIndex = MathUtils.random(0, Constants.GAME_MUSIC_TRACKS - 1);
         String musicPath = AssetPaths.getGameMusicPath(trackIndex);
         audioManager.playMusic(musicPath, true);
+        Gdx.app.log(TAG, "Fallback música: " + musicPath);
     }
     
     // ==================== UPDATE ====================
@@ -412,6 +446,7 @@ public class TimeAttackScreen extends BaseScreen {
             case STARTING: updateStarting(delta); break;
             case PLAYING: updatePlaying(delta); break;
             case CHECKING: updateChecking(delta); break;
+            case NO_MATCH_SHAKE: updateNoMatchShake(delta); break;
             case GRID_TRANSITION: updateGridTransition(delta); break;
             case GAME_OVER:
             case SHOWING_RESULTS: updateResults(delta); break;
@@ -455,6 +490,39 @@ public class TimeAttackScreen extends BaseScreen {
         
         checkDelayTimer -= delta;
         if (checkDelayTimer <= 0) checkForMatch();
+    }
+    
+    /**
+     * FIX: Actualiza el estado de shake para no-match
+     * Las cartas permanecen visibles durante el shake antes de voltearse
+     */
+    private void updateNoMatchShake(float delta) {
+        timeRemaining -= delta;
+        
+        if (timeRemaining <= 0) {
+            timeRemaining = 0;
+            onTimeUp();
+            return;
+        }
+        
+        noMatchShakeTimer -= delta;
+        
+        if (noMatchShakeTimer <= 0) {
+            // Voltear las cartas de vuelta después del shake
+            if (noMatchCard1 != null) {
+                noMatchCard1.flipBack();
+            }
+            if (noMatchCard2 != null) {
+                noMatchCard2.flipBack();
+            }
+            
+            noMatchCard1 = null;
+            noMatchCard2 = null;
+            firstRevealed = null;
+            secondRevealed = null;
+            
+            gameState = GameState.PLAYING;
+        }
     }
     
     private void updateGridTransition(float delta) {
@@ -532,15 +600,19 @@ public class TimeAttackScreen extends BaseScreen {
                 gameState = GameState.PLAYING;
             }
         } else {
+            // FIX: Igual que GameScreen - shake + delay antes de voltear
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
             
-            firstRevealed.flipBack();
-            secondRevealed.flipBack();
+            noMatchCard1 = firstRevealed;
+            noMatchCard2 = secondRevealed;
             
-            firstRevealed = null;
-            secondRevealed = null;
+            // Activar shake visual en ambas cartas
+            noMatchCard1.startShake(Constants.NO_MATCH_SHAKE_DURATION);
+            noMatchCard2.startShake(Constants.NO_MATCH_SHAKE_DURATION);
             
-            gameState = GameState.PLAYING;
+            // Iniciar timer de shake (las cartas se voltearán al terminar)
+            noMatchShakeTimer = Constants.NO_MATCH_SHAKE_DURATION;
+            gameState = GameState.NO_MATCH_SHAKE;
         }
     }
     
@@ -623,9 +695,12 @@ public class TimeAttackScreen extends BaseScreen {
     private void drawHUD() {
         float hudY = Constants.VIRTUAL_HEIGHT - Constants.HUD_HEIGHT;
         
+        saveColor();
         game.getBatch().setColor(0, 0, 0, 0.5f);
-        game.getBatch().draw(cardBackTexture, 0, hudY, Constants.VIRTUAL_WIDTH, Constants.HUD_HEIGHT);
-        game.getBatch().setColor(1, 1, 1, 1);
+        if (cardBackTexture != null) {
+            game.getBatch().draw(cardBackTexture, 0, hudY, Constants.VIRTUAL_WIDTH, Constants.HUD_HEIGHT);
+        }
+        restoreColor();
         
         if (pauseButton != null) pauseButton.drawNoText(game.getBatch());
         
@@ -668,7 +743,7 @@ public class TimeAttackScreen extends BaseScreen {
             hudFont.setColor(Color.WHITE);
         }
         
-        // Nekoins
+        // Nekoins ganados
         if (nekoinIconTexture != null && nekoinsEarned > 0) {
             String nekoinText = "+" + nekoinsEarned;
             layout.setText(hudFont, nekoinText);
@@ -686,9 +761,12 @@ public class TimeAttackScreen extends BaseScreen {
     private void drawStartingCountdown() {
         game.getBatch().begin();
         
+        saveColor();
         game.getBatch().setColor(0, 0, 0, 0.6f);
-        game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
-        game.getBatch().setColor(1, 1, 1, 1);
+        if (cardBackTexture != null) {
+            game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
+        }
+        restoreColor();
         
         int countdown = (int) Math.ceil(startingTimer);
         String text = countdown > 0 ? String.valueOf(countdown) : locale.get("timeattack.go");
@@ -705,9 +783,12 @@ public class TimeAttackScreen extends BaseScreen {
     private void drawGridTransition() {
         game.getBatch().begin();
         
+        saveColor();
         game.getBatch().setColor(0, 0, 0, 0.7f);
-        game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
-        game.getBatch().setColor(1, 1, 1, 1);
+        if (cardBackTexture != null) {
+            game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
+        }
+        restoreColor();
         
         String text = locale.format("timeattack.grid", gridsCompleted + 1);
         titleFont.setColor(Color.GREEN);
@@ -723,9 +804,12 @@ public class TimeAttackScreen extends BaseScreen {
     private void drawResultsPanel() {
         game.getBatch().begin();
         
+        saveColor();
         game.getBatch().setColor(0, 0, 0, 0.85f);
-        game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
-        game.getBatch().setColor(1, 1, 1, 1);
+        if (cardBackTexture != null) {
+            game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
+        }
+        restoreColor();
         
         if (panelTexture != null) {
             float panelWidth = Constants.VIRTUAL_WIDTH * 0.9f;
@@ -748,10 +832,10 @@ public class TimeAttackScreen extends BaseScreen {
         float lineHeight = 35f;
         
         // Modo
-        String modeText = "Mode: " + (currentMode == Mode.MODE_12 ? "12" : "30");
-        layout.setText(buttonFont, modeText);
+        String modeLabel = "Mode: " + (currentMode == Mode.MODE_12 ? "12" : "30");
+        layout.setText(buttonFont, modeLabel);
         buttonFont.setColor(Color.ORANGE);
-        buttonFont.draw(game.getBatch(), modeText,
+        buttonFont.draw(game.getBatch(), modeLabel,
                        (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY + lineHeight);
         buttonFont.setColor(Color.WHITE);
         
@@ -761,7 +845,7 @@ public class TimeAttackScreen extends BaseScreen {
         buttonFont.draw(game.getBatch(), pairsText,
                        (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY);
         
-        // Grids
+        // Grids completados
         String gridsText = locale.format("game.grids", gridsCompleted);
         layout.setText(buttonFont, gridsText);
         buttonFont.draw(game.getBatch(), gridsText,
@@ -791,7 +875,7 @@ public class TimeAttackScreen extends BaseScreen {
                        (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY - lineHeight * 3);
         buttonFont.setColor(Color.WHITE);
         
-        // Tiempo
+        // Tiempo de la partida
         String timeText = locale.format("game.time", formatTime(timeLimit));
         layout.setText(hudFont, timeText);
         hudFont.setColor(Color.LIGHT_GRAY);
@@ -834,4 +918,4 @@ public class TimeAttackScreen extends BaseScreen {
         if (panelTexture != null) panelTexture.dispose();
         if (buttonTexture != null) buttonTexture.dispose();
     }
-}
+            }

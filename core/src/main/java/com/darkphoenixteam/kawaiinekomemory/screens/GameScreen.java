@@ -15,15 +15,16 @@ import com.darkphoenixteam.kawaiinekomemory.models.Achievement;
 import com.darkphoenixteam.kawaiinekomemory.models.Card;
 import com.darkphoenixteam.kawaiinekomemory.models.LevelData;
 import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
+import com.darkphoenixteam.kawaiinekomemory.systems.LocaleManager;
 import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
 import com.darkphoenixteam.kawaiinekomemory.ui.SimpleButton;
 
 /**
- * Pantalla principal de juego
+ * Pantalla principal de juego con localización completa
  * Maneja el tablero de cartas, timer, puntuación y paneles de resultado
  * 
  * @author DarkphoenixTeam
- * @version 1.3 - Powers + Timer total + Achievements tracking
+ * @version 2.0 - Localización completa
  */
 public class GameScreen extends BaseScreen {
     
@@ -142,14 +143,14 @@ public class GameScreen extends BaseScreen {
     
     // No Match feedback
     private float noMatchShakeTimer;
-    private static final float NO_MATCH_SHAKE_DURATION = 0.4f;
     private Card noMatchCard1;
     private Card noMatchCard2;
     
-    // ==================== AUDIO ====================
+    // ==================== SISTEMAS ====================
     
     private AudioManager audioManager;
     private SaveManager saveManager;
+    private LocaleManager locale;
     
     // ==================== INPUT ====================
     
@@ -163,6 +164,7 @@ public class GameScreen extends BaseScreen {
         this.levelData = levelData;
         this.audioManager = AudioManager.getInstance();
         this.saveManager = SaveManager.getInstance();
+        this.locale = LocaleManager.getInstance();
         
         this.hudFont = game.getFontManager().getButtonFont();
         this.titleFont = game.getFontManager().getTitleFont();
@@ -220,14 +222,12 @@ public class GameScreen extends BaseScreen {
         String bgPath = getBackgroundPath();
         try {
             backgroundTexture = new Texture(Gdx.files.internal(bgPath));
-            Gdx.app.log(TAG, "Fondo cargado: " + bgPath);
         } catch (Exception e) {
             Gdx.app.error(TAG, "Error cargando fondo: " + bgPath);
         }
         
         try {
             cardBackTexture = new Texture(Gdx.files.internal(AssetPaths.CARD_BACK));
-            Gdx.app.log(TAG, "Card back cargado");
         } catch (Exception e) {
             Gdx.app.error(TAG, "Error cargando card back");
         }
@@ -272,8 +272,6 @@ public class GameScreen extends BaseScreen {
         Array<Integer> activeCards = saveManager.getActiveCards();
         int cardsNeeded = levelData.getUniqueCardsRequired();
         
-        Gdx.app.log(TAG, "Cargando " + cardsNeeded + " cartas del mazo activo");
-        
         Array<Integer> validCardIds = new Array<>();
         for (int i = 0; i < activeCards.size; i++) {
             int cardId = activeCards.get(i);
@@ -283,8 +281,6 @@ public class GameScreen extends BaseScreen {
         }
         
         if (validCardIds.size < cardsNeeded) {
-            Gdx.app.error(TAG, "¡No hay suficientes cartas activas! Necesarias: " + 
-                          cardsNeeded + ", Disponibles: " + validCardIds.size);
             while (validCardIds.size < cardsNeeded && validCardIds.size > 0) {
                 validCardIds.add(validCardIds.get(validCardIds.size % validCardIds.size));
             }
@@ -299,15 +295,11 @@ public class GameScreen extends BaseScreen {
             try {
                 Texture tex = new Texture(Gdx.files.internal(path));
                 cardFrontTextures.add(tex);
-                Gdx.app.log(TAG, "Carta " + i + ": cardId=" + cardId + 
-                            " (deck" + deck + "/char" + cardIndex + ")");
             } catch (Exception e) {
                 Gdx.app.error(TAG, "Error cargando carta: " + path);
                 cardFrontTextures.add(null);
             }
         }
-        
-        Gdx.app.log(TAG, "Texturas cargadas: " + cardFrontTextures.size);
     }
     
     // ==================== CREACIÓN DEL TABLERO ====================
@@ -397,8 +389,6 @@ public class GameScreen extends BaseScreen {
                 cardIndex++;
             }
         }
-        
-        Gdx.app.log(TAG, "Tablero creado: " + cols + "x" + rows + " = " + cards.size + " cartas");
     }
     
     // ==================== CREACIÓN DEL HUD ====================
@@ -464,7 +454,8 @@ public class GameScreen extends BaseScreen {
         float btnY = panelY + panelHeight * 0.15f;
         
         if (buttonTexture != null) {
-            exitButton = new SimpleButton(buttonTexture, "SALIR", btnX, btnY, btnWidth, btnHeight);
+            exitButton = new SimpleButton(buttonTexture, locale.get("game.btn.exit"),
+                btnX, btnY, btnWidth, btnHeight);
             exitButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 game.setScreen(new LevelSelectScreen(game));
@@ -472,7 +463,8 @@ public class GameScreen extends BaseScreen {
             
             btnY += btnHeight + btnSpacing;
             
-            restartButton = new SimpleButton(buttonTexture, "REINICIAR", btnX, btnY, btnWidth, btnHeight);
+            restartButton = new SimpleButton(buttonTexture, locale.get("game.btn.restart"),
+                btnX, btnY, btnWidth, btnHeight);
             restartButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 game.setScreen(new GameScreen(game, levelData));
@@ -480,13 +472,15 @@ public class GameScreen extends BaseScreen {
             
             btnY += btnHeight + btnSpacing;
             
-            continueButton = new SimpleButton(buttonTexture, "CONTINUAR", btnX, btnY, btnWidth, btnHeight);
+            continueButton = new SimpleButton(buttonTexture, locale.get("game.btn.continue"),
+                btnX, btnY, btnWidth, btnHeight);
             continueButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 resumeGame();
             });
             
-            nextLevelButton = new SimpleButton(buttonTexture, "SIGUIENTE", btnX, btnY, btnWidth, btnHeight);
+            nextLevelButton = new SimpleButton(buttonTexture, locale.get("game.btn.next"),
+                btnX, btnY, btnWidth, btnHeight);
             nextLevelButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 goToNextLevel();
@@ -497,10 +491,25 @@ public class GameScreen extends BaseScreen {
     // ==================== MÚSICA ====================
     
     private void playRandomGameMusic() {
-        int trackIndex = MathUtils.random(0, Constants.GAME_MUSIC_TRACKS - 10);
+        int trackIndex = MathUtils.random(0, Constants.GAME_MUSIC_TRACKS - 1);
         String musicPath = AssetPaths.getGameMusicPath(trackIndex);
         audioManager.playMusic(musicPath, true);
         Gdx.app.log(TAG, "Música: " + musicPath);
+    }
+    
+    // ==================== HELPER: NOMBRE DE DIFICULTAD ====================
+    
+    /**
+     * Obtiene el nombre localizado de la dificultad
+     */
+    private String getLocalizedDifficultyName() {
+        switch (levelData.getDifficulty()) {
+            case EASY: return locale.get("difficulty.easy");
+            case NORMAL: return locale.get("difficulty.normal");
+            case ADVANCED: return locale.get("difficulty.advanced");
+            case HARD: return locale.get("difficulty.hard");
+            default: return "???";
+        }
     }
     
     // ==================== UPDATE ====================
@@ -546,7 +555,6 @@ public class GameScreen extends BaseScreen {
             }
             cardsRevealedAtStart = true;
             audioManager.playSound(AssetPaths.SFX_CARD_SHUFFLE);
-            Gdx.app.log(TAG, "Preview: Revelando " + cards.size + " cartas");
         }
         
         startingTimer -= delta;
@@ -561,18 +569,14 @@ public class GameScreen extends BaseScreen {
             }
             
             if (allReady) {
-                int flippedBack = 0;
                 for (Card card : cards) {
                     if (card.getState() == Card.State.REVEALED) {
                         card.flipBack();
-                        flippedBack++;
                     }
                 }
                 
                 gameState = GameState.PLAYING;
                 cardsRevealedAtStart = false;
-                
-                Gdx.app.log(TAG, "¡COMIENZA EL JUEGO! (" + flippedBack + " cartas volteadas)");
             }
         }
     }
@@ -592,7 +596,6 @@ public class GameScreen extends BaseScreen {
             if (timeFreezeRemaining <= 0) {
                 isTimeFrozen = false;
                 timeFreezeRemaining = 0f;
-                Gdx.app.log(TAG, "TimeFreeze terminado");
             }
         }
         
@@ -739,15 +742,10 @@ public class GameScreen extends BaseScreen {
             pairsFoundTotal++;
             matchesSinceShuffle++;
             
-            // Combo tracking
             currentCombo++;
             if (currentCombo > bestComboThisGame) {
                 bestComboThisGame = currentCombo;
             }
-            
-            Gdx.app.log(TAG, "MATCH! Pares: " + pairsFoundThisGrid + "/" + pairsPerGrid + 
-                             " | Bonus: +" + firstRevealed.getNekoinValue() +
-                             " | Combo: " + currentCombo);
             
             firstRevealed = null;
             secondRevealed = null;
@@ -763,20 +761,17 @@ public class GameScreen extends BaseScreen {
         } else {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
             
-            // Romper combo y contar error
             currentCombo = 0;
             mistakesThisGame++;
             
             noMatchCard1 = firstRevealed;
             noMatchCard2 = secondRevealed;
             
-            noMatchCard1.startShake(NO_MATCH_SHAKE_DURATION);
-            noMatchCard2.startShake(NO_MATCH_SHAKE_DURATION);
+            noMatchCard1.startShake(Constants.NO_MATCH_SHAKE_DURATION);
+            noMatchCard2.startShake(Constants.NO_MATCH_SHAKE_DURATION);
             
-            noMatchShakeTimer = NO_MATCH_SHAKE_DURATION;
+            noMatchShakeTimer = Constants.NO_MATCH_SHAKE_DURATION;
             gameState = GameState.NO_MATCH_SHAKE;
-            
-            Gdx.app.log(TAG, "No match - Combo roto | Errores: " + mistakesThisGame);
         }
     }
     
@@ -786,7 +781,6 @@ public class GameScreen extends BaseScreen {
         if (currentGrid >= totalGrids) {
             onVictory();
         } else {
-            Gdx.app.log(TAG, "Grid " + currentGrid + " completado. Siguiente grid...");
             pairsFoundThisGrid = 0;
             matchesSinceShuffle = 0;
             cardsRevealedAtStart = false;
@@ -797,7 +791,6 @@ public class GameScreen extends BaseScreen {
     }
     
     private void triggerShuffle() {
-        Gdx.app.log(TAG, "¡SHUFFLE!");
         audioManager.playSound(AssetPaths.SFX_CARD_SHUFFLE);
         
         matchesSinceShuffle = 0;
@@ -834,21 +827,10 @@ public class GameScreen extends BaseScreen {
     // ==================== POWERS ====================
     
     private void useTimeFreeze() {
-        if (timeFreezeUsesLeft <= 0) {
+        if (timeFreezeUsesLeft <= 0 || 
+            timeFreezeUsedThisGame >= MAX_TIMEFREEZE_PER_GAME || 
+            isTimeFrozen) {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
-            Gdx.app.log(TAG, "TimeFreeze: Sin usos disponibles");
-            return;
-        }
-        
-        if (timeFreezeUsedThisGame >= MAX_TIMEFREEZE_PER_GAME) {
-            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
-            Gdx.app.log(TAG, "TimeFreeze: Límite por partida alcanzado (" + MAX_TIMEFREEZE_PER_GAME + ")");
-            return;
-        }
-        
-        if (isTimeFrozen) {
-            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
-            Gdx.app.log(TAG, "TimeFreeze: Ya está activo");
             return;
         }
         
@@ -859,21 +841,11 @@ public class GameScreen extends BaseScreen {
         powersUsedThisGame++;
         saveManager.decrementTimeFreezeUses();
         audioManager.playSound(AssetPaths.SFX_TIMEFREEZE);
-        
-        Gdx.app.log(TAG, "TimeFreeze activado! Duración: " + TIMEFREEZE_DURATION + "s | " +
-                    "Restantes: " + timeFreezeUsesLeft + " | Powers esta partida: " + powersUsedThisGame);
     }
     
     private void useHint() {
-        if (hintUsesLeft <= 0) {
+        if (hintUsesLeft <= 0 || hintsUsedThisGame >= MAX_HINTS_PER_GAME) {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
-            Gdx.app.log(TAG, "Hint: Sin usos disponibles");
-            return;
-        }
-        
-        if (hintsUsedThisGame >= MAX_HINTS_PER_GAME) {
-            audioManager.playSound(AssetPaths.SFX_NO_MATCH);
-            Gdx.app.log(TAG, "Hint: Límite por partida alcanzado (" + MAX_HINTS_PER_GAME + ")");
             return;
         }
         
@@ -886,7 +858,6 @@ public class GameScreen extends BaseScreen {
         
         if (hiddenCards.size < 2) {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
-            Gdx.app.log(TAG, "Hint: No hay suficientes cartas ocultas");
             return;
         }
         
@@ -935,7 +906,6 @@ public class GameScreen extends BaseScreen {
         
         if (cardsToShake.size < 2) {
             audioManager.playSound(AssetPaths.SFX_NO_MATCH);
-            Gdx.app.log(TAG, "Hint: No se encontraron pares disponibles");
             return;
         }
         
@@ -948,10 +918,6 @@ public class GameScreen extends BaseScreen {
         powersUsedThisGame++;
         saveManager.decrementHintUses();
         audioManager.playSound(AssetPaths.SFX_BUTTON);
-        
-        Gdx.app.log(TAG, "Hint usado! " + cardsToShake.size + " cartas temblando (" + 
-                    pairsToShow + " par(es) + 1 random) | Restantes: " + hintUsesLeft + 
-                    " | Powers esta partida: " + powersUsedThisGame);
     }
     
     // ==================== RESULTADOS ====================
@@ -964,63 +930,33 @@ public class GameScreen extends BaseScreen {
         levelReward = levelData.calculateLevelReward(starsEarned, isFirstClear);
         totalNekoins = levelReward + deckBonus;
         
-        // Guardar con estrellas
         saveManager.setLevelCompleted(levelData.getGlobalId(), starsEarned);
         saveManager.addNekoins(totalNekoins);
-        
-        // Estadísticas globales
         saveManager.addPairsFound(pairsFoundTotal);
         saveManager.updateBestCombo(bestComboThisGame);
         
-        // === VERIFICAR LOGROS DE HABILIDAD ===
-        
-        // Vista de Lince: sin errores
+        // Logros de habilidad
         if (mistakesThisGame == 0) {
             saveManager.unlockAchievement(Achievement.NO_MISTAKES);
         }
-        
-        // Gato Veloz: menos de 15 segundos
         if (elapsedTime < 15f) {
             saveManager.unlockAchievement(Achievement.SPEED_DEMON);
         }
-        
-        // Por los Bigotes: menos de 3 segundos restantes
         if (timeRemaining < 3f && timeRemaining > 0) {
             saveManager.unlockAchievement(Achievement.CLOSE_CALL);
         }
-        
-        // ¿Era necesario?: 3 poderes en un nivel
         if (powersUsedThisGame >= 3) {
             saveManager.unlockAchievement(Achievement.POWER_OVERLOAD);
         }
-        
-        Gdx.app.log(TAG, "=== VICTORIA ===");
-        Gdx.app.log(TAG, "Estrellas: " + starsEarned);
-        Gdx.app.log(TAG, "Tiempo total: " + formatTimeComplete(elapsedTime));
-        Gdx.app.log(TAG, "Tiempo restante: " + (int)timeRemaining + "s");
-        Gdx.app.log(TAG, "Level Reward: " + levelReward);
-        Gdx.app.log(TAG, "Deck Bonus: " + deckBonus);
-        Gdx.app.log(TAG, "Total Nekoins: " + totalNekoins);
-        Gdx.app.log(TAG, "First Clear: " + isFirstClear);
-        Gdx.app.log(TAG, "Mejor combo: " + bestComboThisGame);
-        Gdx.app.log(TAG, "Errores: " + mistakesThisGame);
-        Gdx.app.log(TAG, "Powers usados: " + powersUsedThisGame);
     }
     
     private void onDefeat() {
         gameState = GameState.DEFEAT;
         audioManager.playSound(AssetPaths.SFX_DEFEAT);
         
-        // Registrar derrota y estadísticas
         saveManager.recordLoss();
         saveManager.addPairsFound(pairsFoundTotal);
         saveManager.updateBestCombo(bestComboThisGame);
-        
-        Gdx.app.log(TAG, "=== DERROTA ===");
-        Gdx.app.log(TAG, "Tiempo total: " + formatTimeComplete(elapsedTime));
-        Gdx.app.log(TAG, "Pares encontrados: " + pairsFoundTotal);
-        Gdx.app.log(TAG, "Mejor combo: " + bestComboThisGame);
-        Gdx.app.log(TAG, "Errores: " + mistakesThisGame);
     }
     
     // ==================== ACCIONES DE UI ====================
@@ -1030,7 +966,6 @@ public class GameScreen extends BaseScreen {
             gameState = GameState.PAUSED;
             audioManager.playSound(AssetPaths.SFX_BUTTON);
             audioManager.pauseMusic();
-            Gdx.app.log(TAG, "Juego pausado");
         }
     }
     
@@ -1038,7 +973,6 @@ public class GameScreen extends BaseScreen {
         if (gameState == GameState.PAUSED) {
             gameState = GameState.PLAYING;
             audioManager.resumeMusic();
-            Gdx.app.log(TAG, "Juego reanudado");
         }
     }
     
@@ -1046,13 +980,11 @@ public class GameScreen extends BaseScreen {
         int nextGlobalId = levelData.getGlobalId() + 1;
         
         if (nextGlobalId >= Constants.TOTAL_LEVELS) {
-            Gdx.app.log(TAG, "¡Último nivel completado!");
             game.setScreen(new HomeScreen(game));
             return;
         }
         
         if (!saveManager.isLevelUnlocked(nextGlobalId)) {
-            Gdx.app.log(TAG, "Siguiente nivel no desbloqueado");
             game.setScreen(new LevelSelectScreen(game));
             return;
         }
@@ -1095,9 +1027,12 @@ public class GameScreen extends BaseScreen {
     private void drawHUD() {
         float hudY = Constants.VIRTUAL_HEIGHT - Constants.HUD_HEIGHT;
         
+        saveColor();
         game.getBatch().setColor(0, 0, 0, 0.3f);
-        game.getBatch().draw(cardBackTexture, 0, hudY, Constants.VIRTUAL_WIDTH, Constants.HUD_HEIGHT);
-        game.getBatch().setColor(1, 1, 1, 1);
+        if (cardBackTexture != null) {
+            game.getBatch().draw(cardBackTexture, 0, hudY, Constants.VIRTUAL_WIDTH, Constants.HUD_HEIGHT);
+        }
+        restoreColor();
         
         float buttonSize = 50f;
         float spacing = 10f;
@@ -1136,6 +1071,7 @@ public class GameScreen extends BaseScreen {
             }
         }
         
+        // Timer
         String timeText = formatTime(timeRemaining);
         if (isTimeFrozen) {
             hudFont.setColor(Color.CYAN);
@@ -1151,11 +1087,13 @@ public class GameScreen extends BaseScreen {
         hudFont.draw(game.getBatch(), timeText, timeX, timeY);
         hudFont.setColor(Color.WHITE);
         
-        String levelText = levelData.getDifficulty().name + " " + levelData.getLocalId();
+        // Nombre del nivel localizado
+        String levelText = getLocalizedDifficultyName() + " " + levelData.getLocalId();
         layout.setText(hudFont, levelText);
         float levelX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
         hudFont.draw(game.getBatch(), levelText, levelX, timeY);
         
+        // Nekoins bonus
         if (nekoinIconTexture != null && deckBonus > 0) {
             String bonusText = "+" + deckBonus;
             layout.setText(hudFont, bonusText);
@@ -1174,9 +1112,12 @@ public class GameScreen extends BaseScreen {
     private void drawPausePanel() {
         game.getBatch().begin();
         
+        saveColor();
         game.getBatch().setColor(0, 0, 0, 0.7f);
-        game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
-        game.getBatch().setColor(1, 1, 1, 1);
+        if (cardBackTexture != null) {
+            game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
+        }
+        restoreColor();
         
         if (panelPauseTexture != null) {
             float panelWidth = Constants.VIRTUAL_WIDTH * 0.85f;
@@ -1186,7 +1127,7 @@ public class GameScreen extends BaseScreen {
             game.getBatch().draw(panelPauseTexture, panelX, panelY, panelWidth, panelHeight);
         }
         
-        String title = "PAUSA";
+        String title = locale.get("game.pause");
         layout.setText(titleFont, title);
         titleFont.draw(game.getBatch(), title, 
                       (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
@@ -1202,9 +1143,12 @@ public class GameScreen extends BaseScreen {
     private void drawVictoryPanel() {
         game.getBatch().begin();
         
+        saveColor();
         game.getBatch().setColor(0, 0, 0, 0.7f);
-        game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
-        game.getBatch().setColor(1, 1, 1, 1);
+        if (cardBackTexture != null) {
+            game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
+        }
+        restoreColor();
         
         if (panelVictoryTexture != null) {
             float panelWidth = Constants.VIRTUAL_WIDTH * 0.85f;
@@ -1214,7 +1158,8 @@ public class GameScreen extends BaseScreen {
             game.getBatch().draw(panelVictoryTexture, panelX, panelY, panelWidth, panelHeight);
         }
         
-        String title = "¡VICTORIA!";
+        // Título
+        String title = locale.get("game.victory");
         layout.setText(titleFont, title);
         titleFont.setColor(Color.GOLD);
         titleFont.draw(game.getBatch(), title, 
@@ -1222,6 +1167,7 @@ public class GameScreen extends BaseScreen {
                       Constants.VIRTUAL_HEIGHT * 0.78f);
         titleFont.setColor(Color.WHITE);
         
+        // Estrellas
         String stars = "";
         for (int i = 0; i < starsEarned; i++) stars += "★ ";
         for (int i = starsEarned; i < 3; i++) stars += "☆ ";
@@ -1232,7 +1178,8 @@ public class GameScreen extends BaseScreen {
                       Constants.VIRTUAL_HEIGHT * 0.70f);
         titleFont.setColor(Color.WHITE);
         
-        String timeTotal = "Tiempo: " + formatTimeComplete(elapsedTime);
+        // Tiempo total
+        String timeTotal = locale.format("game.elapsed", formatTimeComplete(elapsedTime));
         layout.setText(hudFont, timeTotal);
         hudFont.setColor(Color.LIGHT_GRAY);
         hudFont.draw(game.getBatch(), timeTotal,
@@ -1244,37 +1191,43 @@ public class GameScreen extends BaseScreen {
         
         hudFont.setColor(Color.WHITE);
         
-        String movesText = "Movimientos: " + moveCount;
+        // Movimientos
+        String movesText = locale.format("game.moves", moveCount);
         layout.setText(hudFont, movesText);
         hudFont.draw(game.getBatch(), movesText, 
                     (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY);
         
-        String rewardText = "Recompensa: " + levelReward;
+        // Recompensa
+        String rewardText = locale.format("game.reward", levelReward);
         layout.setText(hudFont, rewardText);
         hudFont.draw(game.getBatch(), rewardText, 
                     (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY - lineHeight);
         
-        String bonusText = "Bonus Deck: " + deckBonus;
+        // Bonus de deck
+        String bonusText = locale.format("game.deckbonus", deckBonus);
         layout.setText(hudFont, bonusText);
         hudFont.draw(game.getBatch(), bonusText, 
                     (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY - lineHeight * 2);
         
+        // Total
         hudFont.setColor(Color.GOLD);
-        String totalText = "TOTAL: " + totalNekoins + " Nekoins";
+        String totalText = locale.format("game.total", totalNekoins);
         layout.setText(hudFont, totalText);
         hudFont.draw(game.getBatch(), totalText, 
                     (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY - lineHeight * 3);
         hudFont.setColor(Color.WHITE);
         
+        // First clear bonus
         if (isFirstClear) {
             hudFont.setColor(Color.LIME);
-            String firstText = "¡FIRST CLEAR BONUS!";
+            String firstText = locale.get("game.firstclear");
             layout.setText(hudFont, firstText);
             hudFont.draw(game.getBatch(), firstText, 
                         (Constants.VIRTUAL_WIDTH - layout.width) / 2f, statsY - lineHeight * 4);
             hudFont.setColor(Color.WHITE);
         }
         
+        // Botones
         if (nextLevelButton != null) nextLevelButton.draw(game.getBatch(), buttonFont);
         if (restartButton != null) restartButton.draw(game.getBatch(), buttonFont);
         if (exitButton != null) exitButton.draw(game.getBatch(), buttonFont);
@@ -1285,9 +1238,12 @@ public class GameScreen extends BaseScreen {
     private void drawDefeatPanel() {
         game.getBatch().begin();
         
+        saveColor();
         game.getBatch().setColor(0, 0, 0, 0.7f);
-        game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
-        game.getBatch().setColor(1, 1, 1, 1);
+        if (cardBackTexture != null) {
+            game.getBatch().draw(cardBackTexture, 0, 0, Constants.VIRTUAL_WIDTH, Constants.VIRTUAL_HEIGHT);
+        }
+        restoreColor();
         
         if (panelDefeatTexture != null) {
             float panelWidth = Constants.VIRTUAL_WIDTH * 0.85f;
@@ -1297,7 +1253,8 @@ public class GameScreen extends BaseScreen {
             game.getBatch().draw(panelDefeatTexture, panelX, panelY, panelWidth, panelHeight);
         }
         
-        String title = "TIEMPO AGOTADO";
+        // Título
+        String title = locale.get("game.defeat");
         layout.setText(titleFont, title);
         titleFont.setColor(Color.RED);
         titleFont.draw(game.getBatch(), title, 
@@ -1305,20 +1262,24 @@ public class GameScreen extends BaseScreen {
                       Constants.VIRTUAL_HEIGHT * 0.65f);
         titleFont.setColor(Color.WHITE);
         
-        String timeTotal = "Tiempo: " + formatTimeComplete(elapsedTime);
+        // Tiempo total
+        String timeTotal = locale.format("game.elapsed", formatTimeComplete(elapsedTime));
         layout.setText(hudFont, timeTotal);
         hudFont.setColor(Color.LIGHT_GRAY);
         hudFont.draw(game.getBatch(), timeTotal,
                     (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
                     Constants.VIRTUAL_HEIGHT * 0.55f);
         
-        String pairsText = "Pares encontrados: " + pairsFoundTotal + "/" + (pairsPerGrid * totalGrids);
+        // Pares encontrados
+        int totalPairsNeeded = pairsPerGrid * totalGrids;
+        String pairsText = locale.format("game.pairsfound", pairsFoundTotal, totalPairsNeeded);
         layout.setText(hudFont, pairsText);
         hudFont.setColor(Color.WHITE);
         hudFont.draw(game.getBatch(), pairsText, 
                     (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
                     Constants.VIRTUAL_HEIGHT * 0.48f);
         
+        // Botones
         if (restartButton != null) restartButton.draw(game.getBatch(), buttonFont);
         if (exitButton != null) exitButton.draw(game.getBatch(), buttonFont);
         
@@ -1346,8 +1307,6 @@ public class GameScreen extends BaseScreen {
     
     @Override
     public void dispose() {
-        Gdx.app.log(TAG, "Liberando recursos...");
-        
         if (backgroundTexture != null) backgroundTexture.dispose();
         if (cardBackTexture != null) cardBackTexture.dispose();
         
@@ -1367,4 +1326,4 @@ public class GameScreen extends BaseScreen {
         
         if (buttonTexture != null) buttonTexture.dispose();
     }
-                                             }
+}

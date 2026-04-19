@@ -69,4 +69,4 @@ Este proyecto es software propietario. No se permite la distribución, modificac
 📞 Contacto
 Para consultas sobre el proyecto: [Pendiente sitio web DarkphoenixTeam]
 
-Made with ❤️ and ☕ by DarkphoenixTeam
+Made with ❤️ and ☕ by Damacus - DarkphoenixTeam

@@ -1,4 +1,4 @@
-package com.darkpoenixteam.kawaiinekomemory;
+package com.darkphoenixteam.kawaiinekomemory;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;

@@ -11,6 +11,11 @@ gradle-app.setting
 !gradle-wrapper.jar
 !gradle-wrapper.properties
 
+# === FIRMA (nunca al repo) ===
+keystore.properties
+*.jks
+*.keystore
+
 # === ANDROID ===
 *.apk
 *.aab

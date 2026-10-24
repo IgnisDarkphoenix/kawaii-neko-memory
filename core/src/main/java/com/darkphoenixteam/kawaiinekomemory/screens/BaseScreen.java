@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
@@ -64,6 +65,14 @@ public abstract class BaseScreen implements Screen {
         
         this.inputDelayTimer = INPUT_DELAY_DURATION;
         this.inputEnabled = false;
+        
+        // Capturar el botón/gesto "atrás" de Android para no cerrar la app
+        // de golpe en medio de una partida.
+        try {
+            Gdx.input.setCatchKey(Input.Keys.BACK, true);
+        } catch (Exception e) {
+            Gdx.app.error(TAG, "No se pudo capturar la tecla BACK", e);
+        }
     }
     
     protected abstract void update(float delta);
@@ -101,6 +110,11 @@ public abstract class BaseScreen implements Screen {
         // Actualizar cámara
         camera.update();
         game.getBatch().setProjectionMatrix(camera.combined);
+        
+        // Botón/gesto atrás de Android
+        if (Gdx.input.isKeyJustPressed(Input.Keys.BACK) && inputEnabled) {
+            handleBackPressed();
+        }
         
         // Actualizar y dibujar
         update(delta);
@@ -165,6 +179,31 @@ public abstract class BaseScreen implements Screen {
     protected void forceEnableInput() {
         inputDelayTimer = 0;
         inputEnabled = true;
+    }
+    
+    /**
+     * Se llama cuando el usuario pulsa "atrás" en Android.
+     * Las subclases lo sobreescriben para navegar en vez de cerrar la app.
+     */
+    protected void handleBackPressed() {
+        if (!onBackPressed()) {
+            Gdx.app.log(TAG, "BACK sin manejar en " + this.getClass().getSimpleName());
+        }
+    }
+    
+    /**
+     * @return true si la pantalla manejó el evento
+     */
+    protected boolean onBackPressed() {
+        return false;
+    }
+    
+    /**
+     * Indica si la música debe reanudarse al volver del background.
+     * GameScreen lo sobreescribe para respetar el menú de pausa.
+     */
+    public boolean shouldResumeMusicAfterAppPause() {
+        return true;
     }
     
     protected void setBackgroundColor(float r, float g, float b) {

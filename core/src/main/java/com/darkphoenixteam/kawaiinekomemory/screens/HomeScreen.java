@@ -178,10 +178,12 @@ public class HomeScreen extends BaseScreen {
             float btnX = Constants.VIRTUAL_WIDTH - btnSize - 10f;
             float btnY = Constants.VIRTUAL_HEIGHT - btnSize - 10f;
             
-            rankingsButton = new SimpleButton(btnTexture, "🏆", btnX, btnY, btnSize, btnSize);
+            // "🏆" no existe en la fuente (se veía como cuadro vacío) -> estrella
+            rankingsButton = new SimpleButton(btnTexture, "★", btnX, btnY, btnSize, btnSize);
+            rankingsButton.setOwnsTexture(true);
             rankingsButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
-                game.setScreen(new RankingsScreen(game));
+                game.changeScreen(new RankingsScreen(game));
             });
         } catch (Exception e) {
             Gdx.app.error(TAG, "Error creando botón rankings");
@@ -210,7 +212,10 @@ public class HomeScreen extends BaseScreen {
     private SimpleButton createButton(String texturePath, String text, float x, float y) {
         try {
             Texture texture = new Texture(Gdx.files.internal(texturePath));
-            return new SimpleButton(texture, text, x, y, buttonWidth, buttonHeight);
+            SimpleButton button = new SimpleButton(texture, text, x, y, buttonWidth, buttonHeight);
+            // La textura la crea esta pantalla: el botón debe liberarla
+            button.setOwnsTexture(true);
+            return button;
         } catch (Exception e) {
             Gdx.app.log(TAG, "Error cargando: " + texturePath);
             return null;
@@ -222,19 +227,19 @@ public class HomeScreen extends BaseScreen {
         
         switch (action) {
             case "PLAY":
-                game.setScreen(new LevelSelectScreen(game));
+                game.changeScreen(new LevelSelectScreen(game));
                 break;
             case "DECK":
-                game.setScreen(new DeckEditorScreen(game));
+                game.changeScreen(new DeckEditorScreen(game));
                 break;
             case "BAZAAR":
-                game.setScreen(new BazaarScreen(game));
+                game.changeScreen(new BazaarScreen(game));
                 break;
             case "ACHIEVEMENTS":
-                game.setScreen(new AchievementsScreen(game));
+                game.changeScreen(new AchievementsScreen(game));
                 break;
             case "SETTINGS":
-                game.setScreen(new SettingsScreen(game));
+                game.changeScreen(new SettingsScreen(game));
                 break;
         }
     }
@@ -387,6 +392,13 @@ public class HomeScreen extends BaseScreen {
         smallFont.draw(game.getBatch(), dots.toString(), 
                       (Constants.VIRTUAL_WIDTH - layout.width) / 2f, progressY);
         smallFont.setColor(Color.WHITE);
+    }
+    
+    @Override
+    protected boolean onBackPressed() {
+        // En el menú principal, "atrás" cierra el juego
+        Gdx.app.exit();
+        return true;
     }
     
     @Override

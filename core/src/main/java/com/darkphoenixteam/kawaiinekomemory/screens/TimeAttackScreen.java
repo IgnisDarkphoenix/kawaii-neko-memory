@@ -383,14 +383,14 @@ public class TimeAttackScreen extends BaseScreen {
                 btnX, baseY, btnWidth, btnHeight);
             exitButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
-                game.setScreen(new LevelSelectScreen(game));
+                game.changeScreen(new LevelSelectScreen(game));
             });
             
             continueButton = new SimpleButton(buttonTexture, locale.get("game.btn.restart"),
                 btnX, baseY + btnHeight + btnSpacing, btnWidth, btnHeight);
             continueButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
-                game.setScreen(new TimeAttackScreen(game, currentMode, adController));
+                game.changeScreen(new TimeAttackScreen(game, currentMode, adController));
             });
             
             watchAdButton = new SimpleButton(buttonTexture, locale.get("game.btn.watchad"),
@@ -627,6 +627,8 @@ public class TimeAttackScreen extends BaseScreen {
     // ==================== FIN DEL JUEGO ====================
     
     private void onTimeUp() {
+        if (gameState == GameState.SHOWING_RESULTS) return; // evitar doble conteo
+        
         gameState = GameState.GAME_OVER;
         audioManager.playSound(AssetPaths.SFX_DEFEAT);
         
@@ -636,6 +638,9 @@ public class TimeAttackScreen extends BaseScreen {
         saveManager.incrementTimeAttackGamesPlayed();
         saveManager.addPairsFound(pairsFoundTotal);
         saveManager.addNekoins(nekoinsEarned);
+        
+        // Persistir récord, pares y nekoins antes de mostrar resultados
+        saveManager.flushNow();
         
         showingAdOption = (adController != null && adController.isRewardedLoaded() && !adWatched);
         
@@ -663,6 +668,34 @@ public class TimeAttackScreen extends BaseScreen {
             @Override
             public void onRewardCancelled() {}
         });
+    }
+    
+    @Override
+    public void pause() {
+        // En Time Attack el reloj nunca debe correr en segundo plano
+        if (gameState == GameState.PLAYING
+            || gameState == GameState.CHECKING
+            || gameState == GameState.NO_MATCH_SHAKE) {
+            gameState = GameState.GAME_OVER;
+            onTimeUp();
+        }
+    }
+    
+    @Override
+    protected boolean onBackPressed() {
+        if (gameState == GameState.SHOWING_RESULTS || gameState == GameState.GAME_OVER) {
+            game.changeScreen(new LevelSelectScreen(game));
+            return true;
+        }
+        // Durante la partida: atrás = terminar (no cerrar la app)
+        if (gameState == GameState.PLAYING
+            || gameState == GameState.CHECKING
+            || gameState == GameState.NO_MATCH_SHAKE
+            || gameState == GameState.STARTING) {
+            onTimeUp();
+            return true;
+        }
+        return true;
     }
     
     // ==================== DRAW ====================

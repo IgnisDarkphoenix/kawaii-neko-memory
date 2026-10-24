@@ -75,7 +75,7 @@ public class SplashScreen extends BaseScreen {
                     showingTeamLogo = false;
                     timer = 0;
                 } else {
-                    game.setScreen(new HomeScreen(game));
+                    game.changeScreen(new HomeScreen(game));
                 }
             }
         }
@@ -123,6 +123,12 @@ public class SplashScreen extends BaseScreen {
         batch.end();
     }
 
+    @Override
+    protected boolean onBackPressed() {
+        // Durante el splash ignoramos "atrás" para no cerrar por accidente
+        return true;
+    }
+    
     @Override
     public void dispose() {
         if (teamLogo != null) teamLogo.dispose();

@@ -281,8 +281,11 @@ public class GameScreen extends BaseScreen {
         }
         
         if (validCardIds.size < cardsNeeded) {
-            while (validCardIds.size < cardsNeeded && validCardIds.size > 0) {
-                validCardIds.add(validCardIds.get(validCardIds.size % validCardIds.size));
+            // Rellenar repitiendo las cartas válidas de forma cíclica.
+            // (Antes el índice era siempre 0: copiaba la misma carta N veces)
+            int base = validCardIds.size;
+            for (int i = 0; base > 0 && validCardIds.size < cardsNeeded; i++) {
+                validCardIds.add(validCardIds.get(i % base));
             }
         }
         
@@ -458,7 +461,7 @@ public class GameScreen extends BaseScreen {
                 btnX, btnY, btnWidth, btnHeight);
             exitButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
-                game.setScreen(new LevelSelectScreen(game));
+                game.changeScreen(new LevelSelectScreen(game));
             });
             
             btnY += btnHeight + btnSpacing;
@@ -467,7 +470,7 @@ public class GameScreen extends BaseScreen {
                 btnX, btnY, btnWidth, btnHeight);
             restartButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
-                game.setScreen(new GameScreen(game, levelData));
+                game.changeScreen(new GameScreen(game, levelData));
             });
             
             btnY += btnHeight + btnSpacing;
@@ -948,6 +951,9 @@ public class GameScreen extends BaseScreen {
         if (powersUsedThisGame >= 3) {
             saveManager.unlockAchievement(Achievement.POWER_OVERLOAD);
         }
+        
+        // Persistir ya: nivel, estrellas y nekoins no pueden quedar en memoria
+        saveManager.flushNow();
     }
     
     private void onDefeat() {
@@ -957,12 +963,16 @@ public class GameScreen extends BaseScreen {
         saveManager.recordLoss();
         saveManager.addPairsFound(pairsFoundTotal);
         saveManager.updateBestCombo(bestComboThisGame);
+        
+        saveManager.flushNow();
     }
     
     // ==================== ACCIONES DE UI ====================
     
     private void pauseGame() {
-        if (gameState == GameState.PLAYING) {
+        if (gameState == GameState.PLAYING
+            || gameState == GameState.CHECKING
+            || gameState == GameState.NO_MATCH_SHAKE) {
             gameState = GameState.PAUSED;
             audioManager.playSound(AssetPaths.SFX_BUTTON);
             audioManager.pauseMusic();
@@ -971,8 +981,57 @@ public class GameScreen extends BaseScreen {
     
     private void resumeGame() {
         if (gameState == GameState.PAUSED) {
-            gameState = GameState.PLAYING;
+            // Si se pausó con dos cartas ya reveladas hay que volver al
+            // chequeo; si no, el tablero queda bloqueado sin poder tocar nada.
+            if (secondRevealed != null) {
+                gameState = GameState.CHECKING;
+                checkDelayTimer = Constants.MATCH_CHECK_DELAY;
+            } else {
+                gameState = GameState.PLAYING;
+            }
             audioManager.resumeMusic();
+        }
+    }
+    
+    @Override
+    public void pause() {
+        // La app pasa a segundo plano: la partida NO puede seguir corriendo
+        // (el jugador podría memorizar el tablero y volver).
+        if (gameState == GameState.PLAYING
+            || gameState == GameState.CHECKING
+            || gameState == GameState.NO_MATCH_SHAKE) {
+            gameState = GameState.PAUSED;
+            audioManager.pauseMusic();
+        }
+    }
+    
+    @Override
+    public void resume() {
+        // No reanudar sola: el jugador decide con el botón "Continuar"
+    }
+    
+    @Override
+    public boolean shouldResumeMusicAfterAppPause() {
+        return gameState != GameState.PAUSED;
+    }
+    
+    @Override
+    protected boolean onBackPressed() {
+        switch (gameState) {
+            case PLAYING:
+            case CHECKING:
+            case NO_MATCH_SHAKE:
+                pauseGame();
+                return true;
+            case PAUSED:
+                resumeGame();
+                return true;
+            case VICTORY:
+            case DEFEAT:
+                game.changeScreen(new LevelSelectScreen(game));
+                return true;
+            default:
+                return true; // STARTING / SHUFFLING: ignorar
         }
     }
     
@@ -980,17 +1039,17 @@ public class GameScreen extends BaseScreen {
         int nextGlobalId = levelData.getGlobalId() + 1;
         
         if (nextGlobalId >= Constants.TOTAL_LEVELS) {
-            game.setScreen(new HomeScreen(game));
+            game.changeScreen(new HomeScreen(game));
             return;
         }
         
         if (!saveManager.isLevelUnlocked(nextGlobalId)) {
-            game.setScreen(new LevelSelectScreen(game));
+            game.changeScreen(new LevelSelectScreen(game));
             return;
         }
         
         LevelData nextLevel = new LevelData(nextGlobalId);
-        game.setScreen(new GameScreen(game, nextLevel));
+        game.changeScreen(new GameScreen(game, nextLevel));
     }
     
     // ==================== DRAW ====================
@@ -1074,8 +1133,8 @@ public class GameScreen extends BaseScreen {
         // Timer
         String timeText = formatTime(timeRemaining);
         if (isTimeFrozen) {
+            // Antes se añadían ❄ (no existen en la fuente: se veían cuadros)
             hudFont.setColor(Color.CYAN);
-            timeText = "❄ " + timeText + " ❄";
         } else if (timeRemaining < 10) {
             hudFont.setColor(Color.RED);
         } else {

@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.KawaiiNekoMemory" parent="android:Theme.NoTitleBar.Fullscreen">
+        <!-- Android 15+ fuerza edge-to-edge: el juego debe ocupar tambien
+             la zona del recorte (notch) para no dejar franjas negras. -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">false</item>
     </style>
 </resources>

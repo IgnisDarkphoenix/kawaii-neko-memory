@@ -458,3 +458,38 @@ grep -rn "game.setScreen" core/src/main/java | wc -l   # → 23, ninguno con dis
 ---
 
 *Informe generado por revisión estática del repositorio. Todos los números de línea corresponden al commit `9b0090b`.*
+
+
+---
+
+## 11. Estado tras los arreglos (rama `arena/40e20a1b-kawaii-neko-memory`)
+
+Aplicado y **verificado con el build real de GitHub Actions** (PR #1, `Android Build` ✅):
+
+| Ítem | Estado | Nota |
+|---|---|---|
+| P0-1 Pestañas / dificultades | ✅ Arreglado | Pestañas dibujadas con `ShapeRenderer`; ya no dependen de PNG |
+| P0-2 Paginación niveles 41–50 | ✅ Arreglado | 25 por página (5×5), flechas dibujadas, indicador `1/2` |
+| P0-3 Fuga de memoria al cambiar pantalla | ✅ Arreglado | `changeScreen()` diferido con `postRunnable` + guard anti-doble-transición |
+| P0-4 Guardado (bug del playtest) | ✅ Arreglado | `flushNow()` en compras, fin de nivel, pausa y cierre |
+| P1-1 Música (50 % sin pista) | ✅ Arreglado | `GAME_MUSIC_TRACKS = 5` |
+| P1-2 Claves i18n EN/ES | ✅ Arreglado | `game.pause`, `game.elapsed` añadidas |
+| P1-3 Glifos CJK | ✅ Arreglado | Charset generado desde los `.properties` reales |
+| P1-4 Glifos inexistentes | ✅ Arreglado | `❄` y `🏆` sustituidos |
+| P1-5 Logro `FIRST_3_STAR` | ✅ Arreglado | `unlockAchievement()` directo |
+| P1-6 Botón atrás | ✅ Arreglado | Handler por pantalla |
+| P1-7 Pausa en background | ✅ Arreglado | + fix de soft-lock con dos cartas reveladas |
+| P0-5 API 36 / 16 KB / AAB | ⏳ Pendiente | Requiere subir AGP, Gradle y libGDX 1.13.5 + firma |
+| P0-6 Crash reporting | ⏳ Pendiente | Necesita cuenta/SDK (decisión del autor) |
+| P1-8 Balance económico | ⏳ Pendiente | Recomendado medir con telemetría antes de tocar números |
+| P2-x Optimización de tamaño | ⏳ Pendiente | Paneles 1628² y fuente de 16 MB son el mayor ahorro |
+
+### Qué probar en tu A54 5G (5 minutos)
+
+1. Abrir Niveles → tocar **Normal / Avanzado / Difícil** (antes no existían).
+2. En una dificultad, tocar la **flecha inferior** → página 2 con los niveles 26–50.
+3. Ganar un nivel, **matar la app desde el reciente** y reabrir → el nivel y las estrellas deben seguir ahí.
+4. Entrar y salir de 10 pantallas seguidas → vigilar que no se cierre por memoria.
+5. Poner la app en segundo plano en mitad de una partida → al volver debe estar en pausa.
+6. Pulsar **atrás** en mitad de una partida → debe pausar, no cerrar.
+7. Pausa en inglés y en español → debe decir "Paused"/"Pausa" (no `[game.pause]`).

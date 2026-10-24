@@ -25,6 +25,10 @@ public class KawaiiNekoMemory extends Game {
     private SpriteBatch batch;
     private FontManager fontManager;
     
+    // Evita encolar dos transiciones en el mismo frame (doble toque, update
+    // que se repite): la segunda liberaría una pantalla ya liberada.
+    private boolean screenChangePending = false;
+    
     public KawaiiNekoMemory() {
     }
     
@@ -107,6 +111,11 @@ public class KawaiiNekoMemory extends Game {
      * @param next Pantalla nueva
      */
     public void changeScreen(final Screen next) {
+        if (screenChangePending) {
+            Gdx.app.log(TAG, "Cambio de pantalla ignorado: ya hay uno en curso");
+            return;
+        }
+        screenChangePending = true;
         final Screen previous = getScreen();
         
         // Se hace al final del frame: si liberáramos la pantalla dentro de su
@@ -114,13 +123,15 @@ public class KawaiiNekoMemory extends Game {
         Gdx.app.postRunnable(new Runnable() {
             @Override
             public void run() {
-                setScreen(next);
-                if (previous != null && previous != next) {
-                    try {
+                try {
+                    setScreen(next);
+                    if (previous != null && previous != next) {
                         previous.dispose();
-                    } catch (Exception e) {
-                        Gdx.app.error(TAG, "Error liberando pantalla anterior", e);
                     }
+                } catch (Exception e) {
+                    Gdx.app.error(TAG, "Error en el cambio de pantalla", e);
+                } finally {
+                    screenChangePending = false;
                 }
             }
         });

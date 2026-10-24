@@ -109,6 +109,68 @@ configurations {
 }
 
 // Tarea de ayuda: avisa si se intenta publicar sin firma
+// === VERIFICACION 16 KB ===
+// Google Play exige que las librerias nativas soporten paginas de 16 KB.
+// Se comprueba el alineamiento de los segmentos PT_LOAD de cada .so.
+// Corre automaticamente despues de assembleDebug (sin tocar el workflow).
+tasks.register('verify16kb') {
+    group = 'verification'
+    description = 'Comprueba alineamiento 16 KB de las librerias nativas'
+    
+    doLast {
+        def readelf = ['readelf', 'llvm-readelf'].find { tool ->
+            try {
+                def p = new ProcessBuilder(tool, '--version').redirectErrorStream(true).start()
+                p.inputStream.text
+                p.waitFor() == 0
+            } catch (Exception ignored) { false }
+        }
+        
+        if (readelf == null) {
+            logger.warn('[16kb] readelf no disponible: verificacion omitida')
+            return
+        }
+        
+        def libs = fileTree("$buildDir/intermediates") {
+            include '**/lib/**/*.so'
+        }.files.findAll { it.exists() }
+        
+        if (libs.isEmpty()) {
+            logger.warn('[16kb] No se encontraron .so para verificar')
+            return
+        }
+        
+        def malas = []
+        libs.each { so ->
+            def p = new ProcessBuilder(readelf, '-lW', so.absolutePath)
+                .redirectErrorStream(true).start()
+            def salida = p.inputStream.text
+            p.waitFor()
+            
+            // Cada PT_LOAD debe tener p_align >= 0x4000 (16 KB)
+            def alineaciones = salida.readLines()
+                .findAll { it.trim().startsWith('LOAD') }
+                .collect { linea ->
+                    def m = linea =~ /0x([0-9a-fA-F]+)\s*$/
+                    m.find() ? Long.parseLong(m.group(1), 16) : -1L
+                }
+            if (alineaciones.isEmpty() || alineaciones.any { it < 0x4000L }) {
+                malas << so.name + ' ' + alineaciones
+            }
+        }
+        
+        logger.lifecycle("[16kb] Revisadas " + libs.size() + " librerias nativas")
+        if (!malas.isEmpty()) {
+            throw new GradleException("[16kb] Librerias SIN soporte 16 KB (Play las rechazara): " + malas.join(', '))
+        }
+        logger.lifecycle('[16kb] OK: todas las .so soportan paginas de 16 KB')
+    }
+}
+
+tasks.named('assembleDebug').configure {
+    finalizedBy 'verify16kb'
+}
+
 tasks.register('checkSigning') {
     doLast {
         if (!hasKeystore) {

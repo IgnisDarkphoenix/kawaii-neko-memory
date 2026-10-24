@@ -13,6 +13,11 @@
 -keep class com.badlogic.gdx.backends.android.** { *; }
 -keep class com.badlogic.gdx.physics.** { *; }
 
+# Requerido por libGDX 1.13+ (ver CHANGES de libGDX / PR 7578)
+-keepclassmembers class * {
+    boolean getUseDefaultContactFilter();
+}
+
 # Keep native methods
 -keepclasseswithmembernames class * {
     native <methods>;

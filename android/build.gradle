@@ -127,8 +127,7 @@ tasks.register('verify16kb') {
         }
         
         if (readelf == null) {
-            logger.warn('[16kb] readelf no disponible: verificacion omitida')
-            return
+            throw new GradleException("[16kb] readelf no disponible: no se pudo verificar el requisito de Play")
         }
         
         def libs = fileTree("$buildDir/intermediates") {
@@ -136,8 +135,7 @@ tasks.register('verify16kb') {
         }.files.findAll { it.exists() }
         
         if (libs.isEmpty()) {
-            logger.warn('[16kb] No se encontraron .so para verificar')
-            return
+            throw new GradleException("[16kb] No se encontraron librerias .so: verificacion invalida")
         }
         
         def malas = []
@@ -159,7 +157,7 @@ tasks.register('verify16kb') {
             }
         }
         
-        logger.lifecycle("[16kb] Revisadas " + libs.size() + " librerias nativas")
+        logger.lifecycle("[16kb] Revisadas " + libs.size() + " librerias nativas (tool: " + readelf + ")")
         if (!malas.isEmpty()) {
             throw new GradleException("[16kb] Librerias SIN soporte 16 KB (Play las rechazara): " + malas.join(', '))
         }

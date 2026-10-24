@@ -120,10 +120,18 @@ public class GameScreen extends BaseScreen {
     private Texture panelVictoryTexture;
     private Texture panelDefeatTexture;
     
-    private SimpleButton continueButton;
-    private SimpleButton restartButton;
-    private SimpleButton exitButton;
-    private SimpleButton nextLevelButton;
+    // Un juego por panel: antes se compartían y las posiciones de un panel
+    // se filtraban al otro (los textos de victoria quedaban bajo los botones).
+    private SimpleButton pauseContinueButton;
+    private SimpleButton pauseRestartButton;
+    private SimpleButton pauseExitButton;
+    
+    private SimpleButton winNextButton;
+    private SimpleButton winRestartButton;
+    private SimpleButton winExitButton;
+    
+    private SimpleButton loseRestartButton;
+    private SimpleButton loseExitButton;
     
     private Texture buttonTexture;
     
@@ -444,51 +452,80 @@ public class GameScreen extends BaseScreen {
     // ==================== CREACIÓN DE PANELES ====================
     
     private void createPanels() {
-        float panelWidth = Constants.VIRTUAL_WIDTH * 0.8f;
-        float panelHeight = panelWidth * 1.2f;
-        float panelX = (Constants.VIRTUAL_WIDTH - panelWidth) / 2f;
-        float panelY = (Constants.VIRTUAL_HEIGHT - panelHeight) / 2f;
+        if (buttonTexture == null) return;
         
-        float btnWidth = panelWidth * 0.6f;
-        float btnHeight = 50f;
-        float btnX = (Constants.VIRTUAL_WIDTH - btnWidth) / 2f;
-        float btnSpacing = 15f;
+        // Panel de pausa / derrota: 480 * 0.85 = 408 de ancho, 408 de alto
+        // Panel de victoria: necesita más alto (estadísticas + 3 botones)
+        float pauseW = Constants.VIRTUAL_WIDTH * 0.85f;
+        float pauseH = pauseW * 1.0f;
+        float pauseY = (Constants.VIRTUAL_HEIGHT - pauseH) / 2f;
         
-        float btnY = panelY + panelHeight * 0.15f;
+        float winW = Constants.VIRTUAL_WIDTH * 0.85f;
+        float winH = winW * 1.2f;
+        float winY = (Constants.VIRTUAL_HEIGHT - winH) / 2f;
         
-        if (buttonTexture != null) {
-            exitButton = new SimpleButton(buttonTexture, locale.get("game.btn.exit"),
-                btnX, btnY, btnWidth, btnHeight);
-            exitButton.setOnClick(() -> {
-                audioManager.playSound(AssetPaths.SFX_BUTTON);
-                game.changeScreen(new LevelSelectScreen(game));
-            });
-            
-            btnY += btnHeight + btnSpacing;
-            
-            restartButton = new SimpleButton(buttonTexture, locale.get("game.btn.restart"),
-                btnX, btnY, btnWidth, btnHeight);
-            restartButton.setOnClick(() -> {
-                audioManager.playSound(AssetPaths.SFX_BUTTON);
-                game.changeScreen(new GameScreen(game, levelData));
-            });
-            
-            btnY += btnHeight + btnSpacing;
-            
-            continueButton = new SimpleButton(buttonTexture, locale.get("game.btn.continue"),
-                btnX, btnY, btnWidth, btnHeight);
-            continueButton.setOnClick(() -> {
-                audioManager.playSound(AssetPaths.SFX_BUTTON);
-                resumeGame();
-            });
-            
-            nextLevelButton = new SimpleButton(buttonTexture, locale.get("game.btn.next"),
-                btnX, btnY, btnWidth, btnHeight);
-            nextLevelButton.setOnClick(() -> {
-                audioManager.playSound(AssetPaths.SFX_BUTTON);
-                goToNextLevel();
-            });
-        }
+        float btnW = pauseW * 0.62f;
+        float btnH = 40f;
+        float btnX = (Constants.VIRTUAL_WIDTH - btnW) / 2f;
+        
+        // === PAUSA ===
+        pauseContinueButton = new SimpleButton(buttonTexture, locale.get("game.btn.continue"),
+            btnX, pauseY + 184f, btnW, btnH);
+        pauseContinueButton.setOnClick(() -> {
+            audioManager.playSound(AssetPaths.SFX_BUTTON);
+            resumeGame();
+        });
+        
+        pauseRestartButton = new SimpleButton(buttonTexture, locale.get("game.btn.restart"),
+            btnX, pauseY + 126f, btnW, btnH);
+        pauseRestartButton.setOnClick(() -> {
+            audioManager.playSound(AssetPaths.SFX_BUTTON);
+            game.changeScreen(new GameScreen(game, levelData));
+        });
+        
+        pauseExitButton = new SimpleButton(buttonTexture, locale.get("game.btn.exit"),
+            btnX, pauseY + 68f, btnW, btnH);
+        pauseExitButton.setOnClick(() -> {
+            audioManager.playSound(AssetPaths.SFX_BUTTON);
+            game.changeScreen(new LevelSelectScreen(game));
+        });
+        
+        // === VICTORIA ===
+        winNextButton = new SimpleButton(buttonTexture, locale.get("game.btn.next"),
+            btnX, winY + 161f, btnW, btnH);
+        winNextButton.setOnClick(() -> {
+            audioManager.playSound(AssetPaths.SFX_BUTTON);
+            goToNextLevel();
+        });
+        
+        winRestartButton = new SimpleButton(buttonTexture, locale.get("game.btn.restart"),
+            btnX, winY + 103f, btnW, btnH);
+        winRestartButton.setOnClick(() -> {
+            audioManager.playSound(AssetPaths.SFX_BUTTON);
+            game.changeScreen(new GameScreen(game, levelData));
+        });
+        
+        winExitButton = new SimpleButton(buttonTexture, locale.get("game.btn.exit"),
+            btnX, winY + 45f, btnW, btnH);
+        winExitButton.setOnClick(() -> {
+            audioManager.playSound(AssetPaths.SFX_BUTTON);
+            game.changeScreen(new LevelSelectScreen(game));
+        });
+        
+        // === DERROTA ===
+        loseRestartButton = new SimpleButton(buttonTexture, locale.get("game.btn.restart"),
+            btnX, pauseY + 144f, btnW, btnH);
+        loseRestartButton.setOnClick(() -> {
+            audioManager.playSound(AssetPaths.SFX_BUTTON);
+            game.changeScreen(new GameScreen(game, levelData));
+        });
+        
+        loseExitButton = new SimpleButton(buttonTexture, locale.get("game.btn.exit"),
+            btnX, pauseY + 86f, btnW, btnH);
+        loseExitButton.setOnClick(() -> {
+            audioManager.playSound(AssetPaths.SFX_BUTTON);
+            game.changeScreen(new LevelSelectScreen(game));
+        });
     }
     
     // ==================== MÚSICA ====================
@@ -684,19 +721,22 @@ public class GameScreen extends BaseScreen {
     private void updatePaused(float delta) {
         if (!isInputEnabled()) return;
         
-        if (continueButton != null) continueButton.update(viewport);
-        if (restartButton != null) restartButton.update(viewport);
-        if (exitButton != null) exitButton.update(viewport);
+        if (pauseContinueButton != null) pauseContinueButton.update(viewport);
+        if (pauseRestartButton != null) pauseRestartButton.update(viewport);
+        if (pauseExitButton != null) pauseExitButton.update(viewport);
     }
     
     private void updateResult(float delta) {
         if (!isInputEnabled()) return;
         
         if (gameState == GameState.VICTORY) {
-            if (nextLevelButton != null) nextLevelButton.update(viewport);
+            if (winNextButton != null) winNextButton.update(viewport);
+            if (winRestartButton != null) winRestartButton.update(viewport);
+            if (winExitButton != null) winExitButton.update(viewport);
+        } else {
+            if (loseRestartButton != null) loseRestartButton.update(viewport);
+            if (loseExitButton != null) loseExitButton.update(viewport);
         }
-        if (restartButton != null) restartButton.update(viewport);
-        if (exitButton != null) exitButton.update(viewport);
     }
     
     // ==================== LÓGICA DE CARTAS ====================
@@ -1190,11 +1230,11 @@ public class GameScreen extends BaseScreen {
         layout.setText(titleFont, title);
         titleFont.draw(game.getBatch(), title, 
                       (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
-                      Constants.VIRTUAL_HEIGHT * 0.7f);
+                      548f);
         
-        if (continueButton != null) continueButton.draw(game.getBatch(), buttonFont);
-        if (restartButton != null) restartButton.draw(game.getBatch(), buttonFont);
-        if (exitButton != null) exitButton.draw(game.getBatch(), buttonFont);
+        if (pauseContinueButton != null) pauseContinueButton.draw(game.getBatch(), buttonFont);
+        if (pauseRestartButton != null) pauseRestartButton.draw(game.getBatch(), buttonFont);
+        if (pauseExitButton != null) pauseExitButton.draw(game.getBatch(), buttonFont);
         
         game.getBatch().end();
     }
@@ -1223,7 +1263,7 @@ public class GameScreen extends BaseScreen {
         titleFont.setColor(Color.GOLD);
         titleFont.draw(game.getBatch(), title, 
                       (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
-                      Constants.VIRTUAL_HEIGHT * 0.78f);
+                      592f);
         titleFont.setColor(Color.WHITE);
         
         // Estrellas
@@ -1234,7 +1274,7 @@ public class GameScreen extends BaseScreen {
         titleFont.setColor(Color.YELLOW);
         titleFont.draw(game.getBatch(), stars,
                       (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
-                      Constants.VIRTUAL_HEIGHT * 0.70f);
+                      548f);
         titleFont.setColor(Color.WHITE);
         
         // Tiempo total
@@ -1243,10 +1283,13 @@ public class GameScreen extends BaseScreen {
         hudFont.setColor(Color.LIGHT_GRAY);
         hudFont.draw(game.getBatch(), timeTotal,
                     (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
-                    Constants.VIRTUAL_HEIGHT * 0.62f);
+                    508f);
         
-        float statsY = Constants.VIRTUAL_HEIGHT * 0.52f;
-        float lineHeight = 32f;
+        // El bloque de estadísticas debe terminar antes del primer botón
+        // (winY + 161 = 316). Antes empezaba en 416 con líneas de 32 y las
+        // tres últimas quedaban debajo de "Siguiente"/"Reiniciar"/"Salir".
+        float statsY = 470f;
+        float lineHeight = 26f;
         
         hudFont.setColor(Color.WHITE);
         
@@ -1287,9 +1330,9 @@ public class GameScreen extends BaseScreen {
         }
         
         // Botones
-        if (nextLevelButton != null) nextLevelButton.draw(game.getBatch(), buttonFont);
-        if (restartButton != null) restartButton.draw(game.getBatch(), buttonFont);
-        if (exitButton != null) exitButton.draw(game.getBatch(), buttonFont);
+        if (winNextButton != null) winNextButton.draw(game.getBatch(), buttonFont);
+        if (winRestartButton != null) winRestartButton.draw(game.getBatch(), buttonFont);
+        if (winExitButton != null) winExitButton.draw(game.getBatch(), buttonFont);
         
         game.getBatch().end();
     }
@@ -1318,7 +1361,7 @@ public class GameScreen extends BaseScreen {
         titleFont.setColor(Color.RED);
         titleFont.draw(game.getBatch(), title, 
                       (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
-                      Constants.VIRTUAL_HEIGHT * 0.65f);
+                      520f);
         titleFont.setColor(Color.WHITE);
         
         // Tiempo total
@@ -1327,7 +1370,7 @@ public class GameScreen extends BaseScreen {
         hudFont.setColor(Color.LIGHT_GRAY);
         hudFont.draw(game.getBatch(), timeTotal,
                     (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
-                    Constants.VIRTUAL_HEIGHT * 0.55f);
+                    462f);
         
         // Pares encontrados
         int totalPairsNeeded = pairsPerGrid * totalGrids;
@@ -1336,11 +1379,11 @@ public class GameScreen extends BaseScreen {
         hudFont.setColor(Color.WHITE);
         hudFont.draw(game.getBatch(), pairsText, 
                     (Constants.VIRTUAL_WIDTH - layout.width) / 2f,
-                    Constants.VIRTUAL_HEIGHT * 0.48f);
+                    408f);
         
         // Botones
-        if (restartButton != null) restartButton.draw(game.getBatch(), buttonFont);
-        if (exitButton != null) exitButton.draw(game.getBatch(), buttonFont);
+        if (loseRestartButton != null) loseRestartButton.draw(game.getBatch(), buttonFont);
+        if (loseExitButton != null) loseExitButton.draw(game.getBatch(), buttonFont);
         
         game.getBatch().end();
     }

@@ -167,7 +167,9 @@ tasks.register('verify16kb') {
     }
 }
 
-tasks.named('assembleDebug').configure {
+// matching{} es lazy: AGP crea assembleDebug *despues* de evaluar el script,
+// asi que named() fallaria en tiempo de configuracion.
+tasks.matching { it.name == 'assembleDebug' }.configureEach {
     finalizedBy 'verify16kb'
 }
 

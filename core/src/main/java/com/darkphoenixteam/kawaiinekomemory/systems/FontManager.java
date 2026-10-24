@@ -3,9 +3,11 @@ package com.darkphoenixteam.kawaiinekomemory.systems;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.FreeTypeFontParameter;
 import com.badlogic.gdx.utils.Disposable;
+import com.badlogic.gdx.utils.ObjectSet;
 
 /**
  * Gestor de fuentes con soporte para idiomas CJK
@@ -147,7 +149,9 @@ public class FontManager implements Disposable {
             if (Gdx.files.internal(FONT_CJK).exists()) {
                 cjkGenerator = new FreeTypeFontGenerator(Gdx.files.internal(FONT_CJK));
                 Gdx.app.log(TAG, "Fuente CJK cargada: " + FONT_CJK);
-                generateFonts(cjkGenerator, CJK_CHARS);
+                String charset = buildCjkCharset();
+                Gdx.app.log(TAG, "Charset CJK generado: " + charset.length() + " glifos");
+                generateFonts(cjkGenerator, charset);
             } else {
                 Gdx.app.error(TAG, "Fuente CJK no encontrada: " + FONT_CJK);
                 // Intentar con fuente latina
@@ -158,6 +162,47 @@ public class FontManager implements Disposable {
             Gdx.app.error(TAG, "Error cargando fuentes CJK: " + e.getMessage());
             createDefaultFonts();
         }
+    }
+    
+    /**
+     * Construye el charset CJK leyendo los textos reales de los 3 idiomas CJK.
+     * 
+     * Antes se usaba una lista fija (CJK_CHARS) que no cubría el vocabulario
+     * real: faltaban 177 glifos en chino, 170 en coreano y 94 en japonés,
+     * y se veían huecos en pantalla.
+     */
+    private String buildCjkCharset() {
+        ObjectSet<Character> chars = new ObjectSet<>();
+        
+        for (char c : FreeTypeFontGenerator.DEFAULT_CHARS.toCharArray()) chars.add(c);
+        for (char c : "★☆●○♥♦←→↑↓".toCharArray()) chars.add(c);
+        
+        String[] codes = {"ja", "ko", "zh"};
+        int found = 0;
+        
+        for (String code : codes) {
+            FileHandle fh = Gdx.files.internal("i18n/strings_" + code + ".properties");
+            if (!fh.exists()) continue;
+            found++;
+            try {
+                String text = fh.readString("UTF-8");
+                for (int i = 0; i < text.length(); i++) {
+                    char c = text.charAt(i);
+                    if (c >= 32) chars.add(c);
+                }
+            } catch (Exception e) {
+                Gdx.app.error(TAG, "No se pudo leer i18n/" + code, e);
+            }
+        }
+        
+        if (found == 0) {
+            Gdx.app.log(TAG, "Sin archivos i18n CJK: usando charset de respaldo");
+            return CJK_CHARS;
+        }
+        
+        StringBuilder sb = new StringBuilder(chars.size);
+        for (Character c : chars) sb.append(c.charValue());
+        return sb.toString();
     }
     
     /**

@@ -264,7 +264,7 @@ public class DeckEditorScreen extends BaseScreen {
             backButton = new SimpleButton(backTex, locale.get("common.back"), btnX, btnY, btnWidth, btnHeight);
             backButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
-                game.setScreen(new HomeScreen(game));
+                game.changeScreen(new HomeScreen(game));
             });
         }
     }
@@ -521,6 +521,13 @@ public class DeckEditorScreen extends BaseScreen {
         layout.setText(smallFont, hint);
         smallFont.draw(game.getBatch(), hint, (Constants.VIRTUAL_WIDTH - layout.width) / 2f, infoY - 36f);
         smallFont.setColor(Color.WHITE);
+    }
+    
+    @Override
+    protected boolean onBackPressed() {
+        audioManager.playSound(AssetPaths.SFX_BUTTON);
+        game.changeScreen(new HomeScreen(game));
+        return true;
     }
     
     @Override

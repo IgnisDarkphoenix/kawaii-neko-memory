@@ -99,7 +99,7 @@ public class RankingsScreen extends BaseScreen {
                 (Constants.VIRTUAL_WIDTH - btnWidth) / 2f, 20f, btnWidth, btnHeight);
             backButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
-                game.setScreen(new HomeScreen(game));
+                game.changeScreen(new HomeScreen(game));
             });
         } catch (Exception e) {
             Gdx.app.error(TAG, "Error botón back");
@@ -326,6 +326,13 @@ public class RankingsScreen extends BaseScreen {
         int mins = (int)(seconds / 60);
         int secs = (int)(seconds % 60);
         return String.format("%d:%02d", mins, secs);
+    }
+    
+    @Override
+    protected boolean onBackPressed() {
+        audioManager.playSound(AssetPaths.SFX_BUTTON);
+        game.changeScreen(new HomeScreen(game));
+        return true;
     }
     
     @Override

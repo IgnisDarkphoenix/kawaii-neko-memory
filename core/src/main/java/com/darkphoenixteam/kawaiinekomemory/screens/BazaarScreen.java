@@ -178,7 +178,7 @@ public class BazaarScreen extends BaseScreen {
                 (Constants.VIRTUAL_WIDTH - backWidth) / 2f, 15f, backWidth, backHeight);
             backButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
-                game.setScreen(new HomeScreen(game));
+                game.changeScreen(new HomeScreen(game));
             });
         }
     }
@@ -650,6 +650,13 @@ public class BazaarScreen extends BaseScreen {
     }
     
     // ==================== DISPOSE (OPTIMIZADO) ====================
+    
+    @Override
+    protected boolean onBackPressed() {
+        audioManager.playSound(AssetPaths.SFX_BUTTON);
+        game.changeScreen(new HomeScreen(game));
+        return true;
+    }
     
     @Override
     public void dispose() {

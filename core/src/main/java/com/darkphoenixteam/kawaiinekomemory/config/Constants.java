@@ -165,8 +165,11 @@ public final class Constants {
     public static final float GRID_PADDING = 10f;
     
     // === MÚSICA ===
-    public static final int GAME_MUSIC_TRACKS = 10;
-    public static final int TIME_ATTACK_MUSIC_TRACKS = 10;
+    // IMPORTANTE: debe coincidir con los archivos reales de assets/audio/music
+    // (game_track_01..05.ogg). Antes valía 10 y la mitad de las partidas
+    // arrancaban sin música porque el archivo no existía.
+    public static final int GAME_MUSIC_TRACKS = 5;
+    public static final int TIME_ATTACK_MUSIC_TRACKS = 10; // usa fallback si no existen
     
     // === RANKINGS ===
     public static final int RANKINGS_MAX_ENTRIES = 100;

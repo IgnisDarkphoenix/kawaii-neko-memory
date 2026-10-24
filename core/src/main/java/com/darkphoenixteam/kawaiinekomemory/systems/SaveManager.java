@@ -252,7 +252,9 @@ public class SaveManager {
             int purchases = prefs.getInteger(KEY_STAT_PURCHASES, 0);
             prefs.putInteger(KEY_STAT_PURCHASES, purchases + 1);
             
-            deferredFlush(); // Diferido
+            // Una compra debe persistir ya: si el proceso muere, el jugador
+            // perdería los nekoins sin recibir el artículo.
+            flushNow();
             
             if (purchases == 0) {
                 unlockAchievement(Achievement.FIRST_SHOP);
@@ -524,8 +526,13 @@ public class SaveManager {
         
         deferredFlush();
         
+        // Hito crítico: escribir a disco antes de que el jugador salga
+        flushNow();
+        
+        // Antes se llamaba a checkAchievement(), que no tiene caso para este
+        // logro y por tanto nunca lo desbloqueaba.
         if (stars == 3) {
-            checkAchievement(Achievement.FIRST_3_STAR);
+            unlockAchievement(Achievement.FIRST_3_STAR);
         }
         
         checkDifficultyCompletionAchievements();
@@ -681,7 +688,13 @@ public class SaveManager {
         int current = getNekoins();
         prefs.putInteger(KEY_NEKOINS, current + achievement.reward);
         
+        // Contabilizar como ganados: si no, el logro "Hucha Llena" y las
+        // estadísticas de ganado ignoran estas recompensas.
+        int totalEarned = prefs.getInteger(KEY_STAT_TOTAL_EARNED, 0);
+        prefs.putInteger(KEY_STAT_TOTAL_EARNED, totalEarned + achievement.reward);
+        
         deferredFlush();
+        flushNow();
         
         newlyUnlocked.add(achievement);
         
@@ -836,9 +849,13 @@ public class SaveManager {
     // ==================== UTILIDADES ====================
     
     public void resetAll() {
-        instance = null;
         prefs.clear();
         prefs.flush();
+        
+        // Reinicializar con los valores por defecto (antes se dejaba una
+        // instancia "zombi" con el estado viejo en memoria).
+        instance = null;
+        getInstance();
         Gdx.app.log(TAG, "RESET COMPLETO");
     }
     

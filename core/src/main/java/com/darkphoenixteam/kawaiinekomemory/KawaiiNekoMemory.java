@@ -2,11 +2,14 @@ package com.darkphoenixteam.kawaiinekomemory;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.darkphoenixteam.kawaiinekomemory.config.AssetPaths;
+import com.darkphoenixteam.kawaiinekomemory.screens.BaseScreen;
 import com.darkphoenixteam.kawaiinekomemory.screens.SplashScreen;
 import com.darkphoenixteam.kawaiinekomemory.systems.AudioManager;
 import com.darkphoenixteam.kawaiinekomemory.systems.FontManager;
+import com.darkphoenixteam.kawaiinekomemory.systems.SaveManager;
 import com.darkphoenixteam.kawaiinekomemory.systems.SharedAssetManager;
 
 /**
@@ -69,19 +72,70 @@ public class KawaiiNekoMemory extends Game {
     public void pause() {
         super.pause();
         AudioManager.getInstance().pauseMusic();
-        Gdx.app.log(TAG, "App pausada - música pausada");
+        
+        // IMPORTANTE: sin flush() las SharedPreferences no se escriben a disco.
+        // Android puede matar el proceso en background sin avisar.
+        SaveManager.getInstance().flushNow();
+        
+        Gdx.app.log(TAG, "App pausada - música pausada + progreso guardado");
     }
     
     @Override
     public void resume() {
         super.resume();
-        AudioManager.getInstance().resumeMusic();
-        Gdx.app.log(TAG, "App resumida - música reanudada");
+        
+        // Si la pantalla actual está en pausa intencional (menú de pausa),
+        // la música no debe volver sola.
+        boolean resumeMusic = true;
+        Screen current = getScreen();
+        if (current instanceof BaseScreen) {
+            resumeMusic = ((BaseScreen) current).shouldResumeMusicAfterAppPause();
+        }
+        
+        if (resumeMusic) {
+            AudioManager.getInstance().resumeMusic();
+        }
+        Gdx.app.log(TAG, "App resumida - música: " + (resumeMusic ? "reanudada" : "en pausa"));
+    }
+    
+    /**
+     * Cambia de pantalla liberando la anterior.
+     * 
+     * libGDX NO llama dispose() al cambiar de pantalla: si no lo hacemos aquí,
+     * las texturas de la pantalla anterior quedan en VRAM para siempre.
+     * 
+     * @param next Pantalla nueva
+     */
+    public void changeScreen(final Screen next) {
+        final Screen previous = getScreen();
+        
+        // Se hace al final del frame: si liberáramos la pantalla dentro de su
+        // propio update(), su draw() correría con texturas ya destruidas.
+        Gdx.app.postRunnable(new Runnable() {
+            @Override
+            public void run() {
+                setScreen(next);
+                if (previous != null && previous != next) {
+                    try {
+                        previous.dispose();
+                    } catch (Exception e) {
+                        Gdx.app.error(TAG, "Error liberando pantalla anterior", e);
+                    }
+                }
+            }
+        });
     }
     
     @Override
     public void dispose() {
         Gdx.app.log(TAG, "=== Cerrando juego ===");
+        
+        // Guardar progreso pendiente antes de cerrar
+        try {
+            SaveManager.getInstance().flushNow();
+        } catch (Exception e) {
+            Gdx.app.error(TAG, "No se pudo guardar al cerrar", e);
+        }
         
         if (batch != null) {
             batch.dispose();

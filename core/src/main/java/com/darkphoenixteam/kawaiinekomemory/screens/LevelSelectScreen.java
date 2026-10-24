@@ -237,13 +237,21 @@ public class LevelSelectScreen extends BaseScreen {
         return (top + bottom) / 2f + getGridHeight() / 2f;
     }
     
+    private float getLevelX(int indexInPage) {
+        int col = indexInPage % GRID_COLS;
+        return getGridStartX() + col * (LEVEL_BUTTON_SIZE + LEVEL_BUTTON_SPACING);
+    }
+    
+    private float getLevelY(int indexInPage) {
+        int row = indexInPage / GRID_COLS;
+        float top = getGridTopY() - row * (LEVEL_BUTTON_SIZE + LEVEL_BUTTON_SPACING);
+        return top - LEVEL_BUTTON_SIZE;
+    }
+    
     /** Rectángulo del nivel visible en la página actual. */
     private Rectangle getLevelBounds(int indexInPage) {
-        int row = indexInPage / GRID_COLS;
-        int col = indexInPage % GRID_COLS;
-        float x = getGridStartX() + col * (LEVEL_BUTTON_SIZE + LEVEL_BUTTON_SPACING);
-        float top = getGridTopY() - row * (LEVEL_BUTTON_SIZE + LEVEL_BUTTON_SPACING);
-        return new Rectangle(x, top - LEVEL_BUTTON_SIZE, LEVEL_BUTTON_SIZE, LEVEL_BUTTON_SIZE);
+        return new Rectangle(getLevelX(indexInPage), getLevelY(indexInPage),
+                             LEVEL_BUTTON_SIZE, LEVEL_BUTTON_SIZE);
     }
     
     private void createBackButton() {
@@ -577,9 +585,14 @@ public class LevelSelectScreen extends BaseScreen {
         
         shapeRenderer.setProjectionMatrix(camera.combined);
         
+        // El batch ya viene abierto desde draw(): se cierra antes de usar
+        // ShapeRenderer y se reabre después (no se puede llamar begin() dos veces).
         for (int i = 0; i < visible; i++) {
             LevelData level = currentLevels.get(offset + i);
-            Rectangle b = getLevelBounds(i);
+            float bx = getLevelX(i);
+            float by = getLevelY(i);
+            
+            game.getBatch().end();
             
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
             
@@ -602,7 +615,7 @@ public class LevelSelectScreen extends BaseScreen {
                 shapeRenderer.setColor(Color.DARK_GRAY);
             }
             
-            shapeRenderer.rect(b.x, b.y, b.width, b.height);
+            shapeRenderer.rect(bx, by, LEVEL_BUTTON_SIZE, LEVEL_BUTTON_SIZE);
             shapeRenderer.end();
             
             game.getBatch().begin();
@@ -617,18 +630,17 @@ public class LevelSelectScreen extends BaseScreen {
             }
             
             levelFont.draw(game.getBatch(), levelNum,
-                          b.x + (b.width - layout.width) / 2f,
-                          b.y + (b.height + layout.height) / 2f);
+                          bx + (LEVEL_BUTTON_SIZE - layout.width) / 2f,
+                          by + (LEVEL_BUTTON_SIZE + layout.height) / 2f);
             levelFont.setColor(Color.WHITE);
-            
-            game.getBatch().end();
         }
         
         // Flechas de paginación (dibujadas, sin assets)
+        game.getBatch().end();
         drawPageArrows();
+        game.getBatch().begin();
         
         // Indicador de página
-        game.getBatch().begin();
         if (maxPages > 1) {
             String pageText = (currentPage + 1) + "/" + maxPages;
             layout.setText(smallFont, pageText);
@@ -648,7 +660,6 @@ public class LevelSelectScreen extends BaseScreen {
                           Constants.VIRTUAL_HEIGHT / 2f);
             smallFont.setColor(Color.WHITE);
         }
-        game.getBatch().end();
     }
     
     /**

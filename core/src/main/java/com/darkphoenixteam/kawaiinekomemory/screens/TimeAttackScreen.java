@@ -627,6 +627,8 @@ public class TimeAttackScreen extends BaseScreen {
     // ==================== FIN DEL JUEGO ====================
     
     private void onTimeUp() {
+        if (gameState == GameState.SHOWING_RESULTS) return; // evitar doble conteo
+        
         gameState = GameState.GAME_OVER;
         audioManager.playSound(AssetPaths.SFX_DEFEAT);
         

@@ -47,7 +47,7 @@ public class AchievementsScreen extends BaseScreen {
     // === SCROLL ===
     private float scrollOffset = 0f;
     private float maxScrollOffset = 0f;
-    private static final float ITEM_HEIGHT = 90f;
+    private static final float ITEM_HEIGHT = 74f;
     private static final float ITEM_MARGIN = 10f;
     
     // === LAYOUT ===
@@ -248,7 +248,10 @@ public class AchievementsScreen extends BaseScreen {
             Achievement achievement = achievements[i];
             float itemY = startY - (i * (ITEM_HEIGHT + ITEM_MARGIN));
             
-            if (itemY < FOOTER_HEIGHT - ITEM_HEIGHT || itemY > Constants.VIRTUAL_HEIGHT) {
+            // La condición anterior (FOOTER_HEIGHT - ITEM_HEIGHT) permitía
+            // dibujar filas enteras dentro del pie -> se montaban encima del
+            // botón "Volver". Debe descartarse si el borde INFERIOR entra en el pie.
+            if (itemY - ITEM_HEIGHT < FOOTER_HEIGHT || itemY > Constants.VIRTUAL_HEIGHT - HEADER_HEIGHT) {
                 continue;
             }
             

@@ -206,7 +206,7 @@ public class RankingsScreen extends BaseScreen {
         float card1Y = startY - cardHeight;
         
         buttonFont.setColor(Color.WHITE);
-        buttonFont.draw(game.getBatch(), "⏱ " + locale.get("rankings.timeattack"), textX, card1Y + cardHeight - 15f);
+        buttonFont.draw(game.getBatch(), locale.get("rankings.timeattack"), textX, card1Y + cardHeight - 15f);
         
         int bestPairs = saveManager.getTimeAttackBestPairs();
         int totalPairs = saveManager.getTimeAttackTotalPairs();
@@ -233,7 +233,7 @@ public class RankingsScreen extends BaseScreen {
         float card2Y = startY - cardHeight * 2 - CARD_SPACING;
         
         buttonFont.setColor(Color.WHITE);
-        buttonFont.draw(game.getBatch(), "📊 " + locale.get("rankings.stats"), textX, card2Y + cardHeight - 15f);
+        buttonFont.draw(game.getBatch(), locale.get("rankings.stats"), textX, card2Y + cardHeight - 15f);
         
         int totalWins = saveManager.getTotalWins();
         int totalLosses = saveManager.getTotalLosses();
@@ -261,7 +261,7 @@ public class RankingsScreen extends BaseScreen {
         float card3Y = startY - cardHeight * 3 - CARD_SPACING * 2;
         
         buttonFont.setColor(Color.WHITE);
-        buttonFont.draw(game.getBatch(), "🎴 " + locale.get("rankings.collection"), textX, card3Y + cardHeight - 15f);
+        buttonFont.draw(game.getBatch(), locale.get("rankings.collection"), textX, card3Y + cardHeight - 15f);
         
         int unlockedCards = saveManager.getUnlockedCardCount();
         int totalCards = Constants.TOTAL_CARDS;
@@ -286,7 +286,7 @@ public class RankingsScreen extends BaseScreen {
         float card4Y = startY - cardHeight * 4 - CARD_SPACING * 3;
         
         buttonFont.setColor(Color.WHITE);
-        buttonFont.draw(game.getBatch(), "🏆 " + locale.get("rankings.achievements"), textX, card4Y + cardHeight - 15f);
+        buttonFont.draw(game.getBatch(), locale.get("rankings.achievements"), textX, card4Y + cardHeight - 15f);
         
         int unlockedAchievements = saveManager.getUnlockedAchievementCount();
         int totalAchievements = Achievement.count();
@@ -300,14 +300,16 @@ public class RankingsScreen extends BaseScreen {
         smallFont.draw(game.getBatch(), locale.format("rankings.powersused", powersUsed), textX + 150f, card4Y + cardHeight - 45f);
         
         if (nekoinIconTexture != null) {
-            float iconSize = 18f;
-            float iconY = card4Y + cardHeight - 75f;
+            // Estaba en card4Y+75, por ENCIMA del título de la tarjeta:
+            // "Ganados/Gastados" se montaba sobre "Logros".
+            float iconSize = 14f;
+            float iconY = card4Y + 14f;
             
             game.getBatch().draw(nekoinIconTexture, textX, iconY, iconSize, iconSize);
-            smallFont.draw(game.getBatch(), locale.format("rankings.earned", totalEarned), textX + iconSize + 5f, iconY + iconSize - 3f);
+            smallFont.draw(game.getBatch(), locale.format("rankings.earned", totalEarned), textX + iconSize + 5f, iconY + iconSize - 1f);
             
             game.getBatch().draw(nekoinIconTexture, textX + 160f, iconY, iconSize, iconSize);
-            smallFont.draw(game.getBatch(), locale.format("rankings.spent", totalSpent), textX + 160f + iconSize + 5f, iconY + iconSize - 3f);
+            smallFont.draw(game.getBatch(), locale.format("rankings.spent", totalSpent), textX + 160f + iconSize + 5f, iconY + iconSize - 1f);
         }
         
         float achievePercent = (unlockedAchievements * 100f) / totalAchievements;

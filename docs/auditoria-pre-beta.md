@@ -527,3 +527,63 @@ Resultado del último run: todas las `.so` con `PT_LOAD` alineado a 16 KB.
    `shortEdges` para el notch, pero hay que confirmar que no tapa los botones del HUD.
 3. **Botón atrás**: ya está capturado por `BaseScreen` (hecho en el PR #1).
 4. **`Theme.NoTitleBar.Fullscreen`** sigue funcionando aunque esté deprecado; no bloquea Play.
+
+---
+
+## 13. Playtest #1 en el A54 → arreglos de interfaz (PR #3)
+
+Tras el upgrade a API 36 se jugó una partida completa en un Galaxy A54 5G. La
+geometría se midió sobre las capturas: el contenido ocupa `y=270..2069` de
+1080 px de ancho, es decir **480x800 unidades exactas y escala 2.25**. El
+viewport no tenía ningún problema: las bandas superior e inferior son el
+letterboxing normal de `FitViewport` en una pantalla 20:9.
+
+El problema era otro y afectaba a casi todas las pantallas: **las fuentes se
+generaban para un lienzo mayor que el virtual**. Medido con la fuente real
+(`assets/fonts/game_font.ttf`, 1 ud de mundo = 1 px de fuente):
+
+| Texto | Ancho | Contenedor | Síntoma en la captura |
+|---|---|---|---|
+| "Avanzado" | 153 ud @32 | pestaña de 112 | se leía "Avanzad" |
+| "Time Attack" | 190 ud @32 | botón de 168 | se salía del botón |
+| "100%" | hasta x=490 | pantalla de 480 | cortado en Ajustes y Rankings |
+| descripción de logro | 555 ud @32 | ~360 útiles | se montaba sobre otros textos |
+| "Toca una carta para seleccionarla" | 528 ud @32 | ~360 útiles | pisaba la fila inferior |
+
+**Arreglo aplicado:** tamaños 48/32/24/18 → **30/20/15/12** (CJK 26/17/13/11).
+Se eligieron midiendo cada cadena contra su contenedor, no a ojo. A los
+tamaños nuevos ninguna cadena de `assets/i18n/` supera 440 ud, así que no
+queda ningún texto que se salga por el borde.
+
+Además, corregido el layout de las pantallas donde los elementos se pisaban
+por geometría y no por tamaño:
+
+| Pantalla | Causa | Arreglo |
+|---|---|---|
+| Victoria | estadísticas desde y=416 con líneas de 32 y botones en 316/258/200 | estadísticas comprimidas a 470/26; **un juego de botones por panel** |
+| Pausa / derrota | compartían instancias de botón con la victoria | botones propios por panel |
+| Bazar | botones de compra centrados con el borde superior en la línea base del título | botones a la derecha, por debajo del título |
+| Editor de mazo | la rejilla de disponibles bajaba a y=75 y el pie se dibujaba encima | rejillas compactas; pie desde y=190 |
+| Logros | el recorte usaba `FOOTER_HEIGHT - ITEM_HEIGHT`, permitiendo filas dentro del pie | recorte por borde inferior; `ITEM_HEIGHT` 90→74 |
+| Rankings | emojis `⏱📊🎴🏆` sin glifo en la fuente; fila Ganados/Gastados en `card4Y+75` | emojis fuera; fila al pie de la tarjeta |
+| Ajustes | el porcentaje se dibujaba más allá de 480 | se limita al ancho de pantalla |
+| Time Attack | "Salir" quedaba debajo del panel | `baseY` 0.18→0.24 |
+
+### Lo que confirmó que ya funcionaba
+
+- Pestañas Normal / Avanzado / Difícil: existen y cambian de dificultad.
+- Paginación `1/2` con flechas dibujadas.
+- Logro "Estrella Naciente" desbloqueado al hacer 3★: antes era inalcanzable.
+- El progreso se mantiene entre pantallas (el `flushNow()` del PR #1 funciona).
+
+### Pendiente, no es código
+
+1. **`logo_game.png` tiene fondo negro** y se ve como un rectángulo sobre el
+   patrón. Hay que reexportarlo en PNG con transparencia.
+2. **Barras superior/inferior** del mismo color que el fondo: con `FitViewport`
+   en 20:9 siempre habrá franjas. Se eliminan dibujando un fondo a pantalla
+   completa con `ExtendViewport` fuera del mundo, pero es una decisión de
+   diseño, no un bug.
+3. **Economía**: un nivel de 4x4 da ~87 nekoins y el gacha cuesta 1.000. La
+   dificultad Difícil pide 1.500. Con esos números hacen falta ~400 niveles
+   para desbloquearla; hay que reajustar recompensas o precios antes de la beta.

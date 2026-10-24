@@ -376,7 +376,8 @@ public class TimeAttackScreen extends BaseScreen {
         float btnHeight = 55f;
         float btnX = (Constants.VIRTUAL_WIDTH - btnWidth) / 2f;
         float btnSpacing = 15f;
-        float baseY = Constants.VIRTUAL_HEIGHT * 0.18f;
+        // 0.18 dejaba el botón "Salir" por debajo del panel (que empieza en y=162)
+        float baseY = Constants.VIRTUAL_HEIGHT * 0.24f;
         
         if (buttonTexture != null) {
             exitButton = new SimpleButton(buttonTexture, locale.get("game.btn.exit"), 

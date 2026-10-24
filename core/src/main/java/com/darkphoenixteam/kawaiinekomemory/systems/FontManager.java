@@ -217,23 +217,31 @@ public class FontManager implements Disposable {
         param.shadowOffsetY = 2;
         param.shadowColor = Color.valueOf("00000040");
         
+        // IMPORTANTE: el lienzo virtual es 480x800 unidades. Los tamaños
+        // anteriores (48/32/24/18) estaban pensados para un lienzo mayor y
+        // desbordaban los contenedores: "Avanzado" medía 153 ud en una
+        // pestaña de 112, "Time Attack" 190 en un botón de 168, "100%" se
+        // salía de pantalla y las descripciones de logros (555 ud) se
+        // montaban encima de otros textos.
+        // Tamaños medidos con la fuente real para caber en su contenedor.
+        
         // Título grande
-        param.size = isCJK ? 40 : 48;  // CJK necesita menos tamaño
+        param.size = isCJK ? 26 : 30;  // CJK necesita menos tamaño
         param.color = Color.valueOf("FF69B4");
         titleFont = generator.generateFont(param);
         
         // Botones
-        param.size = isCJK ? 26 : 32;
+        param.size = isCJK ? 17 : 20;
         param.color = Color.WHITE;
         buttonFont = generator.generateFont(param);
         
         // Texto normal
-        param.size = isCJK ? 20 : 24;
+        param.size = isCJK ? 13 : 15;
         param.color = Color.DARK_GRAY;
         normalFont = generator.generateFont(param);
         
         // Texto pequeño
-        param.size = isCJK ? 16 : 18;
+        param.size = isCJK ? 11 : 12;
         param.color = Color.GRAY;
         smallFont = generator.generateFont(param);
         
@@ -247,15 +255,15 @@ public class FontManager implements Disposable {
         Gdx.app.log(TAG, "Usando fuentes bitmap default");
         
         titleFont = new BitmapFont();
-        titleFont.getData().setScale(3f);
+        titleFont.getData().setScale(1.9f);
         titleFont.setColor(1f, 0.4f, 0.7f, 1f);
         
         buttonFont = new BitmapFont();
-        buttonFont.getData().setScale(2f);
+        buttonFont.getData().setScale(1.25f);
         buttonFont.setColor(1f, 1f, 1f, 1f);
         
         normalFont = new BitmapFont();
-        normalFont.getData().setScale(1.5f);
+        normalFont.getData().setScale(0.95f);
         normalFont.setColor(0.3f, 0.3f, 0.3f, 1f);
         
         smallFont = new BitmapFont();

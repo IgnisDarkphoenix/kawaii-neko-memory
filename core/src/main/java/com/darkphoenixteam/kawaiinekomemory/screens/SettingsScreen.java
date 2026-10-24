@@ -346,7 +346,10 @@ public class SettingsScreen extends BaseScreen {
         
         String percent = slider.getPercentage() + "%";
         layout.setText(labelFont, percent);
-        float percentX = slider.getBounds().x + slider.getBounds().width + knobSize / 2f + 10f;
+        // El "100%" se salía por el borde derecho: se limita al ancho de pantalla
+        float percentX = slider.getBounds().x + slider.getBounds().width + knobSize / 2f + 8f;
+        float maxX = Constants.VIRTUAL_WIDTH - layout.width - 6f;
+        if (percentX > maxX) percentX = maxX;
         float percentY = slider.getBounds().y + (sliderHeight + layout.height) / 2f;
         labelFont.draw(game.getBatch(), percent, percentX, percentY);
     }

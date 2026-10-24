@@ -479,7 +479,7 @@ Aplicado y **verificado con el build real de GitHub Actions** (PR #1, `Android B
 | P1-5 Logro `FIRST_3_STAR` | ✅ Arreglado | `unlockAchievement()` directo |
 | P1-6 Botón atrás | ✅ Arreglado | Handler por pantalla |
 | P1-7 Pausa en background | ✅ Arreglado | + fix de soft-lock con dos cartas reveladas |
-| P0-5 API 36 / 16 KB / AAB | ⏳ Pendiente | Requiere subir AGP, Gradle y libGDX 1.13.5 + firma |
+| P0-5 API 36 / 16 KB / AAB | ✅ Hecho | AGP 8.13 · Gradle 8.13 · libGDX 1.13.5 · compile/target 36 · 16 KB verificado en CI · firma y AAB listos (ver `docs/firma-y-aab.md`) |
 | P0-6 Crash reporting | ⏳ Pendiente | Necesita cuenta/SDK (decisión del autor) |
 | P1-8 Balance económico | ⏳ Pendiente | Recomendado medir con telemetría antes de tocar números |
 | P2-x Optimización de tamaño | ⏳ Pendiente | Paneles 1628² y fuente de 16 MB son el mayor ahorro |
@@ -493,3 +493,37 @@ Aplicado y **verificado con el build real de GitHub Actions** (PR #1, `Android B
 5. Poner la app en segundo plano en mitad de una partida → al volver debe estar en pausa.
 6. Pulsar **atrás** en mitad de una partida → debe pausar, no cerrar.
 7. Pausa en inglés y en español → debe decir "Paused"/"Pausa" (no `[game.pause]`).
+
+
+---
+
+## 12. Upgrade a API 36 — hecho (rama `arena/cc6d1d1c-kawaii-neko-memory`, PR #2)
+
+Verificado con el CI real en cada paso:
+
+| Paso | Cambio | CI |
+|---|---|---|
+| 1 | AGP 8.2.0 → **8.13.0**, Gradle 8.4 → **8.13** | ✅ |
+| 2 | libGDX 1.12.1 → **1.13.5** (+ ProGuard `getUseDefaultContactFilter`) | ❌ → ver nota |
+| 3 | `compileSdk`/`targetSdk` 34 → **36** + `windowLayoutInDisplayCutoutMode=shortEdges` | ✅ |
+| 4 | Firma (`keystore.properties`), `bundleRelease`, `versionCode` por parámetro, ABIs ARM en release | ✅ |
+| 5 | `verify16kb`: valida `p_align >= 0x4000` en cada `.so` | ✅ |
+
+### Nota del paso 2
+El fallo no era de libGDX sino de `compileSdk`: libGDX 1.13.5 arrastra
+`androidx.core:core:1.15.0`, que **exige compilar contra API 35+**. Por eso los pasos 2 y 3
+van juntos: subir sólo libGDX con `compileSdk 34` no compila.
+
+### 16 KB verificado, no asumido
+`verify16kb` corre como *finalizer* de `assembleDebug`, así que se ejecuta en cada build de
+CI sin tocar el workflow. Es **estricto**: si `readelf` no está disponible o no encuentra
+`.so`, el build falla (no se puede quedar en verde sin haber comprobado nada).
+Resultado del último run: todas las `.so` con `PT_LOAD` alineado a 16 KB.
+
+### Cambios de comportamiento con `targetSdk 36` que hay que probar en dispositivo
+1. **Orientación**: Android 16 ignora `screenOrientation="portrait"` en pantallas grandes
+   (tablet/foldable). El `FitViewport` debería letterboxear, pero hay que verlo.
+2. **Edge-to-edge obligatorio** (desde API 35): el HUD y la barra de estado. Ya se añadió
+   `shortEdges` para el notch, pero hay que confirmar que no tapa los botones del HUD.
+3. **Botón atrás**: ya está capturado por `BaseScreen` (hecho en el PR #1).
+4. **`Theme.NoTitleBar.Fullscreen`** sigue funcionando aunque esté deprecado; no bloquea Play.

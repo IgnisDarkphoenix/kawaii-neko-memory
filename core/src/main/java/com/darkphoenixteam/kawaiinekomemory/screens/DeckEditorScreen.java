@@ -37,13 +37,13 @@ public class DeckEditorScreen extends BaseScreen {
     // === LAYOUT ===
     private static final int ACTIVE_COLS = 5;
     private static final int ACTIVE_ROWS = 3;
-    private static final float ACTIVE_CARD_SIZE = 70f;
-    private static final float ACTIVE_SPACING = 8f;
+    private static final float ACTIVE_CARD_SIZE = 66f;
+    private static final float ACTIVE_SPACING = 7f;
     
     private static final int AVAILABLE_COLS = 7;
     private static final int AVAILABLE_ROWS = 5;
-    private static final float AVAILABLE_CARD_SIZE = 55f;
-    private static final float AVAILABLE_SPACING = 6f;
+    private static final float AVAILABLE_CARD_SIZE = 44f;
+    private static final float AVAILABLE_SPACING = 5f;
     
     // === COLORES ===
     private static final Color COLOR_EASY = new Color(0.3f, 0.85f, 0.3f, 1f);
@@ -232,7 +232,10 @@ public class DeckEditorScreen extends BaseScreen {
         
         float availableWidth = AVAILABLE_COLS * AVAILABLE_CARD_SIZE + (AVAILABLE_COLS - 1) * AVAILABLE_SPACING;
         availableGridX = (Constants.VIRTUAL_WIDTH - availableWidth) / 2f;
-        availableGridY = Constants.VIRTUAL_HEIGHT - 420f;
+        // 5 filas de 49 = 245 -> la rejilla termina en y=190, dejando libre
+        // el pie para "Activas", requisitos, pista y el botón Volver
+        // (antes bajaba hasta y=75 y todo se dibujaba encima).
+        availableGridY = Constants.VIRTUAL_HEIGHT - 365f;
     }
     
     private void createBounds() {
@@ -256,10 +259,10 @@ public class DeckEditorScreen extends BaseScreen {
     private void createButtons() {
         Texture backTex = assets.get(AssetPaths.BTN_BACK);
         if (backTex != null) {
-            float btnWidth = Constants.VIRTUAL_WIDTH * 0.4f;
+            float btnWidth = Constants.VIRTUAL_WIDTH * 0.32f;
             float btnHeight = btnWidth * 0.35f;
             float btnX = (Constants.VIRTUAL_WIDTH - btnWidth) / 2f;
-            float btnY = 15f;
+            float btnY = 10f;
             
             backButton = new SimpleButton(backTex, locale.get("common.back"), btnX, btnY, btnWidth, btnHeight);
             backButton.setOnClick(() -> {
@@ -494,7 +497,8 @@ public class DeckEditorScreen extends BaseScreen {
     }
     
     private void drawInfo() {
-        float infoY = 85f;
+        // Pie libre: la rejilla de disponibles termina en y=190
+        float infoY = 160f;
         
         int activeCount = saveManager.getActiveCardCount();
         String countText = locale.format("deck.active", activeCount);

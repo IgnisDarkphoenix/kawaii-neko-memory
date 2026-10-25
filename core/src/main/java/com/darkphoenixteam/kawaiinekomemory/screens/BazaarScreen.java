@@ -145,37 +145,42 @@ public class BazaarScreen extends BaseScreen {
     // ==================== BOTONES ====================
     
     private void createButtons() {
-        float centerX = Constants.VIRTUAL_WIDTH / 2f;
-        float buttonWidth = Constants.VIRTUAL_WIDTH * BUTTON_WIDTH_PERCENT;
+        // Los botones de compra estaban centrados y con el borde superior
+        // justo en la línea base del título: tapaban "Pistas",
+        // "Congelamiento", "Time Attack" y "Gacha Neko".
+        // Ahora van a la derecha y por debajo del título.
+        float btnWidth = 150f;
+        float btnHeight = 38f;
+        float btnX = Constants.VIRTUAL_WIDTH - btnWidth - 12f;
         
         if (buttonTexture != null) {
-            float hintY = Constants.VIRTUAL_HEIGHT - SECTION_START_Y - BUTTON_HEIGHT;
+            float hintY = Constants.VIRTUAL_HEIGHT - SECTION_START_Y - btnHeight - 6f;
             hintBuyButton = new SimpleButton(buttonTexture, locale.get("bazaar.buy"),
-                centerX - buttonWidth / 2f, hintY, buttonWidth, BUTTON_HEIGHT);
+                btnX, hintY, btnWidth, btnHeight);
             hintBuyButton.setOnClick(this::buyHint);
             
             float freezeY = hintY - SECTION_HEIGHT;
             timefreezeBuyButton = new SimpleButton(buttonTexture, locale.get("bazaar.buy"),
-                centerX - buttonWidth / 2f, freezeY, buttonWidth, BUTTON_HEIGHT);
+                btnX, freezeY, btnWidth, btnHeight);
             timefreezeBuyButton.setOnClick(this::buyTimeFreeze);
             
             float upgradeY = freezeY - SECTION_HEIGHT;
             timeAttackUpgradeButton = new SimpleButton(buttonTexture, locale.get("bazaar.upgrade"),
-                centerX - buttonWidth / 2f, upgradeY, buttonWidth, BUTTON_HEIGHT);
+                btnX, upgradeY, btnWidth, btnHeight);
             timeAttackUpgradeButton.setOnClick(this::buyTimeAttackUpgrade);
             
             float gachaY = upgradeY - SECTION_HEIGHT;
             gachaButton = new SimpleButton(buttonTexture, locale.get("bazaar.open"),
-                centerX - buttonWidth / 2f, gachaY, buttonWidth, BUTTON_HEIGHT);
+                btnX, gachaY, btnWidth, btnHeight);
             gachaButton.setOnClick(this::openGacha);
         }
         
         Texture backTex = assets.get(AssetPaths.BTN_BACK);
         if (backTex != null) {
-            float backWidth = Constants.VIRTUAL_WIDTH * 0.4f;
+            float backWidth = Constants.VIRTUAL_WIDTH * 0.34f;
             float backHeight = backWidth * 0.35f;
             backButton = new SimpleButton(backTex, locale.get("common.back"),
-                (Constants.VIRTUAL_WIDTH - backWidth) / 2f, 15f, backWidth, backHeight);
+                (Constants.VIRTUAL_WIDTH - backWidth) / 2f, 12f, backWidth, backHeight);
             backButton.setOnClick(() -> {
                 audioManager.playSound(AssetPaths.SFX_BUTTON);
                 game.changeScreen(new HomeScreen(game));

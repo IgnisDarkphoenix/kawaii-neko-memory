@@ -59,12 +59,18 @@ public final class Constants {
     public static final float TIME_ATTACK_UPGRADE_AMOUNT = 5f;
     public static final int TIME_ATTACK_MAX_UPGRADES = 48;
     
-    public static final int TIME_ATTACK_UPGRADE_BASE_COST = 500;
-    public static final int TIME_ATTACK_UPGRADE_INCREMENT_ODD = 250;
-    public static final int TIME_ATTACK_UPGRADE_INCREMENT_EVEN = 500;
+    // Cada mejora cuesta BASE + INCREMENT * mejoras_compradas (lineal).
+    // Antes la formula sumaba TODOS los incrementos anteriores en cada
+    // compra, asi que el coste crecia de forma cuadratica: las 48 mejoras
+    // costaban 444.000 nekoins, unas 5.000 partidas.
+    public static final int TIME_ATTACK_UPGRADE_BASE_COST = 150;
+    public static final int TIME_ATTACK_UPGRADE_INCREMENT = 10;
     
-    public static final int TIME_ATTACK_NEKOIN_PER_PAIR = 5;
-    public static final float TIME_ATTACK_AD_MULTIPLIER = 2.5f;
+    public static final int TIME_ATTACK_NEKOIN_PER_PAIR = 10;
+    // Bonus OPCIONAL por ver un rewarded. Con 2.5 el modo sin anuncios
+    // rendia un 60% menos y la economia dependia de los ads, que hoy no
+    // estan implementados en Android.
+    public static final float TIME_ATTACK_AD_MULTIPLIER = 1.5f;
     
     // === TIEMPO BASE POR DIFICULTAD (segundos) ===
     public static final float TIME_BASE_EASY = 45f;
@@ -135,7 +141,9 @@ public final class Constants {
     public static final float STARS_2_THRESHOLD = 0.25f;
     
     // === POWERS ===
-    public static final int[] POWER_PRICES = {500, 1000, 2000, 2500, 3500};
+    // Precio de la unidad N segun el stock que ya tengas (mas stock = mas
+    // caro). Con 5 unidades: 120+200+320+480+700 = 1.820 por poder.
+    public static final int[] POWER_PRICES = {120, 200, 320, 480, 700};
     public static final int MAX_POWER_STOCK = 5;
     
     public static final int MAX_HINTS_PER_GAME = 5;
@@ -149,9 +157,12 @@ public final class Constants {
     public static final int HINT_CARDS_HARD = 5;
     
     // === GACHA ===
-    public static final int GACHA_BASE_COST = 1000;
-    public static final int GACHA_INCREMENT_ODD = 500;
-    public static final int GACHA_INCREMENT_EVEN = 1000;
+    // Tirada N cuesta BASE + INCREMENT * tiradas_hechas (lineal).
+    // Antes: 1.000 la primera, pero la 35 costaba 17.500 y el total de las
+    // 35 cartas salia por 477.000 nekoins (mas de 5.000 partidas).
+    // Ahora: de 200 a 880, las 35 cartas por 18.900.
+    public static final int GACHA_BASE_COST = 200;
+    public static final int GACHA_COST_INCREMENT = 20;
     
     // === ADS ===
     public static final int GAMES_BEFORE_INTERSTITIAL_LOSS = 3;

@@ -283,15 +283,11 @@ public class SaveManager {
             return -1;
         }
         
-        int cost = Constants.TIME_ATTACK_UPGRADE_BASE_COST;
-        for (int i = 0; i < upgrades; i++) {
-            if (i % 2 == 0) {
-                cost += Constants.TIME_ATTACK_UPGRADE_INCREMENT_ODD;
-            } else {
-                cost += Constants.TIME_ATTACK_UPGRADE_INCREMENT_EVEN;
-            }
-        }
-        return cost;
+        // Coste LINEAL: antes se acumulaba un incremento por cada mejora
+        // ya comprada, lo que hacia el precio cuadratico (la mejora 48
+        // costaba 17.950 y el total 444.000 nekoins).
+        return Constants.TIME_ATTACK_UPGRADE_BASE_COST
+             + (upgrades * Constants.TIME_ATTACK_UPGRADE_INCREMENT);
     }
     
     public boolean purchaseTimeAttackUpgrade() {
@@ -352,17 +348,9 @@ public class SaveManager {
     }
     
     public int getGachaCost() {
-        int pulls = getGachaPulls();
-        int cost = Constants.GACHA_BASE_COST;
-        
-        for (int i = 0; i < pulls; i++) {
-            if (i % 2 == 0) {
-                cost += Constants.GACHA_INCREMENT_ODD;
-            } else {
-                cost += Constants.GACHA_INCREMENT_EVEN;
-            }
-        }
-        return cost;
+        // Coste LINEAL (ver nota en getTimeAttackUpgradeCost).
+        return Constants.GACHA_BASE_COST
+             + (getGachaPulls() * Constants.GACHA_COST_INCREMENT);
     }
     
     public void incrementGachaPulls() {

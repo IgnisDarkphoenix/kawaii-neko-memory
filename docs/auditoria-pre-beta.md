@@ -587,3 +587,44 @@ por geometría y no por tamaño:
 3. **Economía**: un nivel de 4x4 da ~87 nekoins y el gacha cuesta 1.000. La
    dificultad Difícil pide 1.500. Con esos números hacen falta ~400 niveles
    para desbloquearla; hay que reajustar recompensas o precios antes de la beta.
+
+---
+
+## 14. Economía: de 940.000 nekoins a 41.020
+
+Al revisar los precios para la beta se encontró que el problema no era "los
+precios son altos", sino **dos fallos de diseño**:
+
+1. **El coste crecía de forma cuadrática.** `getGachaCost()` y
+   `getTimeAttackUpgradeCost()` recorrían todas las compras anteriores y
+   sumaban un incremento por cada una, así que el precio no era una progresión
+   sino una explosión: la tirada 35 de gacha costaba 17.500 y las 35 cartas
+   salían por 477.000. Desbloquear todo el contenido pedía 940.000 nekoins
+   (~250 pasadas completas al juego).
+2. **La economía estaba calibrada para anuncios que no existen.**
+   `AdController` es solo una interfaz: no hay ninguna implementación en
+   Android (`play-services-ads`, `MobileAds` y `AdView` no aparecen en el
+   proyecto). En Time Attack, quien no ve el rewarded cobraba el 40 % porque
+   `TIME_ATTACK_AD_MULTIPLIER` valía 2,5.
+
+**Arreglo:** costes lineales (`BASE + INCREMENT × compradas`) y regla de que
+todo el contenido desbloqueable cabe en la campaña sin anuncios.
+
+| Concepto | Antes | Ahora |
+|---|---|---|
+| Gacha: 35 cartas | 477.000 | **18.900** |
+| Time Attack: 48 mejoras | 444.000 | **18.480** |
+| Poderes 5 + 5 | 19.000 | **3.640** |
+| **Total** | **940.000** | **41.020** |
+
+La campaña completa en 3★ paga ~73.800 (con el valor de las cartas), así que
+el contenido se desbloquea terminando el juego, no repitiéndolo. Detalle y
+curva por dificultad en `docs/economia.md`.
+
+También se cambió `TIME_ATTACK_NEKOIN_PER_PAIR` de 5 a 10 para compensar que
+ya no hay multiplicador de anuncio, y el resultado de Time Attack muestra el
+multiplicador real en vez de un `(x2.5!)` fijo.
+
+**Decisión pendiente del usuario:** publicar sin anuncios. Añadirlos toca
+política de familias, consentimiento (UMP/TCF) y declaración de *Data safety*;
+la vía sin anuncios publica antes y la economía ya cuadra.

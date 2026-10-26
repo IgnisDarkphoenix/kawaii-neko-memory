@@ -898,7 +898,9 @@ public class TimeAttackScreen extends BaseScreen {
         // Nekoins
         String nekoinText;
         if (adWatched) {
-            nekoinText = locale.get("common.nekoins") + ": " + nekoinsEarned + " (x2.5!)";
+            // El multiplicador es configurable: no hardcodear el x2.5
+            nekoinText = locale.get("common.nekoins") + ": " + nekoinsEarned
+                       + " (x" + Constants.TIME_ATTACK_AD_MULTIPLIER + ")";
             buttonFont.setColor(Color.LIME);
         } else {
             nekoinText = locale.get("common.nekoins") + ": " + nekoinsEarned;

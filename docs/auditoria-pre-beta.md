@@ -628,3 +628,48 @@ multiplicador real en vez de un `(x2.5!)` fijo.
 **Decisión pendiente del usuario:** publicar sin anuncios. Añadirlos toca
 política de familias, consentimiento (UMP/TCF) y declaración de *Data safety*;
 la vía sin anuncios publica antes y la economía ya cuadra.
+
+---
+
+## 15. Logo, nombre del juego y assets de tienda
+
+### El logo tenía fondo negro
+
+`assets/images/splash/logo_game.png` era un PNG **RGB de 1024×1024 con fondo
+negro** (no tenía canal alfa). En la Home se dibujaba como rectángulo opaco
+sobre el patrón: eso es el "marco negro" que se veía en el playtest.
+
+Además el PNG incluía el *wordmark* "KawaiiNekoMemory" en crema dentro de la
+misma imagen, y ese texto era **ilegible sobre el patrón crema** del fondo.
+Y no se traducía: los otros idiomas leían igual el nombre en inglés.
+
+**Arreglo en tres partes:**
+
+1. **Máscara alfa** calculada sobre el fondo negro (`F = C / α`, des-mezcla
+   exacta), con la rampa calibrada con la histograma real: el fondo tiene ruido
+   de compresión JPEG (<70 de luminancia) y el trazo más oscuro del dibujo está
+   en 133. Se descarta el ruido suelto (`α < 0.45`) para no dejar motas.
+2. **Recorte a la cabeza del gato**, cortando por el hueco real entre la cabeza
+   y el texto (detectado por filas vacías). El wordmark se eliminó.
+3. **El nombre lo dibuja el juego** con `titleFont` sobre una placa clara
+   (`btn_empty.png` al 92 % de opacidad) en rosa `#E63C8C`, en negrita y
+   centrado. Ventajas: se lee sobre cualquier fondo, **se traduce** y su ancho
+   (311 ud de 448 disponibles) cabe en una sola línea.
+
+También la zona del título de la Home subió de `0.32` a `0.40` de la altura:
+con el logo cuadrado de antes, su mitad inferior chocaba con los botones.
+
+### Assets de Play Store
+
+Creados en `store/` a partir de la cabeza del logo:
+
+| Archivo | Uso | Nota |
+|---|---|---|
+| `play-icon-512.png` | icono de la ficha | 512×512, sin alfa (Play no lo admite) |
+| `play-feature-graphic-1024x500.png` | *feature graphic* | 1024×500, texto con la fuente del juego |
+
+El icono del launcher (`mipmap-*/ic_launcher.png` + `ic_launcher_foreground.xml`)
+ya era esta cabeza de gato, así que ficha y app quedan coherentes.
+
+**Pendiente:** las capturas de la ficha. Las del playtest no sirven (tienen los
+solapamientos ya corregidos); hay que tomarlas en el A54 con el próximo build.

@@ -37,6 +37,7 @@ public class HomeScreen extends BaseScreen {
     private Texture patternTexture;
     private Texture logoTexture;
     private Texture nekoinIconTexture;
+    private Texture titlePlateTexture;   // placa clara detrás del nombre
     
     // === BOTONES ===
     private Array<SimpleButton> buttons;
@@ -51,7 +52,8 @@ public class HomeScreen extends BaseScreen {
     private boolean achievementUnlocked = false;
     
     // === LAYOUT ===
-    private static final float TITLE_ZONE_PERCENT = 0.32f;
+    private static final float TITLE_ZONE_PERCENT = Constants.TITLE_ZONE_PERCENT;
+    private static final Color TITLE_COLOR = Color.valueOf("E63C8C");
     private static final float BOTTOM_MARGIN = 40f;
     private static final float BUTTON_SPACING = 8f;
     private static final int BUTTON_COUNT = 5;
@@ -129,6 +131,12 @@ public class HomeScreen extends BaseScreen {
         }
         
         try {
+            titlePlateTexture = new Texture(Gdx.files.internal(AssetPaths.BTN_EMPTY));
+        } catch (Exception e) {
+            Gdx.app.log(TAG, "Placa del título no encontrada");
+        }
+        
+        try {
             nekoinIconTexture = new Texture(Gdx.files.internal(AssetPaths.ICON_NEKOIN));
         } catch (Exception e) {
             Gdx.app.log(TAG, "Nekoin icon no encontrado");
@@ -192,11 +200,15 @@ public class HomeScreen extends BaseScreen {
     
     private void createLogoBounds() {
         if (logoTexture != null) {
-            float logoWidth = Constants.VIRTUAL_WIDTH * 0.6f;
+            // El PNG del logo es solo la cabeza del gato (el texto del antiguo
+            // wordmark se cortó porque era ilegible sobre el patrón): el
+            // nombre del juego lo dibuja drawLogoOrTitle() con la fuente del
+            // juego, así también se traduce.
+            float logoWidth = Constants.VIRTUAL_WIDTH * 0.42f;
             float logoHeight = logoWidth * ((float) logoTexture.getHeight() / logoTexture.getWidth());
             float logoX = (Constants.VIRTUAL_WIDTH - logoWidth) / 2f;
             float titleZoneCenter = Constants.VIRTUAL_HEIGHT - (Constants.VIRTUAL_HEIGHT * TITLE_ZONE_PERCENT / 2f);
-            float logoY = titleZoneCenter - (logoHeight / 2f) + 20f;
+            float logoY = titleZoneCenter - (logoHeight / 2f) + 25f;
             
             logoBounds = new Rectangle(logoX, logoY, logoWidth, logoHeight);
         } else {
@@ -371,17 +383,39 @@ public class HomeScreen extends BaseScreen {
             
             game.getBatch().draw(logoTexture, logoX, logoY, logoWidth, logoHeight);
             game.getBatch().setColor(1f, 1f, 1f, 1f);
+            
+            drawTitleOnPlate(logoBounds.y - 12f);
         } else {
-            String title = locale.get("game.title");
-            layout.setText(titleFont, title);
-            float titleX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
-            float titleY = titleZoneCenter + (layout.height / 2f);
-            titleFont.draw(game.getBatch(), title, titleX, titleY);
+            drawTitleOnPlate(titleZoneCenter);
         }
     }
     
+    /**
+     * Dibuja el nombre del juego sobre una placa clara.
+     * El patrón de fondo es crema y el texto crema del logo era ilegible
+     * encima; con la placa se lee en cualquier fondo y admite traducción.
+     */
+    private void drawTitleOnPlate(float baselineY) {
+        String title = locale.get("game.title");
+        layout.setText(titleFont, title);
+        float titleX = (Constants.VIRTUAL_WIDTH - layout.width) / 2f;
+        float padX = 16f;
+        float plateH = layout.height + 14f;
+        
+        if (titlePlateTexture != null) {
+            game.getBatch().setColor(1f, 1f, 1f, 0.92f);
+            game.getBatch().draw(titlePlateTexture,
+                titleX - padX, baselineY - 10f, layout.width + padX * 2f, plateH);
+            game.getBatch().setColor(1f, 1f, 1f, 1f);
+        }
+        
+        titleFont.setColor(TITLE_COLOR);
+        titleFont.draw(game.getBatch(), title, titleX, baselineY);
+        titleFont.setColor(Color.WHITE);
+    }
+    
     private void drawClickProgress() {
-        float progressY = logoBounds.y - 15f;
+        float progressY = logoBounds.y - 52f;   // debajo del título, no encima
         
         StringBuilder dots = new StringBuilder();
         for (int i = 0; i < logoClickCount; i++) dots.append("●");
@@ -405,6 +439,7 @@ public class HomeScreen extends BaseScreen {
     public void dispose() {
         if (patternTexture != null) patternTexture.dispose();
         if (logoTexture != null) logoTexture.dispose();
+        if (titlePlateTexture != null) titlePlateTexture.dispose();
         if (nekoinIconTexture != null) nekoinIconTexture.dispose();
         
         for (SimpleButton button : buttons) {

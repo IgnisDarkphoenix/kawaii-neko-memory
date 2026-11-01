@@ -175,6 +175,12 @@ public final class Constants {
     public static final float HUD_HEIGHT = 80f;
     public static final float GRID_PADDING = 10f;
     
+    // === MENÚ PRINCIPAL ===
+    // Zona superior de la Home dedicada al logo. Con 0.32 el logo de 1024x1024
+    // escalaba a 288x288 ud y su mitad inferior (el wordmark del PNG) se
+    // solapaba con los botones y quedaba ilegible sobre el patrón de fondo.
+    public static final float TITLE_ZONE_PERCENT = 0.40f;
+    
     // === MÚSICA ===
     // IMPORTANTE: debe coincidir con los archivos reales de assets/audio/music
     // (game_track_01..05.ogg). Antes valía 10 y la mitad de las partidas

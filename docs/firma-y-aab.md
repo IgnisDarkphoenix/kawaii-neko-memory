@@ -164,7 +164,9 @@ Comprobación de la firma (opcional, en el propio CI):
 
 - **AAB**, no APK. ✔ (paso 3b)
 - **Upload key** registrada en Play Console (se activa sola en la primera subida).
-- **Icono 512×512** + *feature graphic* 1024×500 + capturas.
+- **Icono 512×512** → `store/play-icon-512.png` (ya generado, sin transparencia)
+- ***Feature graphic* 1024×500** → `store/play-feature-graphic-1024x500.png`
+- **Capturas** de la ficha: al menos 2 de móvil (1080×1920 o mayor).
 - **Política de privacidad** con URL pública.
 - **Data safety**: declarar que se guarda progreso localmente (`SharedPreferences`), sin
   recogida de datos si aún no hay analytics ni ads.
